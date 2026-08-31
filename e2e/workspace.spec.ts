@@ -320,7 +320,7 @@ test("时间戳工具支持双向转换和真实交互", async ({ page }) => {
   await expect(page.getByLabel("选择要转换的日期和时间")).not.toHaveValue("");
 });
 
-test("幼小数学练习支持 30 天计划、主题选择与 A4 打印包", async ({ page }) => {
+test("幼小数学练习支持 30 天计划、主题安排与 A4 打印包", async ({ page }) => {
   await page.goto("/math-worksheet");
 
   await expect(page).toHaveTitle("幼小数学练习生成器 - 30 天连续作业与 A4 打印 | 知页");
@@ -333,6 +333,7 @@ test("幼小数学练习支持 30 天计划、主题选择与 A4 打印包", asy
   await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
   await expect(page.getByTestId("worksheet-day-30")).toBeVisible();
   await expect(page.locator(".math-worksheet-print-pack .math-worksheet-paper")).toHaveCount(30);
+  await expect(page.locator(".math-worksheet-theme-track")).toHaveCount(0);
 
   await page.getByTestId("worksheet-day-9").click();
   await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "9");
@@ -354,14 +355,12 @@ test("幼小数学练习支持 30 天计划、主题选择与 A4 打印包", asy
   await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "30");
   await expect(page.locator('[data-testid="math-worksheet-question"][data-level="three-number"]')).toHaveCount(20);
   await expect(page.getByTestId("worksheet-day-summary")).toContainText("阶段测评");
-
-  await page.getByRole("button", { name: "选择平十法" }).click();
-  await expect(page.getByTestId("worksheet-theme")).toContainText("自选主题");
-  await expect(page.getByTestId("worksheet-theme")).toContainText("平十法");
-  await expect(page.locator('[data-testid="math-worksheet-question"][data-method="flat-ten"]')).toHaveCount(20);
+  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
+  await expect(page.getByTestId("worksheet-theme")).toContainText("混合主题");
+  await expect(page.getByRole("button", { name: "选择平十法" })).toHaveCount(0);
   await page.getByRole("button", { name: "本日换一套" }).click();
-  await expect(page.getByTestId("worksheet-theme")).toContainText("自选主题");
-  await expect(page.getByTestId("worksheet-demo")).toContainText("平十法");
+  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
+  await expect(page.getByTestId("worksheet-demo")).toContainText("混合主题");
 
   await page.getByRole("button", { name: "重新生成计划" }).click();
   await expect(page.getByRole("status")).toContainText("难度结构保持不变");

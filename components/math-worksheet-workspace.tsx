@@ -19,7 +19,6 @@ import { recordRecentTool } from "@/lib/recent-tools";
 import {
   generateDailyWorksheet,
   generateWorksheetPlan,
-  getWorksheetDayPlan,
   MAX_WORKSHEET_QUESTIONS,
   WORKSHEET_PHASES,
   WORKSHEET_PLAN_DAYS,
@@ -30,7 +29,6 @@ import {
   type WorksheetDayOverrides,
   type WorksheetPlan,
   type WorksheetQuestion,
-  type WorksheetTheme,
 } from "@/lib/tools/math-worksheet";
 import type { ToolDefinition } from "@/lib/tools/registry";
 
@@ -50,14 +48,6 @@ const countFields: readonly { key: CountKey; label: string; inputLabel: string }
   { key: "neighborCount", label: "相邻数", inputLabel: "相邻数题数" },
   { key: "compareCount", label: "比大小", inputLabel: "比大小题数" },
   { key: "mentalCount", label: "口算", inputLabel: "口算题数" },
-];
-
-const themeTrack: readonly { theme: WorksheetTheme; label: string }[] = [
-  { theme: "make-ten", label: "凑十法" },
-  { theme: "break-ten", label: "破十法" },
-  { theme: "flat-ten", label: "平十法" },
-  { theme: "think-addition", label: "想加算减法" },
-  { theme: "mixed", label: "混合主题" },
 ];
 
 function getSectionCount(worksheet: DailyWorksheet, type: "neighbor" | "compare" | "mental"): number {
@@ -348,7 +338,6 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
   const [plan, setPlan] = useState<WorksheetPlan>(() => generateWorksheetPlan(INITIAL_SEED));
   const [status, setStatus] = useState<StatusMessage>({ tone: "idle", text: "30 天连续作业已准备好" });
   const selectedWorksheet = plan.days[selectedDay - 1] ?? plan.days[0];
-  const selectedBlueprint = getWorksheetDayPlan(selectedDay);
   const selectedTotal = selectedWorksheet?.total ?? 0;
   const selectedCounts = selectedWorksheet
     ? {
@@ -357,8 +346,6 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
         mentalCount: getSectionCount(selectedWorksheet, "mental"),
       }
     : { neighborCount: 0, compareCount: 0, mentalCount: 0 };
-  const isManualTheme = selectedWorksheet?.theme !== selectedBlueprint.theme;
-
   useEffect(() => {
     recordRecentTool(definition.slug);
   }, [definition.slug]);
@@ -404,22 +391,6 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
     rebuildSelectedDay(
       { ...getWorksheetOverrides(selectedWorksheet), ...nextCounts },
       "第 " + selectedDay + " 天题目数量已更新",
-    );
-  };
-
-  const selectTheme = (theme: WorksheetTheme) => {
-    if (!selectedWorksheet) {
-      return;
-    }
-
-    if (theme === selectedWorksheet.theme) {
-      setStatus({ tone: "success", text: "第 " + selectedDay + " 天已是" + WORKSHEET_THEME_LABELS[theme] });
-      return;
-    }
-
-    rebuildSelectedDay(
-      { ...getWorksheetOverrides(selectedWorksheet), theme },
-      "第 " + selectedDay + " 天已切换到" + WORKSHEET_THEME_LABELS[theme],
     );
   };
 
@@ -577,29 +548,14 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
 
           <section className="math-worksheet-settings__group" aria-labelledby="worksheet-theme-title">
             <div className="math-worksheet-settings__label">
-              <span id="worksheet-theme-title">当天主题</span>
-              <small>{isManualTheme ? "已自选，保持当天难度" : "按阶段计划安排"}</small>
+              <span id="worksheet-theme-title">本日主题</span>
+              <small>按 30 天计划安排</small>
             </div>
             <div className="math-worksheet-theme-current" data-testid="worksheet-theme">
-              <span>{isManualTheme ? "自选主题" : "计划主题"}</span>
+              <span>计划主题</span>
               <strong>{WORKSHEET_THEME_LABELS[selectedWorksheet.theme]}</strong>
               <small>{WORKSHEET_THEME_DESCRIPTIONS[selectedWorksheet.theme]}</small>
             </div>
-            <ol className="math-worksheet-theme-track" aria-label="选择当天主题">
-              {themeTrack.map((item, index) => (
-                <li className={item.theme === selectedWorksheet.theme ? "math-worksheet-theme-step is-current" : "math-worksheet-theme-step"} key={item.theme}>
-                  <button
-                    type="button"
-                    aria-label={"选择" + item.label}
-                    aria-pressed={item.theme === selectedWorksheet.theme}
-                    onClick={() => selectTheme(item.theme)}
-                  >
-                    <span>{index === themeTrack.length - 1 ? "混" : "0" + (index + 1)}</span>
-                    <strong>{item.label}</strong>
-                  </button>
-                </li>
-              ))}
-            </ol>
             <p className="math-worksheet-level-note">
               当天口算结果上限 {selectedWorksheet.plan.mentalMax}；
               {selectedWorksheet.plan.threeNumberRatio > 0
