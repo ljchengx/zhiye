@@ -44,6 +44,7 @@ const SCENE_LAYOUTS: readonly SceneLayout[] = [
       { x: 0.59, y: -116, angle: 0.08, spin: 0.003 },
       { x: 0.42, y: -188, angle: -0.04, spin: -0.004 },
       { x: 0.55, y: -260, angle: 0.06, spin: 0.005 },
+      { x: 0.68, y: -332, angle: -0.03, spin: -0.003 },
     ],
   },
   {
@@ -54,6 +55,7 @@ const SCENE_LAYOUTS: readonly SceneLayout[] = [
       { x: 0.31, y: -170, angle: 0.04, spin: 0.002 },
       { x: 0.69, y: -150, angle: -0.05, spin: -0.002 },
       { x: 0.5, y: -310, angle: 0.1, spin: 0.005 },
+      { x: 0.5, y: -400, angle: -0.04, spin: -0.004 },
     ],
   },
   {
@@ -64,6 +66,7 @@ const SCENE_LAYOUTS: readonly SceneLayout[] = [
       { x: 0.38, y: -230, angle: -0.08, spin: -0.003 },
       { x: 0.62, y: -230, angle: 0.08, spin: 0.003 },
       { x: 0.5, y: -390, angle: 0, spin: 0.004 },
+      { x: 0.5, y: -490, angle: 0.05, spin: -0.003 },
     ],
   },
   {
@@ -74,6 +77,7 @@ const SCENE_LAYOUTS: readonly SceneLayout[] = [
       { x: 0.5, y: -190, angle: -0.06, spin: -0.003 },
       { x: 0.64, y: -295, angle: 0.07, spin: 0.003 },
       { x: 0.78, y: -400, angle: -0.08, spin: -0.004 },
+      { x: 0.88, y: -500, angle: 0.06, spin: 0.003 },
     ],
   },
   {
@@ -84,6 +88,7 @@ const SCENE_LAYOUTS: readonly SceneLayout[] = [
       { x: 0.5, y: -300, angle: 0.04, spin: 0.003 },
       { x: 0.67, y: -70, angle: 0.1, spin: 0.004 },
       { x: 0.84, y: -210, angle: -0.12, spin: -0.006 },
+      { x: 0.54, y: -420, angle: 0.05, spin: 0.003 },
     ],
   },
 ] as const;
@@ -94,6 +99,7 @@ const STATIC_POSITIONS = [
   { left: "72%", top: "42%", rotate: "-2deg" },
   { left: "28%", top: "58%", rotate: "3deg" },
   { left: "56%", top: "68%", rotate: "-1deg" },
+  { left: "82%", top: "28%", rotate: "2deg" },
 ] as const;
 
 export function HomePhysicsLab({ placement = "section" }: { placement?: "hero" | "section" }) {

@@ -147,5 +147,6 @@ describe("工具注册表", () => {
     expect(searchTools("markdown").map((tool) => tool.slug)).toEqual(["markdown-cleaner"]);
     expect(searchTools("身份证").map((tool) => tool.slug)).toEqual(["image-watermark"]);
     expect(searchTools("时间戳").map((tool) => tool.slug)).toEqual(["timestamp-converter"]);
+    expect(searchTools("口算").map((tool) => tool.slug)).toEqual(["math-worksheet"]);
   });
 });

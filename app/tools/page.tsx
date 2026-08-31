@@ -6,8 +6,8 @@ import { PulseShell } from "@/components/pulse-shell";
 import { ToolIcon } from "@/components/tool-icon";
 import { toolDefinitions } from "@/lib/tools/registry";
 
-const title = "免费在线工具工作台 - Base64、JSON、Markdown 与时间戳";
-const description = "选择 Base64 编解码、JSON 格式化、Markdown 清理、Unix 时间戳转换或图片水印工具，所有操作均在浏览器本地完成。";
+const title = "免费在线工具工作台 - 文本、数据、图片与数学练习";
+const description = "选择 Base64 编解码、JSON 格式化、Markdown 清理、Unix 时间戳、图片水印或幼小数学练习工具，所有操作均在浏览器本地完成。";
 
 export const metadata: Metadata = {
   title,
@@ -39,7 +39,7 @@ export default function ToolsPage() {
         <header className="zhiye-workbench-index__header">
           <p>知页 / 工作台</p>
           <h1 id="workbench-title">免费在线工具工作台</h1>
-          <span>Base64、JSON、Markdown、Unix 时间戳和图片水印工具，均可在浏览器本地使用，内容不会上传。</span>
+          <span>文本、数据、图片和数学练习工具，均可在浏览器本地使用，内容不会上传。</span>
         </header>
 
         <div className="zhiye-workbench-index__grid">

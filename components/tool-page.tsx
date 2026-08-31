@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ImageWatermarkWorkspace } from "@/components/image-watermark-workspace";
+import { MathWorksheetWorkspace } from "@/components/math-worksheet-workspace";
 import { TimestampWorkspace } from "@/components/timestamp-workspace";
 import { ToolSeoContent } from "@/components/tool-seo-content";
 import { ToolWorkspace } from "@/components/tool-workspace";
@@ -45,6 +46,10 @@ export function ToolPageContent({ definition }: { definition: ToolDefinition }) 
 
   if (definition.slug === "timestamp-converter") {
     return <TimestampWorkspace definition={definition} seoContent={seoContent} />;
+  }
+
+  if (definition.slug === "math-worksheet") {
+    return <MathWorksheetWorkspace definition={definition} seoContent={seoContent} />;
   }
 
   return <ToolWorkspace definition={definition} seoContent={seoContent} />;

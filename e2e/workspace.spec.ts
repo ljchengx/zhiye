@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("首页作为产品介绍页，并可进入独立工作台", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page).toHaveTitle("知页 - 免费的浏览器本地工具箱");
+  await expect(page).toHaveTitle("知页 - 免费在线文本、数据与数学练习工具");
   await expect(page.getByRole("link", { name: "知页首页" })).toBeVisible();
   await expect(page.getByRole("link", { name: "在 GitHub 查看知页源码" })).toHaveAttribute("href", "https://github.com/ljchengx/zhiye");
   await expect(page.locator("#home-title")).toContainText("把琐碎处理");
@@ -191,7 +191,7 @@ test("首页物理实验台支持拖拽、重置和真实工具导航", async ({
   const lab = page.getByLabel("可拖拽的知页工具");
   await lab.scrollIntoViewIfNeeded();
   await expect(page.getByRole("heading", { name: "知页工具实验台" })).toBeAttached();
-  await expect(lab.getByRole("link")).toHaveCount(5);
+  await expect(lab.getByRole("link")).toHaveCount(6);
   await expect(lab).toHaveClass(/is-ready/);
 
   const base64 = lab.getByRole("link", { name: "打开Base64 编解码" });
@@ -318,4 +318,45 @@ test("时间戳工具支持双向转换和真实交互", async ({ page }) => {
 
   await page.getByRole("button", { name: "使用当前时间" }).click();
   await expect(page.getByLabel("选择要转换的日期和时间")).not.toHaveValue("");
+});
+
+test("幼小数学练习支持 30 天计划、主题选择与 A4 打印包", async ({ page }) => {
+  await page.goto("/math-worksheet");
+
+  await expect(page).toHaveTitle("幼小数学练习生成器 - 30 天连续作业与 A4 打印 | 知页");
+  await expect(page.getByRole("link", { name: "数学练习" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("math-worksheet-paper")).toBeVisible();
+  await expect(page.getByTestId("math-worksheet-question")).toHaveCount(24);
+  await expect(page.getByText("相邻数").first()).toBeVisible();
+  await expect(page.getByTestId("worksheet-demo")).toContainText("凑十法");
+  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
+  await expect(page.getByTestId("worksheet-day-30")).toBeVisible();
+  await expect(page.locator(".math-worksheet-print-pack .math-worksheet-paper")).toHaveCount(30);
+
+  await page.getByTestId("worksheet-day-9").click();
+  await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "9");
+  await expect(page.getByTestId("math-worksheet-question")).toHaveCount(26);
+  await expect(page.getByTestId("worksheet-demo")).toContainText("混合主题");
+  await expect(page.getByTestId("worksheet-day-summary")).toContainText("迈向 50");
+
+  await page.getByTestId("worksheet-day-21").click();
+  await expect(page.getByTestId("math-worksheet-question")).toHaveCount(30);
+  await expect(page.locator('[data-testid="math-worksheet-question"][data-level="three-number"]')).toHaveCount(10);
+
+  await page.getByTestId("worksheet-day-30").click();
+  await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "30");
+  await expect(page.locator('[data-testid="math-worksheet-question"][data-level="three-number"]')).toHaveCount(20);
+  await expect(page.getByTestId("worksheet-day-summary")).toContainText("阶段测评");
+
+  await page.getByRole("button", { name: "选择平十法" }).click();
+  await expect(page.getByTestId("worksheet-theme")).toContainText("自选主题");
+  await expect(page.getByTestId("worksheet-theme")).toContainText("平十法");
+  await expect(page.locator('[data-testid="math-worksheet-question"][data-method="flat-ten"]')).toHaveCount(20);
+  await page.getByRole("button", { name: "本日换一套" }).click();
+  await expect(page.getByTestId("worksheet-theme")).toContainText("自选主题");
+  await expect(page.getByTestId("worksheet-demo")).toContainText("平十法");
+
+  await page.getByRole("button", { name: "重新生成计划" }).click();
+  await expect(page.getByRole("status")).toContainText("难度结构保持不变");
+  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
 });

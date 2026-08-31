@@ -1,6 +1,6 @@
 # 知页 ZHIYE
 
-知页是面向 AI 时代的浏览器本地工具箱，注重视觉品质、使用效率与内容隐私。目前提供 Base64 编解码、JSON 格式化、Markdown 清理、时间戳转换和图片水印五项工具。
+知页是面向 AI 时代的浏览器本地工具箱，注重视觉品质、使用效率与内容隐私。目前提供 Base64 编解码、JSON 格式化、Markdown 清理、时间戳转换、图片水印和幼小数学练习六项工具。
 
 > 聪明处理，止于本页。
 
@@ -10,6 +10,7 @@
 
 | 工具 | 路由 | 能力 |
 | --- | --- | --- |
+| 幼小数学练习 | /math-worksheet | 生成每天一张的 30 天连续练习，包含相邻数、比大小和口算，支持主题自选、逐步加入两位数与 200 以内三个数加减混合，并导出 30 页 A4 PDF |
 | Base64 编解码 | `/base64` | UTF-8 编解码、URL-safe、结果交换与下载 |
 | JSON 格式化 | `/json` | 格式化、压缩、校验、键排序、错误定位与结构视图 |
 | Markdown 清理 | `/markdown` | 基于 AST 移除 Markdown 标记，保留列表、代码、链接文字与表格结构 |
@@ -99,7 +100,7 @@ npx vercel
 ```text
 app/                         页面、静态路由与全局设计令牌
 components/                  产品主页、物理实验台、工作台、导航和工具交互组件
-lib/tools/                   Base64、JSON、Markdown、时间戳纯处理逻辑
+lib/tools/                   Base64、JSON、Markdown、时间戳和数学练习纯处理逻辑
 lib/tools/registry.ts        工具注册表与搜索信息
 public/home-carousel/        首页视觉展台图片
 e2e/                         Playwright 端到端测试
