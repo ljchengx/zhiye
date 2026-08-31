@@ -10980,7 +10980,7 @@ body {
   gap: 3px;
 }
 
-.math-worksheet-demo__example:only-child {
+.math-worksheet-demo--single .math-worksheet-demo__example {
   grid-column: 1 / -1;
 }
 
@@ -11008,6 +11008,122 @@ body {
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.math-worksheet-column-guide {
+  display: grid;
+  min-width: 0;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(170px, 0.7fr) minmax(220px, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-top: 1px;
+  padding-top: 10px;
+  border-top: 1px dashed #e3cfc6;
+}
+
+.math-worksheet-column-guide__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.math-worksheet-column-guide__copy > span,
+.math-worksheet-column-guide__example > span {
+  color: #a97968;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.math-worksheet-column-guide__copy strong {
+  color: #29363c;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.math-worksheet-column-guide__copy small {
+  color: #806d65;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.math-worksheet-column-guide__example {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+}
+
+.math-worksheet-column-guide__steps {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  gap: 9px;
+}
+
+.math-worksheet-column-guide__step {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.math-worksheet-column-guide__step > span {
+  color: #a97968;
+  font-size: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.math-worksheet-column-guide__then {
+  padding-bottom: 15px;
+  color: #a97968;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.math-worksheet-column-guide__stack {
+  display: grid;
+  width: max-content;
+  min-width: 63px;
+  grid-template-columns: 18px 45px;
+  color: #26373d;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.math-worksheet-column-guide__row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  min-height: 16px;
+  align-items: center;
+}
+
+.math-worksheet-column-guide__row > span {
+  color: #a97968;
+  text-align: center;
+}
+
+.math-worksheet-column-guide__row > strong {
+  min-width: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.math-worksheet-column-guide__rule {
+  width: 45px;
+  height: 1px;
+  grid-column: 2;
+  margin: 2px 0 1px;
+  background: #8f817a;
+}
+
+.math-worksheet-column-guide__answer > strong {
+  color: #b45d45;
 }
 
 .math-worksheet-paper__sections {
@@ -11272,6 +11388,15 @@ body {
   .math-worksheet-demo__examples {
     grid-template-columns: 1fr;
     gap: 9px;
+  }
+
+  .math-worksheet-column-guide {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .math-worksheet-column-guide__steps {
+    gap: 7px;
   }
 
   .math-worksheet-paper__sections {

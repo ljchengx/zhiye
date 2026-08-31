@@ -327,6 +327,7 @@ test("幼小数学练习支持 30 天计划、主题选择与 A4 打印包", asy
   await expect(page.getByRole("link", { name: "数学练习" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByTestId("math-worksheet-paper")).toBeVisible();
   await expect(page.getByTestId("math-worksheet-question")).toHaveCount(24);
+  await expect(page.getByTestId("worksheet-column-guide")).toHaveCount(0);
   await expect(page.getByText("相邻数").first()).toBeVisible();
   await expect(page.getByTestId("worksheet-demo")).toContainText("凑十法");
   await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
@@ -337,11 +338,17 @@ test("幼小数学练习支持 30 天计划、主题选择与 A4 打印包", asy
   await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "9");
   await expect(page.getByTestId("math-worksheet-question")).toHaveCount(26);
   await expect(page.getByTestId("worksheet-demo")).toContainText("混合主题");
+  await expect(page.getByTestId("worksheet-column-guide")).toContainText("相同数位对齐");
+  await expect(page.getByTestId("worksheet-column-guide").locator(".math-worksheet-column-guide__stack")).toHaveCount(1);
   await expect(page.getByTestId("worksheet-day-summary")).toContainText("迈向 50");
 
   await page.getByTestId("worksheet-day-21").click();
   await expect(page.getByTestId("math-worksheet-question")).toHaveCount(30);
   await expect(page.locator('[data-testid="math-worksheet-question"][data-level="three-number"]')).toHaveCount(10);
+  await expect(page.getByTestId("worksheet-column-guide")).toContainText("连续两步列式");
+  await expect(page.getByTestId("worksheet-column-guide")).toContainText("第 1 步");
+  await expect(page.getByTestId("worksheet-column-guide")).toContainText("第 2 步");
+  await expect(page.getByTestId("worksheet-column-guide").locator(".math-worksheet-column-guide__stack")).toHaveCount(2);
 
   await page.getByTestId("worksheet-day-30").click();
   await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "30");

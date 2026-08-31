@@ -26,6 +26,7 @@ import {
   WORKSHEET_THEME_DESCRIPTIONS,
   WORKSHEET_THEME_LABELS,
   type DailyWorksheet,
+  type MentalQuestion,
   type WorksheetDayOverrides,
   type WorksheetPlan,
   type WorksheetQuestion,
@@ -126,11 +127,113 @@ function QuestionContent({ question }: { question: WorksheetQuestion }) {
   );
 }
 
+function getColumnGuideQuestion(worksheet: DailyWorksheet): MentalQuestion | undefined {
+  const mentalSection = worksheet.sections.find((section) => section.type === "mental");
+  const questions = mentalSection?.questions.filter(
+    (question): question is MentalQuestion => question.type === "mental" && question.level !== "basic",
+  ) ?? [];
+
+  if (worksheet.plan.threeNumberRatio > 0) {
+    return questions.find((question) => question.third !== undefined) ?? questions[0];
+  }
+
+  return questions[0];
+}
+
+function ColumnMethodStack({
+  left,
+  operator,
+  right,
+  answer,
+}: {
+  left: number;
+  operator: "+" | "-";
+  right: number;
+  answer: number;
+}) {
+  return (
+    <div className="math-worksheet-column-guide__stack" aria-hidden="true">
+      <div className="math-worksheet-column-guide__row">
+        <span />
+        <strong>{left}</strong>
+      </div>
+      <div className="math-worksheet-column-guide__row">
+        <span>{operator}</span>
+        <strong>{right}</strong>
+      </div>
+      <div className="math-worksheet-column-guide__rule" />
+      <div className="math-worksheet-column-guide__row math-worksheet-column-guide__answer">
+        <span />
+        <strong>{answer}</strong>
+      </div>
+    </div>
+  );
+}
+
+function ColumnMethodGuide({ question, printCopy }: { question: MentalQuestion; printCopy: boolean }) {
+  const firstAnswer = question.operator === "+"
+    ? question.left + question.right
+    : question.left - question.right;
+  const isThreeNumber = question.third !== undefined;
+
+  return (
+    <div
+      className="math-worksheet-column-guide"
+      data-testid={printCopy ? undefined : "worksheet-column-guide"}
+      aria-label="竖式计算方法提示"
+    >
+      <div className="math-worksheet-column-guide__copy">
+        <span>列式提示</span>
+        <strong>{question.third === undefined ? "相同数位对齐" : "连续两步列式"}</strong>
+        <small>
+          {isThreeNumber
+            ? "每一步相同数位对齐，先算前两项，再把得数带入第二步"
+            : "个位对齐个位，从个位开始计算"}
+        </small>
+      </div>
+      <div className="math-worksheet-column-guide__example">
+        <span>示范</span>
+        {isThreeNumber ? (
+          <div className="math-worksheet-column-guide__steps" aria-hidden="true">
+            <div className="math-worksheet-column-guide__step">
+              <span>第 1 步</span>
+              <ColumnMethodStack
+                left={question.left}
+                operator={question.operator}
+                right={question.right}
+                answer={firstAnswer}
+              />
+            </div>
+            <span className="math-worksheet-column-guide__then">再算</span>
+            <div className="math-worksheet-column-guide__step">
+              <span>第 2 步</span>
+              <ColumnMethodStack
+                left={firstAnswer}
+                operator={question.secondOperator ?? "+"}
+                right={question.third ?? 0}
+                answer={question.answer}
+              />
+            </div>
+          </div>
+        ) : (
+          <ColumnMethodStack
+            left={question.left}
+            operator={question.operator}
+            right={question.right}
+            answer={question.answer}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WorksheetPaper({ worksheet, printCopy = false }: { worksheet: DailyWorksheet; printCopy?: boolean }) {
   let questionNumber = 0;
   const paperTestId = printCopy ? undefined : "math-worksheet-paper";
   const demoTestId = printCopy ? undefined : "worksheet-demo";
   const demoTitleId = "worksheet-demo-title-" + worksheet.day + (printCopy ? "-print" : "");
+  const columnGuideQuestion = getColumnGuideQuestion(worksheet);
 
   return (
     <article
@@ -153,7 +256,11 @@ function WorksheetPaper({ worksheet, printCopy = false }: { worksheet: DailyWork
 
       <div className="math-worksheet-paper__rule" aria-hidden="true" />
 
-      <section className="math-worksheet-demo" data-testid={demoTestId} aria-labelledby={demoTitleId}>
+      <section
+        className={"math-worksheet-demo" + (worksheet.demos.length === 1 ? " math-worksheet-demo--single" : "")}
+        data-testid={demoTestId}
+        aria-labelledby={demoTitleId}
+      >
         <div className="math-worksheet-demo__lead">
           <span>本日重点</span>
           <strong id={demoTitleId}>{WORKSHEET_THEME_LABELS[worksheet.theme]}</strong>
@@ -168,6 +275,9 @@ function WorksheetPaper({ worksheet, printCopy = false }: { worksheet: DailyWork
               <small>{demo.note}</small>
             </div>
           ))}
+          {columnGuideQuestion ? (
+            <ColumnMethodGuide question={columnGuideQuestion} printCopy={printCopy} />
+          ) : null}
         </div>
       </section>
 
