@@ -11447,6 +11447,10 @@ body {
     break-inside: avoid;
   }
 
+  .math-worksheet-paper__sections {
+    gap: 12px;
+  }
+
   .math-worksheet-paper__question {
     min-height: 8.8mm;
   }

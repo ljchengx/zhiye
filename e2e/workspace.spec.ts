@@ -366,3 +366,29 @@ test("幼小数学练习支持 30 天计划、主题安排与 A4 打印包", asy
   await expect(page.getByRole("status")).toContainText("难度结构保持不变");
   await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
 });
+
+test("幼小数学练习打印时最后一道题不会压住页脚", async ({ page }) => {
+  await page.goto("/math-worksheet");
+  await page.emulateMedia({ media: "print" });
+  await page.waitForTimeout(500);
+
+  const overlaps = await page.locator(".math-worksheet-print-pack .math-worksheet-paper").evaluateAll((papers) => (
+    papers
+      .map((paper) => {
+        const footer = paper.querySelector(".math-worksheet-paper__footer");
+        const questions = paper.querySelectorAll(".math-worksheet-paper__question");
+        const lastQuestion = questions[questions.length - 1];
+
+        if (!footer || !lastQuestion) {
+          return null;
+        }
+
+        return lastQuestion.getBoundingClientRect().bottom > footer.getBoundingClientRect().top + 0.5
+          ? paper.getAttribute("data-day")
+          : null;
+      })
+      .filter((day): day is string => day !== null)
+  ));
+
+  expect(overlaps).toEqual([]);
+});
