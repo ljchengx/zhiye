@@ -1,0 +1,54 @@
+import type { Metadata } from "next";
+
+import { MathWorksheetWorkspace } from "@/components/math-worksheet-workspace";
+import { ToolSeoContent } from "@/components/tool-seo-content";
+import { kidsToolDefinitions, getKidsToolHref, type KidsToolDefinition } from "@/lib/tools/kids-registry";
+
+export function getKidsToolMetadata(tool: KidsToolDefinition): Metadata {
+  const canonicalPath = getKidsToolHref(tool);
+
+  return {
+    title: {
+      absolute: `${tool.metadata.title} | 知页启蒙`,
+    },
+    description: tool.metadata.description,
+    keywords: [...tool.keywords, tool.title, "知页启蒙", "幼小阶段"],
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      type: "website",
+      locale: "zh_CN",
+      url: canonicalPath,
+      siteName: "知页启蒙",
+      title: `${tool.metadata.title} | 知页启蒙`,
+      description: tool.metadata.description,
+      images: ["/kids/opengraph-image"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${tool.metadata.title} | 知页启蒙`,
+      description: tool.metadata.description,
+      images: ["/kids/opengraph-image"],
+    },
+  };
+}
+
+export function KidsToolPageContent({ definition }: { definition: KidsToolDefinition }) {
+  const seoContent = (
+    <ToolSeoContent
+      definition={definition}
+      relatedTools={kidsToolDefinitions}
+      pagePath={getKidsToolHref(definition)}
+      productName="知页启蒙"
+      productPath="/kids"
+      applicationCategory="EducationalApplication"
+    />
+  );
+
+  if (definition.component === "math-worksheet") {
+    return <MathWorksheetWorkspace definition={definition} seoContent={seoContent} />;
+  }
+
+  return null;
+}

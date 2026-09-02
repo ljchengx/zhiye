@@ -12,9 +12,8 @@ import {
   Target,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
-import { recordRecentTool } from "@/lib/recent-tools";
 import {
   createWorksheetGuidance,
   generateDailyWorksheet,
@@ -34,10 +33,10 @@ import {
   type WorksheetPrintPage,
   type WorksheetQuestion,
 } from "@/lib/tools/math-worksheet";
-import type { ToolDefinition } from "@/lib/tools/registry";
+import type { KidsToolDefinition } from "@/lib/tools/kids-registry";
 
 import styles from "./math-worksheet-workspace.module.css";
-import { PulseShell } from "./pulse-shell";
+import { KidsShell } from "./kids-shell";
 
 type StatusTone = "idle" | "success" | "error";
 type CountKey = "neighborCount" | "compareCount" | "mentalCount";
@@ -380,7 +379,7 @@ function WorksheetBlankBack({ day }: { day: number }) {
   );
 }
 
-function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinition }) {
+function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDefinition }) {
   const seedRef = useRef(INITIAL_SEED);
   const [selectedDay, setSelectedDay] = useState(1);
   const [previewPageIndex, setPreviewPageIndex] = useState(0);
@@ -397,10 +396,6 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
     compareCount: getSectionCount(selectedWorksheet, "compare"),
     mentalCount: getSectionCount(selectedWorksheet, "mental"),
   } : { neighborCount: 0, compareCount: 0, mentalCount: 0 };
-
-  useEffect(() => {
-    recordRecentTool(definition.slug);
-  }, [definition.slug]);
 
   const nextSeed = () => {
     seedRef.current += 7919;
@@ -485,7 +480,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
       <header className="pulse-workbench__header">
         <div>
           <div className="pulse-workbench__meta" aria-hidden="true">
-            <span>知页 / 工具</span><i /><span>{definition.category}</span>
+            <span>知页启蒙 / 工具</span><i /><span>{definition.category}</span>
           </div>
           <h1 id="tool-title">{definition.seo.h1}</h1>
           <p>{definition.description}</p>
@@ -621,11 +616,11 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
   );
 }
 
-export function MathWorksheetWorkspace({ definition, seoContent }: { definition: ToolDefinition; seoContent?: ReactNode }) {
+export function MathWorksheetWorkspace({ definition, seoContent }: { definition: KidsToolDefinition; seoContent?: ReactNode }) {
   return (
-    <PulseShell activeNavigation="workbench" activeTool={definition.slug}>
+    <KidsShell activeTool={definition.slug}>
       <MathWorksheetWorkspaceContent definition={definition} />
       {seoContent}
-    </PulseShell>
+    </KidsShell>
   );
 }

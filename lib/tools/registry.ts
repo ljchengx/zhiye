@@ -1,6 +1,6 @@
-export type ToolSlug = "base64" | "json-formatter" | "markdown-cleaner" | "image-watermark" | "timestamp-converter" | "math-worksheet";
+export type ToolSlug = "base64" | "json-formatter" | "markdown-cleaner" | "image-watermark" | "timestamp-converter";
 
-export type ToolPath = "base64" | "json" | "markdown" | "image-watermark" | "timestamp" | "math-worksheet";
+export type ToolPath = "base64" | "json" | "markdown" | "image-watermark" | "timestamp";
 
 export type ToolIconName = "binary" | "braces" | "eraser" | "stamp" | "clock" | "calculator";
 
@@ -27,10 +27,11 @@ export interface ToolSeoContent {
   faqs: readonly ToolFaq[];
 }
 
-export interface ToolDefinition {
-  slug: ToolSlug;
-  path: ToolPath;
-  component: ToolSlug;
+export interface ToolDefinitionBase<Slug extends string = string, Path extends string = string> {
+  slug: Slug;
+  path: Path;
+  href?: string;
+  component: string;
   title: string;
   titleEn: string;
   shortTitle: string;
@@ -48,6 +49,8 @@ export interface ToolDefinition {
   };
   seo: ToolSeoContent;
 }
+
+export type ToolDefinition = ToolDefinitionBase<ToolSlug, ToolPath>;
 
 export const toolDefinitions: readonly ToolDefinition[] = [
   {
@@ -401,88 +404,6 @@ export const toolDefinitions: readonly ToolDefinition[] = [
         {
           question: "可以给身份证图片添加用途声明吗？",
           answer: "可以。你可以输入“仅供某某业务使用”等用途文字，并调整透明度和角度，让水印清晰可见且尽量不遮挡关键信息。",
-        },
-      ],
-    },
-  },
-  {
-    slug: "math-worksheet",
-    path: "math-worksheet",
-    component: "math-worksheet",
-    title: "幼小数学练习",
-    titleEn: "Early Math Worksheet",
-    shortTitle: "数学练习",
-    shortTitleEn: "Math Worksheet",
-    description: "把 30 天的相邻数、比大小和口算，整理成每天一张 A4 练习纸。",
-    descriptionEn: "Arrange 30 days of number sense and mental math practice into daily A4 worksheets.",
-    category: "学习工具",
-    categoryEn: "Learning",
-    keywords: [
-      "幼小数学练习",
-      "数学练习题",
-      "口算题生成",
-      "凑十法",
-      "破十法",
-      "平十法",
-      "相邻数练习",
-      "比大小练习",
-      "A4数学练习",
-      "数学题打印",
-    ],
-    icon: "calculator",
-    accent: "amber",
-    metadata: {
-      title: "幼小数学练习生成器 - 30 天连续作业与 A4 打印",
-      description: "在线生成幼小阶段 30 天连续数学练习，每天一张 A4 练习纸，包含相邻数、比大小和口算，后期提升到 200 以内三个数加减混合并可保存为 PDF。",
-    },
-    seo: {
-      heading: "幼小数学练习在线生成与 30 天 A4 打印",
-      summary: "生成每天一张的 30 天数学练习，覆盖相邻数、比大小、三种口算方法，并逐步加入 200 以内三个数加减混合。",
-      intro: "知页数学练习工具适合幼小阶段和低年级日常练习。工具按 6 个阶段安排 30 天连续作业，每天不超过 30 题；难度从 20 以内基础口算逐步提升到 200 以内三个数加减混合。每一天根据实际内容自动排成 1 到 2 页，并可一次导出完整 PDF。",
-      features: [
-        "相邻数：生成如“26 __ 28”的填中间数题目。",
-        "比大小：生成 100 以内数字的比较题，覆盖小于、大于和等于。",
-        "口算：按凑十法、破十法、平十法安排演示，逐步加入两位数和三个数加减混合。",
-        "连续作业：按 6 个阶段生成 30 天内容，每天自动排成 1 到 2 页，支持查看当天或一次导出完整打印包。",
-      ],
-      steps: [
-        "在 30 天计划中点击某一天，先查看当天目标、题量和 A4 预览。",
-        "需要时调整当天三类题型数量，或点选主题卡片自选当天的口算方法。",
-        "点击导出 30 天 PDF，在打印窗口中保存完整 30 页练习包。",
-      ],
-      h1: "幼小数学练习",
-      sections: [
-        {
-          heading: "相邻数和比大小练什么？",
-          paragraphs: [
-            "相邻数练习帮助孩子建立数序，例如在 26 和 28 之间填入 27。比大小练习则通过小于、大于和等于的判断，巩固数字之间的数量关系。",
-          ],
-        },
-        {
-          heading: "三种口算方法",
-          paragraphs: [
-            "凑十法适合处理进位加法；破十法和平十法常用于退位减法。计划先巩固基础题，再逐步加入两位数和三个数加减混合，后期结果控制在 200 以内。",
-          ],
-        },
-        {
-          heading: "A4 练习纸与本地处理",
-          paragraphs: [
-            "题目在当前浏览器中生成，预览按 A4 竖版排版。点击导出 30 天 PDF 后使用浏览器打印窗口保存，打印包会按天分页，不需要上传任何内容。",
-          ],
-        },
-      ],
-      faqs: [
-        {
-          question: "30 天计划每天有多少题？",
-          answer: "每天最多 30 题，默认会从 20 多题逐步增加到 30 题；可以点击某一天调整相邻数、比大小和口算三部分的数量。",
-        },
-        {
-          question: "口算题支持哪些方法？",
-          answer: "计划按阶段自动安排凑十法、破十法和平十法，并在阶段小结中混合练习。后期会加入 200 以内三个数加减混合，前期练习页上方提供与当天主题对应的简单演示。",
-        },
-        {
-          question: "如何把练习保存成 PDF？",
-          answer: "点击“导出 30 天 PDF”打开浏览器打印窗口，然后选择“另存为 PDF”或系统提供的 PDF 打印机即可，打印内容为完整 30 页。",
         },
       ],
     },

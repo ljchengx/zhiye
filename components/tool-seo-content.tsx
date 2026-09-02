@@ -1,12 +1,29 @@
 import Link from "next/link";
 
-import { toolDefinitions, type ToolDefinition } from "@/lib/tools/registry";
+import { toolDefinitions, type ToolDefinitionBase } from "@/lib/tools/registry";
 
 const siteUrl = "https://www.yzfl.top";
 
-export function ToolSeoContent({ definition }: { definition: ToolDefinition }) {
-  const pageUrl = `${siteUrl}/${definition.path}`;
-  const relatedTools = toolDefinitions.filter((tool) => tool.slug !== definition.slug);
+interface ToolSeoContentProps {
+  definition: ToolDefinitionBase;
+  relatedTools?: readonly ToolDefinitionBase[];
+  pagePath?: string;
+  productName?: string;
+  productPath?: string;
+  applicationCategory?: string;
+}
+
+export function ToolSeoContent({
+  definition,
+  relatedTools = toolDefinitions,
+  pagePath = `/${definition.path}`,
+  productName = "知页",
+  productPath = "/",
+  applicationCategory = "DeveloperApplication",
+}: ToolSeoContentProps) {
+  const pageUrl = `${siteUrl}${pagePath}`;
+  const brandUrl = `${siteUrl}${productPath}`;
+  const related = relatedTools.filter((tool) => tool.slug !== definition.slug);
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -16,7 +33,7 @@ export function ToolSeoContent({ definition }: { definition: ToolDefinition }) {
         name: definition.seo.h1,
         url: pageUrl,
         description: definition.metadata.description,
-        applicationCategory: "DeveloperApplication",
+        applicationCategory,
         operatingSystem: "Any",
         browserRequirements: "Requires a modern web browser",
         offers: {
@@ -26,8 +43,8 @@ export function ToolSeoContent({ definition }: { definition: ToolDefinition }) {
         },
         isPartOf: {
           "@type": "WebSite",
-          name: "知页",
-          url: siteUrl,
+          name: productName,
+          url: brandUrl,
         },
       },
       {
@@ -37,8 +54,8 @@ export function ToolSeoContent({ definition }: { definition: ToolDefinition }) {
           {
             "@type": "ListItem",
             position: 1,
-            name: "知页",
-            item: siteUrl,
+            name: productName,
+            item: brandUrl,
           },
           {
             "@type": "ListItem",
@@ -108,19 +125,21 @@ export function ToolSeoContent({ definition }: { definition: ToolDefinition }) {
           </div>
         </section>
 
-        <nav className="tool-seo-content__related" aria-labelledby="related-tools-title">
-          <h3 id="related-tools-title">相关工具</h3>
-          <ul>
-            {relatedTools.map((tool) => (
-              <li key={tool.slug}>
-                <Link href={`/${tool.path}`}>
-                  <span>{tool.title}</span>
-                  <small>{tool.seo.summary}</small>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        {related.length > 0 ? (
+          <nav className="tool-seo-content__related" aria-labelledby="related-tools-title">
+            <h3 id="related-tools-title">相关工具</h3>
+            <ul>
+              {related.map((tool) => (
+                <li key={tool.slug}>
+                  <Link href={tool.href ?? `/${tool.path}`}>
+                    <span>{tool.title}</span>
+                    <small>{tool.seo.summary}</small>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
       </section>
       <script
         type="application/ld+json"

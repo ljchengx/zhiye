@@ -1,0 +1,221 @@
+.shell {
+  --kids-ink: #263238;
+  --kids-muted: #6f7c81;
+  --kids-line: #dce3e6;
+  --kids-coral: #e45d45;
+  --kids-green: #49a078;
+  min-height: 100dvh;
+  background: #fff;
+  color: var(--kids-ink);
+}
+
+.header {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: grid;
+  min-height: 72px;
+  grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr);
+  align-items: center;
+  gap: 24px;
+  padding: 0 clamp(20px, 4vw, 60px);
+  border-bottom: 1px solid var(--kids-line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.brand {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  justify-self: start;
+}
+
+.brandMark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 8px 8px 8px 2px;
+  background: var(--kids-coral);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.brand > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.brand strong {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.brand small {
+  color: var(--kids-muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  color: var(--kids-muted);
+  font-size: 13px;
+}
+
+.nav a,
+.mobileNav a {
+  transition: color 160ms ease;
+}
+
+.nav a:hover,
+.nav a:focus-visible,
+.mobileNav a:hover,
+.mobileNav a:focus-visible {
+  color: var(--kids-coral);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+}
+
+.actionLink {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--kids-coral);
+  border-radius: 5px;
+  color: var(--kids-coral);
+  font-size: 12px;
+  font-weight: 700;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.actionLink:hover,
+.actionLink:focus-visible {
+  background: var(--kids-coral);
+  color: #fff;
+}
+
+.menuButton {
+  display: none;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  margin-left: 8px;
+  border: 1px solid var(--kids-line);
+  border-radius: 5px;
+  background: #fff;
+  color: var(--kids-ink);
+}
+
+.mobileNav {
+  display: none;
+}
+
+.main {
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.shell :global(.pulse-workbench::before) {
+  display: none;
+}
+
+.shell :global(.pulse-workbench__header h1) {
+  color: var(--kids-ink);
+  font-family: "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.shell :global(.pulse-workbench__header p) {
+  color: var(--kids-muted);
+  font-family: "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+}
+
+.shell :global(.pulse-workbench__meta) {
+  color: var(--kids-coral);
+  font-family: "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.shell :global(.pulse-workbench__meta i) {
+  width: 20px;
+  height: 1px;
+  flex-basis: 20px;
+  background: var(--kids-coral);
+}
+
+@media (max-width: 760px) {
+  .header {
+    min-height: 64px;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding-inline: 18px;
+  }
+
+  .nav,
+  .actionLink {
+    display: none;
+  }
+
+  .menuButton {
+    display: grid;
+  }
+
+  .mobileNav {
+    position: absolute;
+    inset: 64px 0 auto;
+    display: grid;
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 18px;
+    border-bottom: 1px solid transparent;
+    background: #fff;
+    transition: max-height 180ms ease, padding 180ms ease, border-color 180ms ease;
+  }
+
+  .mobileNavOpen {
+    max-height: 190px;
+    padding-block: 8px 12px;
+    border-bottom-color: var(--kids-line);
+  }
+
+  .mobileNav a {
+    padding: 12px 0;
+    border-bottom: 1px solid #edf1f2;
+    color: var(--kids-ink);
+    font-size: 13px;
+  }
+
+  .mobileNav a:last-child {
+    border-bottom: 0;
+    color: var(--kids-coral);
+    font-weight: 700;
+  }
+
+  .main {
+    width: min(100% - 32px, 560px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav a,
+  .mobileNav a,
+  .actionLink,
+  .mobileNav {
+    transition: none;
+  }
+}

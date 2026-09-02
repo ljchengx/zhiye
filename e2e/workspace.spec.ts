@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("首页作为产品介绍页，并可进入独立工作台", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page).toHaveTitle("知页 - 免费在线文本、数据与数学练习工具");
+  await expect(page).toHaveTitle("知页 - 免费的浏览器本地工具箱");
   await expect(page.getByRole("link", { name: "知页首页" })).toBeVisible();
   await expect(page.getByRole("link", { name: "在 GitHub 查看知页源码" })).toHaveAttribute("href", "https://github.com/ljchengx/zhiye");
   await expect(page.locator("#home-title")).toContainText("把琐碎处理");
@@ -23,6 +23,16 @@ test("首页作为产品介绍页，并可进入独立工作台", async ({ page 
   await expect(page).toHaveURL(/\/tools$/);
   await expect(page.getByRole("heading", { name: "免费在线工具工作台" })).toBeVisible();
   await expect(page.getByRole("link", { name: "打开图片水印" })).toBeVisible();
+});
+
+test("主站与通用工作台不暴露启蒙产品线", async ({ page }) => {
+  for (const path of ["/", "/tools"]) {
+    await page.goto(path);
+    await expect(page.getByText("知页启蒙", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("幼小数学练习", { exact: true })).toHaveCount(0);
+    await expect(page.locator('a[href="/kids"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/kids/math-worksheet"]')).toHaveCount(0);
+  }
 });
 
 test("工具页包含可索引说明、FAQ 和结构化数据", async ({ page }) => {
@@ -191,7 +201,7 @@ test("首页物理实验台支持拖拽、重置和真实工具导航", async ({
   const lab = page.getByLabel("可拖拽的知页工具");
   await lab.scrollIntoViewIfNeeded();
   await expect(page.getByRole("heading", { name: "知页工具实验台" })).toBeAttached();
-  await expect(lab.getByRole("link")).toHaveCount(6);
+  await expect(lab.getByRole("link")).toHaveCount(5);
   await expect(lab).toHaveClass(/is-ready/);
 
   const base64 = lab.getByRole("link", { name: "打开Base64 编解码" });
@@ -320,9 +330,30 @@ test("时间戳工具支持双向转换和真实交互", async ({ page }) => {
   await expect(page.getByLabel("选择要转换的日期和时间")).not.toHaveValue("");
 });
 
+test("旧数学地址永久跳转到启蒙工具地址", async ({ request }) => {
+  const response = await request.get("/math-worksheet", { maxRedirects: 0 });
+
+  expect(response.status()).toBe(308);
+  expect(response.headers().location).toBe("/kids/math-worksheet");
+});
+
+test("知页启蒙主页只展示真实工具并提供独立入口", async ({ page }) => {
+  await page.goto("/kids");
+
+  await expect(page).toHaveTitle("知页启蒙 - 把每天一点练习，变成看得见的进步");
+  await expect(page.getByRole("heading", { name: "知页启蒙", level: 1 })).toBeVisible();
+  await expect(page.getByText("1 个可用工具", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "开始使用" })).toHaveAttribute("href", "/kids/math-worksheet");
+  await expect(page.getByText("敬请期待", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "知页启蒙首页" })).toHaveAttribute("href", "/kids");
+
+  const structuredData = await page.locator('script[type="application/ld+json"]').textContent();
+  expect(structuredData).toContain("https://www.yzfl.top/kids/math-worksheet");
+});
+
 test("幼小数学练习使用动态分页并保持 30 天连续计划", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/math-worksheet");
+  await page.goto("/kids/math-worksheet");
 
   const paper = page.getByTestId("math-worksheet-paper");
   await expect(page.getByTestId("worksheet-print-summary")).toHaveText("35 页内容 / 60 页双面打印包");
@@ -377,7 +408,7 @@ test("幼小数学练习使用动态分页并保持 30 天连续计划", async (
 
 test("幼小数学练习的横线、方框和题目网格严格对齐", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/math-worksheet");
+  await page.goto("/kids/math-worksheet");
   await page.getByTestId("worksheet-day-21").click();
 
   const paper = page.getByTestId("math-worksheet-paper");
@@ -412,7 +443,7 @@ test("幼小数学练习的横线、方框和题目网格严格对齐", async ({
 
 test("幼小数学练习在移动端可完整缩放预览", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/math-worksheet");
+  await page.goto("/kids/math-worksheet");
 
   const paperBox = await page.getByTestId("math-worksheet-paper").boundingBox();
   const canvasBox = await page.getByTestId("math-worksheet-paper").locator("..").boundingBox();
@@ -423,7 +454,7 @@ test("幼小数学练习在移动端可完整缩放预览", async ({ page }) => 
 });
 
 test("幼小数学练习打印包保持 A4 边界且素材全部加载", async ({ page }) => {
-  await page.goto("/math-worksheet");
+  await page.goto("/kids/math-worksheet");
 
   const assets = await page.locator("img[src*='/math-worksheet/objects/']").evaluateAll((images) => (
     Array.from(new Map(images.map((image) => {

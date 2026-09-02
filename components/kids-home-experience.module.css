@@ -1,0 +1,568 @@
+.page {
+  --kids-ink: #263238;
+  --kids-muted: #6f7c81;
+  --kids-line: #dce3e6;
+  --kids-coral: #e45d45;
+  --kids-green: #49a078;
+  --kids-blue: #4b91d1;
+  --kids-yellow: #f2c94c;
+  padding: 0 0 36px;
+}
+
+.hero {
+  display: grid;
+  min-height: 500px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
+  align-items: center;
+  gap: clamp(44px, 9vw, 132px);
+  padding: 36px clamp(4px, 2vw, 28px) 34px;
+  border-bottom: 1px solid var(--kids-line);
+}
+
+.heroCopy {
+  max-width: 540px;
+}
+
+.eyebrow,
+.sectionKicker {
+  margin: 0;
+  color: var(--kids-coral);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.eyebrow::before {
+  display: inline-block;
+  width: 24px;
+  height: 2px;
+  margin: 0 8px 3px 0;
+  content: "";
+  background: var(--kids-coral);
+}
+
+.hero h1 {
+  margin: 17px 0 0;
+  color: var(--kids-ink);
+  font-size: 58px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+.heroLead {
+  max-width: 420px;
+  margin: 20px 0 0;
+  color: var(--kids-ink);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.heroNote {
+  max-width: 390px;
+  margin: 12px 0 0;
+  color: var(--kids-muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 28px;
+}
+
+.primaryAction,
+.secondaryAction,
+.toolAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.primaryAction {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 5px;
+  background: var(--kids-coral);
+  color: #fff;
+}
+
+.primaryAction:hover,
+.primaryAction:focus-visible {
+  background: #c84e3a;
+}
+
+.secondaryAction {
+  color: var(--kids-ink);
+}
+
+.secondaryAction:hover,
+.secondaryAction:focus-visible,
+.toolAction:hover,
+.toolAction:focus-visible {
+  color: var(--kids-coral);
+}
+
+.heroSheet {
+  align-self: center;
+  justify-self: end;
+  width: min(100%, 340px);
+}
+
+.sheetFrame {
+  width: 100%;
+  padding: 12px 12px 14px;
+  border: 1px solid var(--kids-line);
+  background: #fff;
+  box-shadow: 12px 15px 0 #f3f6f7;
+  transform: rotate(1.4deg);
+}
+
+.sheetFrame img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 210 / 297;
+  object-fit: cover;
+  object-position: top center;
+  border: 1px solid #edf1f2;
+}
+
+.sheetCaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  color: var(--kids-muted);
+  font-size: 11px;
+}
+
+.sheetCaption strong {
+  color: var(--kids-ink);
+  font-weight: 700;
+}
+
+.toolsSection,
+.approach {
+  padding: 46px clamp(4px, 2vw, 28px) 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.sectionHeader h2 {
+  max-width: 610px;
+  margin: 11px 0 0;
+  color: var(--kids-ink);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.sectionHeader > span {
+  flex: 0 0 auto;
+  color: var(--kids-muted);
+  font-size: 12px;
+}
+
+.toolGrid {
+  margin-top: 26px;
+}
+
+.toolFeature {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
+  align-items: stretch;
+  border-top: 1px solid var(--kids-line);
+  border-bottom: 1px solid var(--kids-line);
+}
+
+.toolGridDouble,
+.toolGridMany {
+  display: grid;
+  gap: 18px;
+}
+
+.toolGridDouble {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.toolGridMany {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.toolGridDouble .toolFeature,
+.toolGridMany .toolFeature {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolPreview {
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  padding: 22px;
+  background: #fff6f1;
+}
+
+.toolPreview img {
+  display: block;
+  width: min(100%, 156px);
+  aspect-ratio: 210 / 297;
+  object-fit: cover;
+  object-position: top center;
+  border: 1px solid var(--kids-line);
+  background: #fff;
+  box-shadow: 5px 7px 0 rgba(38, 50, 56, 0.06);
+}
+
+.toolInfo {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 30px 34px 28px;
+}
+
+.toolMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 16px;
+  color: var(--kids-muted);
+  font-size: 11px;
+}
+
+.toolMeta span + span::before {
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin: 0 10px 3px 0;
+  border-radius: 50%;
+  content: "";
+  background: var(--kids-coral);
+}
+
+.toolInfo h3 {
+  margin: 24px 0 0;
+  color: var(--kids-ink);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.toolInfo p {
+  max-width: 440px;
+  margin: 10px 0 0;
+  color: var(--kids-muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.skillList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skillList li {
+  padding: 5px 9px;
+  border: 1px solid var(--kids-line);
+  border-radius: 3px;
+  color: var(--kids-ink);
+  font-size: 11px;
+}
+
+.toolAction {
+  margin-top: auto;
+  padding-top: 28px;
+  color: var(--kids-coral);
+}
+
+.toolGridDouble .toolPreview,
+.toolGridMany .toolPreview {
+  min-height: 230px;
+  padding: 18px;
+}
+
+.toolGridDouble .toolInfo,
+.toolGridMany .toolInfo {
+  padding: 22px 24px 24px;
+}
+
+.toolGridDouble .toolInfo h3,
+.toolGridMany .toolInfo h3 {
+  margin-top: 17px;
+  font-size: 18px;
+}
+
+.toolGridDouble .toolInfo p,
+.toolGridMany .toolInfo p {
+  font-size: 13px;
+}
+
+.approach {
+  margin-top: 66px;
+  border-top: 1px solid var(--kids-line);
+}
+
+.principleGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 28px;
+  margin-top: 27px;
+}
+
+.principle {
+  min-height: 142px;
+  padding-top: 17px;
+  border-top: 2px solid var(--kids-green);
+}
+
+.principle:nth-child(2) {
+  border-top-color: var(--kids-blue);
+}
+
+.principle:nth-child(3) {
+  border-top-color: var(--kids-yellow);
+}
+
+.principle:nth-child(4) {
+  border-top-color: var(--kids-coral);
+}
+
+.principle svg {
+  color: var(--kids-ink);
+}
+
+.principle h3 {
+  margin: 14px 0 0;
+  color: var(--kids-ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.principle p {
+  margin: 7px 0 0;
+  color: var(--kids-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.footer {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 20px;
+  min-height: 76px;
+  margin-top: 46px;
+  padding: 0 clamp(4px, 2vw, 28px);
+  border-top: 1px solid var(--kids-line);
+  color: var(--kids-muted);
+  font-size: 11px;
+}
+
+.footer strong {
+  color: var(--kids-ink);
+  font-size: 15px;
+}
+
+.footer small {
+  justify-self: end;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr);
+    gap: 40px;
+  }
+
+  .toolGridDouble,
+  .toolGridMany {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .principleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 28px;
+  }
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding-bottom: 20px;
+  }
+
+  .hero {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 28px;
+    padding: 30px 0 30px;
+  }
+
+  .hero h1 {
+    margin-top: 14px;
+    font-size: 42px;
+  }
+
+  .heroLead {
+    margin-top: 14px;
+    font-size: 21px;
+  }
+
+  .heroNote {
+    font-size: 13px;
+  }
+
+  .heroActions {
+    margin-top: 22px;
+  }
+
+  .heroSheet {
+    align-self: center;
+    width: min(218px, 70vw);
+    margin-right: 8px;
+  }
+
+  .sheetFrame {
+    padding: 8px 8px 10px;
+    box-shadow: 7px 9px 0 #f3f6f7;
+  }
+
+  .sheetCaption {
+    margin-top: 14px;
+  }
+
+  .toolsSection,
+  .approach {
+    padding-inline: 0;
+  }
+
+  .toolsSection,
+  .approach {
+    padding-top: 36px;
+  }
+
+  .sectionHeader {
+    display: block;
+  }
+
+  .sectionHeader h2 {
+    font-size: 23px;
+  }
+
+  .sectionHeader > span {
+    display: block;
+    margin-top: 12px;
+  }
+
+  .toolGridSingle,
+  .toolGridDouble,
+  .toolGridMany {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .toolFeature,
+  .toolGridDouble .toolFeature,
+  .toolGridMany .toolFeature {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .toolPreview,
+  .toolGridDouble .toolPreview,
+  .toolGridMany .toolPreview {
+    min-height: 100%;
+    padding: 13px;
+  }
+
+  .toolPreview img,
+  .toolGridDouble .toolPreview img,
+  .toolGridMany .toolPreview img {
+    width: 100%;
+  }
+
+  .toolInfo,
+  .toolGridDouble .toolInfo,
+  .toolGridMany .toolInfo {
+    padding: 18px 16px 17px;
+  }
+
+  .toolInfo h3,
+  .toolGridDouble .toolInfo h3,
+  .toolGridMany .toolInfo h3 {
+    margin-top: 13px;
+    font-size: 17px;
+  }
+
+  .toolInfo p,
+  .toolGridDouble .toolInfo p,
+  .toolGridMany .toolInfo p {
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .skillList {
+    gap: 5px;
+    margin-top: 14px;
+  }
+
+  .skillList li {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .toolAction {
+    padding-top: 18px;
+    font-size: 12px;
+  }
+
+  .approach {
+    margin-top: 48px;
+  }
+
+  .principleGrid {
+    gap: 18px 16px;
+  }
+
+  .principle {
+    min-height: 130px;
+  }
+
+  .footer {
+    grid-template-columns: 1fr auto;
+    gap: 8px 16px;
+    margin-top: 34px;
+    padding-inline: 0;
+  }
+
+  .footer small {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction,
+  .secondaryAction,
+  .toolAction {
+    transition: none;
+  }
+}

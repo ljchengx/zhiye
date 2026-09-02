@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { decodeBase64, encodeBase64, TextTransformError } from "../lib/tools/base64";
 import { formatJson, getJsonStructureStats, getJsonSummary, JsonTransformError, minifyJson } from "../lib/tools/json";
 import { stripMarkdown } from "../lib/tools/markdown";
+import { getKidsToolByPath, kidsToolDefinitions } from "../lib/tools/kids-registry";
 import { searchTools } from "../lib/tools/registry";
 import {
   dateTimeToTimestamp,
@@ -141,12 +142,21 @@ describe("时间戳转换", () => {
 });
 
 describe("工具注册表", () => {
-  it("支持中文和英文关键词搜索", () => {
+  it("支持中文和英文关键词搜索，通用工具不包含启蒙工具", () => {
     expect(searchTools("编码").map((tool) => tool.slug)).toEqual(["base64"]);
     expect(searchTools("JSON").map((tool) => tool.slug)).toEqual(["json-formatter"]);
     expect(searchTools("markdown").map((tool) => tool.slug)).toEqual(["markdown-cleaner"]);
     expect(searchTools("身份证").map((tool) => tool.slug)).toEqual(["image-watermark"]);
     expect(searchTools("时间戳").map((tool) => tool.slug)).toEqual(["timestamp-converter"]);
-    expect(searchTools("口算").map((tool) => tool.slug)).toEqual(["math-worksheet"]);
+    expect(searchTools("口算")).toEqual([]);
+  });
+});
+
+describe("启蒙工具注册表", () => {
+  it("只注册真实存在的数学工具，并使用唯一启蒙路径", () => {
+    expect(kidsToolDefinitions.map((tool) => tool.slug)).toEqual(["math-worksheet"]);
+    expect(new Set(kidsToolDefinitions.map((tool) => tool.href)).size).toBe(kidsToolDefinitions.length);
+    expect(kidsToolDefinitions[0]?.summary).toContain("30 天");
+    expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
   });
 });

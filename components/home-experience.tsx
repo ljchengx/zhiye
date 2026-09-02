@@ -306,7 +306,7 @@ export function HomeExperience() {
               <p>浏览器本地工具</p>
               <h2 id="home-seo-title">免费在线工具，处理留在浏览器。</h2>
               <span>
-                知页提供 Base64 编解码、JSON 格式化、Markdown 清理、时间戳转换、图片水印和幼小数学练习等常用工具。
+                知页提供 Base64 编解码、JSON 格式化、Markdown 清理、时间戳转换和图片水印等常用工具。
                 无需注册或上传，支持在浏览器本地处理文本、数据与图片。
               </span>
             </div>
