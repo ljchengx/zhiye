@@ -4,11 +4,14 @@
   --worksheet-muted: #7a858a;
   --worksheet-line: #cdd4d7;
   --worksheet-soft: #fff6f1;
+  width: 100%;
+  max-width: none;
+  padding-inline: 0;
 }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -38,10 +41,12 @@
 
 .settingsHeader div > span,
 .settingLabel small,
-.theme span,
+.exportRange p,
+.ratioHint,
 .singlePage,
 .local,
-.printSummary {
+.printSummary,
+.dayGroup small {
   color: #778186;
   font-size: 12px;
 }
@@ -92,24 +97,74 @@
   font-size: 17px;
 }
 
-.dayNav header {
+.exportRange,
+.settingGroup {
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid #e3e7e9;
+}
+
+.settingLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+  color: #303a3f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.checkRow {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  color: #303a3f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.checkRow input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--worksheet-accent);
+}
+
+.exportRange p,
+.ratioHint {
+  margin: 5px 0 0 25px;
+  line-height: 1.5;
+}
+
+.dayNav > header {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-bottom: 9px;
+  margin-bottom: 11px;
   color: #3d474c;
   font-size: 13px;
   font-weight: 700;
 }
 
+.dayGroup + .dayGroup {
+  margin-top: 12px;
+}
+
+.dayGroup small {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11px;
+}
+
 .dayGrid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 5px;
 }
 
 .dayGrid button {
-  height: 32px;
+  height: 31px;
   padding: 0;
   border: 1px solid #dce2e4;
   border-radius: 4px;
@@ -132,64 +187,113 @@
   color: #fff;
 }
 
-.settingGroup {
-  margin-top: 16px;
-  padding-top: 15px;
-  border-top: 1px solid #e3e7e9;
-}
-
-.settingLabel {
-  display: flex;
+.totalField {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 45px auto;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 9px;
-  color: #303a3f;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.counts {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 7px;
-}
-
-.counts label {
-  display: grid;
-  gap: 5px;
+  gap: 8px;
   color: #68747a;
   font-size: 11px;
 }
 
-.counts input {
+.totalField input[type="range"] {
   width: 100%;
-  height: 34px;
+  accent-color: var(--worksheet-accent);
+}
+
+.totalField input[type="number"],
+.ratioField input {
+  height: 32px;
   box-sizing: border-box;
-  padding: 0 7px;
   border: 1px solid #d5dcdf;
   border-radius: 4px;
   background: #fff;
-  color: #22292d;
+  color: var(--worksheet-ink);
   font-size: 14px;
   font-weight: 700;
+  text-align: center;
 }
 
-.counts input:focus {
+.totalField em,
+.ratioField em {
+  color: #7a858a;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.totalField input:focus,
+.ratioField input:focus {
   border-color: var(--worksheet-accent);
   outline: 2px solid #f8d8d1;
 }
 
-.theme {
+.ratioGrid {
   display: grid;
-  gap: 3px;
-  padding: 10px 12px;
-  border-left: 3px solid var(--worksheet-accent);
-  background: #fafbfb;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 8px;
+  margin-top: 13px;
 }
 
-.theme strong {
-  color: #273035;
+.ratioField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px auto;
+  align-items: center;
+  gap: 4px;
+  color: #68747a;
+  font-size: 11px;
+}
+
+.ratioField input {
+  width: 40px;
+  font-size: 13px;
+}
+
+.readonlyRatio strong {
+  width: 40px;
+  color: var(--worksheet-ink);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ratioBar {
+  display: flex;
+  height: 7px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #edf1f2;
+}
+
+.ratioBar span { background: var(--worksheet-accent); }
+.ratioBar span + span { border-left: 1px solid #fff; }
+
+.expectedCounts {
+  display: grid;
+  grid-template-columns: 1fr repeat(4, auto auto);
+  align-items: baseline;
+  gap: 5px 4px;
+  margin-top: 14px;
+  color: #778186;
+  font-size: 11px;
+}
+
+.expectedCounts strong {
+  color: var(--worksheet-ink);
   font-size: 14px;
+}
+
+.expectedCounts small {
+  color: #778186;
+  font-size: 10px;
+}
+
+.fixedNotice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  color: #26734d;
+  font-size: 11px;
 }
 
 .actions {
@@ -205,7 +309,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 9px;
+  padding: 7px 8px;
   border: 1px solid #d5dcdf;
   border-radius: 5px;
   background: #fff;
@@ -215,16 +319,21 @@
   cursor: pointer;
 }
 
-.actions button:hover,
-.actions button:focus-visible {
+.actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.actions button:hover:not(:disabled),
+.actions button:focus-visible:not(:disabled) {
   border-color: #8e999e;
   outline: none;
 }
 
 .actions .primaryButton {
-  border-color: #22292d;
-  background: #22292d;
-  color: #fff;
+  border-color: #b9c2c6;
+  background: #fff;
+  color: #344046;
 }
 
 .actions .printButton {
@@ -243,13 +352,8 @@
   font-size: 11px;
 }
 
-.status[data-tone="success"] {
-  color: #26734d;
-}
-
-.status[data-tone="error"] {
-  color: #b34033;
-}
+.status[data-tone="success"] { color: #26734d; }
+.status[data-tone="error"] { color: #b34033; }
 
 .local,
 .printSummary {
@@ -262,7 +366,8 @@
 .preview {
   padding: 16px;
   overflow: hidden;
-  background: #f3f5f6;
+  border-color: #edf0f1;
+  background: #fff;
 }
 
 .previewToolbar {
@@ -281,6 +386,24 @@
   color: #344046;
   font-size: 13px;
   font-weight: 700;
+}
+
+.previewControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expandButton {
+  display: none;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #d7dddf;
+  border-radius: 4px;
+  background: #fff;
+  color: #526067;
 }
 
 .pageTabs {
@@ -302,10 +425,7 @@
   cursor: pointer;
 }
 
-.pageTabs .currentTab {
-  background: #22292d;
-  color: #fff;
-}
+.pageTabs .currentTab { background: var(--worksheet-accent); color: #fff; }
 
 .daySummary {
   display: grid;
@@ -315,7 +435,7 @@
   margin-bottom: 12px;
   padding: 10px 12px;
   border-left: 3px solid var(--worksheet-accent);
-  background: #fff;
+  background: #fbfcfc;
 }
 
 .daySummary span {
@@ -327,21 +447,13 @@
   font-weight: 700;
 }
 
-.daySummary strong {
-  color: #2b353a;
-  font-size: 13px;
-}
-
-.daySummary p {
-  margin: 0;
-  color: #68747a;
-  font-size: 12px;
-}
+.daySummary strong { color: #2b353a; font-size: 13px; }
+.daySummary p { margin: 0; color: #68747a; font-size: 12px; }
 
 .previewCanvas {
   display: flex;
   justify-content: center;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .paper {
@@ -357,7 +469,7 @@
   border: 0;
   border-radius: 0;
   background: #fff;
-  box-shadow: 0 0 0 1px #d9dddf;
+  box-shadow: 0 0 0 1px #e2e7e9;
   color: #22292d;
   font-family: "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   font-variant-numeric: tabular-nums;
@@ -366,39 +478,47 @@
 
 .paperHeader {
   display: grid;
-  grid-template-columns: 1fr 18mm 34mm;
+  grid-template-columns: minmax(0, 1fr) 16mm 35mm;
   align-items: center;
   gap: 4mm;
-  box-sizing: border-box;
 }
 
 .paperTitle {
   display: flex;
+  min-width: 0;
   align-items: baseline;
   gap: 3mm;
-  min-width: 0;
+  white-space: nowrap;
 }
 
-.paperTitle strong {
-  color: #e45d45;
-  font-size: 11pt;
+.paperTitle > span {
+  flex: 0 0 auto;
+  color: var(--worksheet-accent);
+  font-size: 10pt;
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .paperTitle h2 {
   margin: 0;
-  color: #22292d;
+  color: var(--worksheet-ink);
   font-size: 16pt;
   font-weight: 700;
-  letter-spacing: 0;
   line-height: 1;
+}
+
+.paperTitle strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--worksheet-muted);
+  font-size: 9pt;
+  font-weight: 500;
+  text-overflow: ellipsis;
 }
 
 .character {
   display: block;
-  width: 16mm;
-  height: 16mm;
+  width: 15mm;
+  height: 15mm;
   object-fit: contain;
 }
 
@@ -424,122 +544,127 @@
 
 .methodExample {
   display: grid;
-  height: 32mm;
+  height: 34mm;
   box-sizing: border-box;
-  grid-template-columns: 27mm 54mm 34mm 1fr;
+  grid-template-columns: 24mm minmax(42mm, 1fr);
   align-items: center;
-  gap: 3mm;
+  gap: 4mm;
   padding: 3mm 4mm;
-  background: #fff6f1;
+  background: var(--worksheet-soft);
 }
 
-.methodTitle {
+.methodHeading {
   display: grid;
   gap: 2mm;
-  align-content: center;
 }
 
-.methodTitle strong {
+.methodHeading span {
+  color: var(--worksheet-accent);
+  font-size: 9pt;
+}
+
+.methodHeading strong {
   color: #d44f3a;
   font-size: 13pt;
-  font-weight: 700;
 }
 
-.methodTitle span,
-.methodSplit strong,
-.methodSteps strong {
-  color: #22292d;
-  font-family: Arial, sans-serif;
-  font-size: 11pt;
-  font-weight: 700;
-  white-space: nowrap;
+.methodFlow {
+  display: grid;
+  grid-template-columns: auto 16px auto 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 3mm;
+  min-width: 0;
 }
 
-.methodVisual {
+.methodFlow > svg { color: var(--worksheet-accent); }
+
+.methodSimpleFlow {
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: center;
+  gap: 3mm;
+  color: var(--worksheet-ink);
+  font: 700 12pt Arial, sans-serif;
+}
+
+.methodSimpleFlow > span {
+  margin-left: 3mm;
+  color: var(--worksheet-muted);
+  font: 500 9.5pt "Microsoft YaHei", sans-serif;
+}
+
+.methodGroup {
+  display: flex;
+  align-items: center;
   gap: 2mm;
+  font: 700 13pt Arial, sans-serif;
 }
 
-.methodVisual > b {
-  color: #e45d45;
-  font: 700 14pt Arial, sans-serif;
+.methodSplitText {
+  color: #526067;
+  font: 10pt Arial, "Microsoft YaHei", sans-serif;
+  line-height: 1.45;
+  white-space: nowrap;
 }
 
-.methodSplit {
+.methodSplitText strong { color: var(--worksheet-ink); }
+
+.methodSteps {
   display: grid;
-  justify-items: center;
   gap: 2mm;
+  min-width: 0;
+  color: var(--worksheet-ink);
+  font: 700 10pt Arial, sans-serif;
+  white-space: nowrap;
 }
 
-.methodSplit span,
-.methodSteps em,
-.guidedSteps em {
+.methodSteps span { display: flex; align-items: center; gap: 2mm; }
+
+.methodSteps em {
   display: inline-grid;
   width: 6mm;
   height: 6mm;
   place-items: center;
   border-radius: 50%;
-  background: #e45d45;
+  background: var(--worksheet-accent);
   color: #fff;
-  font-size: 8.5pt;
+  font: 700 8pt "Microsoft YaHei", sans-serif;
   font-style: normal;
-  font-weight: 700;
-}
-
-.methodSteps {
-  display: grid;
-  gap: 2.2mm;
-}
-
-.methodSteps > span {
-  display: flex;
-  align-items: center;
-  gap: 2mm;
 }
 
 .countGroup {
   display: grid;
-  width: 28mm;
-  grid-template-columns: repeat(5, 4.5mm);
+  width: 29mm;
+  grid-template-columns: repeat(5, 4.6mm);
   justify-content: center;
   gap: 0.8mm;
 }
 
+.compactCountGroup { width: 25mm; grid-template-columns: repeat(5, 4mm); gap: 0.6mm; }
+
 .objectSprite {
   display: block;
-  width: 4.5mm;
-  height: 4.5mm;
+  width: 4.6mm;
+  height: 4.6mm;
   object-fit: contain;
 }
 
-.countGroup[data-compact] {
-  width: 25mm;
-  grid-template-columns: repeat(5, 4mm);
-  gap: 0.6mm;
-}
-
-.countGroup[data-compact] .objectSprite {
-  width: 4mm;
-  height: 4mm;
-}
+.compactCountGroup .objectSprite { width: 4mm; height: 4mm; }
 
 .placeValueGroup {
   display: grid;
-  width: 25mm;
+  width: 28mm;
   align-items: center;
   justify-content: center;
 }
 
 .placeValueObjects {
   display: grid;
-  width: 22mm;
+  width: 24mm;
   grid-template-columns: minmax(8mm, auto) minmax(7mm, auto);
   align-items: center;
   justify-content: center;
-  gap: 1.8mm;
+  gap: 1.5mm;
 }
 
 .placeValueTens,
@@ -550,146 +675,60 @@
   justify-content: center;
 }
 
-.placeValueTens {
-  gap: 0.45mm;
-}
+.placeValueTens { gap: 0.45mm; }
+.placeValueOnes { gap: 0.35mm; }
+.placeValueTens img { width: 2.15mm; height: 7.5mm; }
+.placeValueOnes img { width: 1.6mm; height: 3.7mm; }
 
-.placeValueOnes {
-  gap: 0.35mm;
-}
-
-.placeValueTens img {
-  display: block;
-  width: 2.15mm;
-  height: 7.5mm;
-  object-fit: contain;
-}
-
-.placeValueOnes img {
-  display: block;
-  width: 1.6mm;
-  height: 3.7mm;
-  object-fit: contain;
-}
-
-.guidedSection {
-  height: 58mm;
-}
+.guidedSection,
+.compositionSection,
+.pictureEquationSection,
+.applicationSection,
+.mentalSection { width: 100%; }
 
 .guidedSection > h3,
-.senseColumn > h3,
+.numberSenseSection h3,
+.compositionSection > h3,
+.pictureEquationSection > h3,
+.applicationSection > h3,
 .mentalSection > h3 {
   display: flex;
-  height: 10mm;
+  height: 9mm;
   box-sizing: border-box;
   align-items: center;
   margin: 0;
-  border-bottom: 0.35mm solid #cdd4d7;
-  color: #22292d;
-  font-size: 13pt;
+  border-bottom: 0.35mm solid var(--worksheet-line);
+  color: var(--worksheet-ink);
+  font-size: 12pt;
   font-weight: 700;
-  letter-spacing: 0;
+  line-height: 1;
 }
 
 .guidedGrid {
   display: grid;
-  height: 48mm;
+  height: 51mm;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6mm;
 }
 
 .guidedQuestion {
   display: grid;
-  height: 48mm;
+  height: 51mm;
   box-sizing: border-box;
-  grid-template-rows: 5mm 11mm 8mm 8mm 12mm;
+  grid-template-rows: 5mm 13mm 9mm 7mm 13mm;
   align-items: center;
-  padding: 2mm 1mm 2mm 0;
+  padding: 1mm 1mm 1mm 0;
 }
 
-.guidedQuestion + .guidedQuestion {
-  padding-left: 6mm;
-  border-left: 0.25mm solid #e4e8ea;
-}
-
-.guidedTopline,
-.guidedEquation,
-.guidedVisual {
-  display: flex;
-  align-items: center;
-}
-
-.guidedTopline {
-  justify-content: space-between;
-  color: #8a9499;
-  font-size: 8.5pt;
-}
-
-.guidedTopline strong {
-  color: #d44f3a;
-  font-size: 9.5pt;
-}
-
-.guidedVisual {
-  justify-content: center;
-  gap: 2mm;
-}
-
-.guidedVisual > b {
-  color: #e45d45;
-  font: 700 13pt Arial, sans-serif;
-}
-
-.guidedEquation {
-  justify-content: center;
-  gap: 2mm;
-  font-family: Arial, sans-serif;
-  font-size: 14pt;
-}
-
-.guidedSteps {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 3mm;
-}
-
-.guidedSplit {
-  display: grid;
-  grid-template-columns: 6mm auto auto 7mm auto 7mm;
-  align-items: center;
-  justify-content: center;
-  gap: 1mm;
-  color: #4e5a60;
-  font-family: Arial, sans-serif;
-  font-size: 9.5pt;
-}
-
-.guidedSplit em {
-  color: #d44f3a;
-  font-family: "Microsoft YaHei", sans-serif;
-  font-size: 8.5pt;
-  font-style: normal;
-  font-weight: 700;
-}
-
-.guidedSplit i {
-  font-style: normal;
-}
-
-.guidedSteps > span {
-  display: grid;
-  grid-template-columns: 6mm auto auto 7mm auto 7mm;
-  align-items: center;
-  justify-content: center;
-  gap: 1mm;
-  font-family: Arial, sans-serif;
-  font-size: 9.5pt;
-}
-
-.guidedSteps i {
-  font-style: normal;
-}
+.guidedQuestion + .guidedQuestion { padding-left: 6mm; border-left: 0.25mm solid #e4e8ea; }
+.guidedTopline { display: flex; align-items: center; justify-content: space-between; color: #667278; font-size: 9.5pt; }
+.guidedTopline strong { color: #d44f3a; font-size: 10pt; }
+.guidedVisual { display: flex; align-items: center; justify-content: center; gap: 2mm; font: 700 13pt Arial, sans-serif; }
+.guidedEquation { display: flex; align-items: center; justify-content: center; gap: 2.5mm; font: 700 14pt Arial, sans-serif; }
+.guidedEquation .answerLine { width: 15mm; flex-basis: 15mm; }
+.guidedSplit { display: flex; align-items: center; justify-content: center; color: #526067; font: 700 10.5pt Arial, sans-serif; }
+.guidedSteps { display: flex; align-items: center; justify-content: center; gap: 3mm; color: var(--worksheet-ink); font: 700 11.5pt Arial, sans-serif; }
+.guidedSteps > span + span::before { margin-right: 3mm; color: var(--worksheet-accent); content: "→"; }
 
 .answerLine {
   display: inline-block;
@@ -700,6 +739,8 @@
   border-bottom: 0.4mm solid #657278;
 }
 
+.wideAnswerLine { width: 35mm; flex-basis: 35mm; }
+
 .symbolBox {
   display: inline-block;
   width: 8mm;
@@ -709,253 +750,346 @@
   border: 0.35mm solid #7b888e;
 }
 
-.guidedSteps .symbolBox {
-  width: 7mm;
-  height: 7mm;
-  flex-basis: 7mm;
-}
-
-.guidedSplit .symbolBox {
-  width: 7mm;
-  height: 7mm;
-  flex-basis: 7mm;
-}
-
 .numberSenseSection {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6mm;
 }
 
-.senseGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.numberSenseSection[data-columns="3"] .senseGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
+.numberSenseSection:has(.senseColumn:only-child) { grid-template-columns: 1fr; }
+.senseGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .senseQuestion {
   display: grid;
-  height: 17mm;
+  height: 16mm;
   grid-template-columns: 6mm 1fr auto 1fr;
   align-items: center;
   gap: 1.2mm;
   padding-right: 2mm;
-  font-family: Arial, sans-serif;
+  font: 15pt Arial, sans-serif;
+}
+
+.senseQuestion strong:first-of-type { text-align: right; }
+.senseQuestion strong:last-of-type { text-align: left; }
+.senseQuestion .answerLine { width: 11mm; flex-basis: 11mm; }
+.senseQuestion .symbolBox { width: 9mm; height: 9mm; flex-basis: 9mm; }
+
+.questionNumber { color: #8a959a; font: 400 8.5pt Arial, sans-serif; }
+
+.compositionGrid,
+.pictureEquationGrid,
+.mentalGrid,
+.applicationGrid { display: grid; }
+
+.compositionGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.compositionSection[data-columns="2"] .compositionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pictureEquationGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pictureEquationSection[data-columns="2"] .pictureEquationGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mentalGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mentalSection[data-columns="2"] .mentalGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.applicationGrid { grid-template-columns: minmax(0, 1fr); }
+
+.compositionQuestion,
+.pictureEquationQuestion,
+.mentalQuestion,
+.applicationQuestion { min-width: 0; box-sizing: border-box; }
+
+.compositionQuestion {
+  display: grid;
+  height: 22mm;
+  grid-template-columns: 5mm minmax(0, 1fr) 11mm auto;
+  align-items: center;
+  gap: 1.2mm;
+  padding-right: 3mm;
+  font: 12.5pt Arial, sans-serif;
+}
+
+.bondFormula { white-space: nowrap; }
+.bondTarget {
+  width: 10mm;
+  color: var(--worksheet-ink);
+  white-space: nowrap;
+}
+.compositionQuestion .answerLine { width: 11mm; flex-basis: 11mm; }
+
+.compositionQuestion[data-mode="picture-split"] {
+  height: 28mm;
+  grid-template-columns: 7mm minmax(0, 1fr);
+  gap: 1mm;
+  padding: 1.5mm 4mm 1.5mm 0;
   font-size: 15pt;
 }
 
-.senseQuestion strong:first-of-type {
-  text-align: right;
-}
-
-.senseQuestion strong:last-of-type {
+.compositionQuestion[data-mode="picture-split"] > .questionNumber {
+  align-self: start;
+  padding-top: 1.5mm;
   text-align: left;
 }
 
-.senseQuestion .answerLine {
-  width: 11mm;
-  flex-basis: 11mm;
-}
-
-.senseQuestion .symbolBox {
-  width: 9mm;
-  height: 9mm;
-  flex-basis: 9mm;
-}
-
-.numberSenseSection[data-columns="3"] .senseQuestion {
-  grid-template-columns: 4.5mm 1fr auto 1fr;
-  gap: 0.7mm;
-  padding-right: 1mm;
-  font-size: 13.5pt;
-}
-
-.numberSenseSection[data-columns="3"] .senseQuestion .answerLine {
-  width: 8mm;
-  flex-basis: 8mm;
-}
-
-.numberSenseSection[data-columns="3"] .senseQuestion .symbolBox {
-  width: 7mm;
-  height: 7mm;
-  flex-basis: 7mm;
-}
-
-.questionNumber {
-  color: #8a959a;
-  font: 400 8.5pt Arial, sans-serif;
-}
-
-.mentalSection {
-  width: 100%;
-}
-
-.mentalGrid {
+.bondPictureContent {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  height: 25mm;
+  grid-template-rows: 13mm 10mm;
+  align-content: center;
+  gap: 1mm;
 }
 
-.mentalSection[data-columns="2"] .mentalGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.bondPictureGroups {
+  display: grid;
+  width: min(58mm, 100%);
+  grid-template-columns: 24mm 5mm 24mm;
+  align-items: center;
+  justify-self: center;
+  justify-content: center;
+  justify-items: center;
+  gap: 2mm;
+}
+
+.bondPictureGroups > b {
+  color: var(--worksheet-ink);
+  font: 700 13pt Arial, sans-serif;
+}
+
+.compositionQuestion[data-mode="picture-split"] .compactCountGroup {
+  width: 24mm;
+  grid-template-columns: repeat(5, 4mm);
+  justify-content: center;
+  gap: 0.7mm;
+}
+
+.compositionQuestion[data-mode="picture-split"] .compactCountGroup .objectSprite {
+  width: 4mm;
+  height: 4mm;
+}
+
+.bondAnswerRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 3mm;
+}
+
+.compositionQuestion[data-mode="picture-split"] .answerLine { width: 14mm; flex-basis: 14mm; }
+
+.compositionQuestion[data-mode="split"] {
+  grid-template-columns: 5mm 17mm 11mm;
+}
+
+.compositionQuestion[data-mode="compose"] {
+  grid-template-columns: 5mm 7mm 11mm 10mm;
+}
+
+.compositionQuestion[data-mode="split"] > .bondFormula,
+.compositionQuestion[data-mode="compose"] > .bondFormula { text-align: right; }
+
+.pictureEquationQuestion {
+  display: grid;
+  height: 32mm;
+  grid-template-columns: 7mm minmax(0, 1fr);
+  align-items: center;
+  gap: 1mm;
+  padding: 1.5mm 4mm 1.5mm 0;
+  font: 700 14pt Arial, sans-serif;
+}
+
+.pictureEquationQuestion > .questionNumber {
+  align-self: start;
+  padding-top: 1.5mm;
+}
+
+.pictureEquationContent {
+  display: grid;
+  min-width: 0;
+  height: 29mm;
+  grid-template-rows: 16mm 11mm;
+  align-content: center;
+  justify-items: center;
+  gap: 1mm;
+}
+
+.pictureEquationVisual {
+  display: grid;
+  width: min(65mm, 100%);
+  grid-template-columns: 28mm 5mm 28mm;
+  align-items: center;
+  justify-content: center;
+  justify-items: center;
+  gap: 2mm;
+}
+
+.pictureEquationVisual .compactCountGroup {
+  width: 28mm;
+  grid-template-columns: repeat(5, 4mm);
+  justify-content: center;
+  gap: 0.7mm;
+}
+
+.pictureEquationVisual .compactCountGroup .objectSprite {
+  width: 4mm;
+  height: 4mm;
+}
+
+.pictureEquationContent .wideAnswerLine {
+  width: 42mm;
+  flex-basis: 42mm;
 }
 
 .mentalQuestion {
   display: grid;
   height: 17mm;
-  box-sizing: border-box;
-  grid-template-columns: 7mm 22mm 18mm;
+  grid-template-columns: 7mm 21mm 18mm;
   align-items: center;
+  justify-content: start;
   gap: 1.5mm;
-  padding-right: 4mm;
-  font-family: Arial, sans-serif;
-  font-size: 15pt;
+  font: 15pt Arial, sans-serif;
 }
 
 .mentalSection[data-columns="2"] .mentalQuestion {
-  height: 19mm;
-  grid-template-columns: 7mm 36mm 18mm;
-  padding-right: 8mm;
+  height: 20mm;
+  grid-template-columns: 7mm 44mm 18mm;
+}
+
+.mentalSection[data-columns="2"] .expression {
+  display: grid;
+  width: 44mm;
+  grid-template-columns: 9mm 4mm 9mm 4mm 9mm 4mm;
+  align-items: center;
+  justify-content: start;
+  gap: 0.5mm;
 }
 
 .expression {
+  display: flex;
+  align-items: center;
+  gap: 0.7mm;
   white-space: nowrap;
 }
+
+.termSlot { text-align: center; }
+.operatorSlot,
+.equalsSlot { text-align: center; }
+.expression [data-empty="true"] { display: none; }
+.mentalSection[data-columns="2"] .expression [data-empty="true"] { display: block; }
+
+.applicationQuestion {
+  display: grid;
+  height: var(--application-row-height, 30mm);
+  grid-template-rows: auto minmax(8mm, 1fr);
+  gap: 1.5mm;
+  padding: 2.5mm 6mm 1.5mm 0;
+}
+
+.applicationPrompt {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 7mm 10mm minmax(0, 1fr);
+  align-items: center;
+  gap: 2mm;
+}
+
+.applicationPrompt .questionNumber { align-self: start; padding-top: 1.5mm; }
+.applicationPrompt p {
+  min-width: 0;
+  margin: 0;
+  color: var(--worksheet-ink);
+  font-size: 12pt;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.applicationIcon {
+  width: 9mm;
+  height: 9mm;
+  object-fit: contain;
+}
+
+.applicationWritingSpace { min-width: 0; margin-left: 19mm; }
 
 .paperFooter {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  border-top: 0.25mm solid #cdd4d7;
-  color: #7a858a;
+  border-top: 0.25mm solid var(--worksheet-line);
+  color: var(--worksheet-muted);
   font-size: 8.5pt;
 }
 
-.printPack {
-  display: none;
+.printPack { display: none; }
+.blankPaper { background: #fff; }
+.blankMark { display: none; }
+.assetPreload { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+
+@media (max-width: 1239px) {
+  .layout { grid-template-columns: 1fr; }
+  .settings { position: static; }
 }
 
-.blankPaper {
-  background: #fff;
-}
-
-.assetPreload {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
-
-@media (max-width: 1120px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .settings {
-    position: static;
-  }
+@media (min-width: 1240px) {
+  .workbench:global(.pulse-workbench) { padding-inline: 0 !important; }
 }
 
 @media (max-width: 860px) {
-  .previewCanvas .paper {
-    zoom: 0.78;
-  }
+  .previewCanvas .paper { zoom: 0.78; }
 }
 
 @media (max-width: 680px) {
-  .preview {
-    padding: 10px;
-  }
-
-  .previewToolbar,
-  .daySummary {
-    align-items: flex-start;
-  }
-
-  .previewToolbar {
-    flex-direction: column;
-  }
-
-  .daySummary {
-    grid-template-columns: auto 1fr;
-  }
-
-  .daySummary p {
-    grid-column: 1 / -1;
-  }
-
-  .previewCanvas .paper {
-    zoom: 0.52;
-  }
+  .preview { padding: 10px; }
+  .previewToolbar, .daySummary { align-items: flex-start; }
+  .previewToolbar { flex-direction: column; }
+  .daySummary { grid-template-columns: auto 1fr; }
+  .daySummary p { grid-column: 1 / -1; }
+  .previewCanvas .paper { zoom: 0.52; }
+  .expandButton { display: grid; }
+  .previewExpanded { position: fixed; z-index: 100; inset: 0; overflow: auto; padding: 12px; border: 0; border-radius: 0; }
+  .previewExpanded .previewCanvas { justify-content: flex-start; overflow: auto; padding-bottom: 20px; }
+  .previewExpanded .previewCanvas .paper { zoom: 0.82; }
 }
 
 @media (max-width: 430px) {
-  .settings {
-    padding: 14px;
-  }
-
-  .actions,
-  .counts {
-    grid-template-columns: 1fr;
-  }
-
-  .dayGrid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-
-  .previewCanvas {
-    justify-content: flex-start;
-  }
-
-  .previewCanvas .paper {
-    zoom: 0.38;
-  }
+  .settings { padding: 14px; }
+  .actions { grid-template-columns: 1fr; }
+  .previewCanvas { justify-content: flex-start; }
+  .previewCanvas .paper { zoom: 0.38; }
+  .previewExpanded .previewCanvas .paper { zoom: 0.72; }
 }
 
-@page {
-  size: A4 portrait;
-  margin: 0;
+@media (prefers-reduced-motion: reduce) {
+  .actions button,
+  .pageTabs button,
+  .dayGrid button { transition: none; }
 }
+
+@page { size: A4 portrait; margin: 0; }
 
 @media print {
-  :global(body) {
-    margin: 0;
-    background: #fff;
+  :global(body) { margin: 0; background: #fff; }
+  :global(body)::before { display: none; }
+  :global(body) > * { visibility: hidden; }
+  :global(.kids-shell) {
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
-
-  :global(body)::before {
-    display: none;
+  :global(.kids-shell) > header { display: none !important; }
+  :global(.kids-shell) > main {
+    width: 210mm !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
   }
-
-  :global(body) > * {
-    visibility: hidden;
+  :global(.kids-shell) > main > :not(.workbench) { display: none !important; }
+  .workbench {
+    display: block !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
-
-  .printPack,
-  .printPack * {
-    visibility: visible;
-  }
-
-  .printPack {
-    position: absolute;
-    inset: 0;
-    display: block;
-    width: 210mm;
-  }
-
-  .printPack .paper {
-    margin: 0;
-    box-shadow: none;
-    break-after: page;
-    page-break-after: always;
-  }
-
-  .printPack .paper:last-child {
-    break-after: auto;
-    page-break-after: auto;
-  }
+  .workbench > :not(.printPack) { display: none !important; }
+  .printPack, .printPack * { visibility: visible; }
+  .printPack { position: absolute; top: 0; left: 0; display: block; width: 210mm; height: auto; }
+  .printPack .paper { margin: 0; box-shadow: none; break-after: page; page-break-after: always; }
+  .printPack .paper:last-child { break-after: auto; page-break-after: auto; }
 }

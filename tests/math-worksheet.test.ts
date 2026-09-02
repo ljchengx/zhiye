@@ -1,337 +1,248 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_WORKSHEET_CONFIG,
+  DEFAULT_REINFORCEMENT_CONFIG,
+  FOUNDATION_WORKSHEET_DAYS,
   generateDailyWorksheet,
-  generateWorksheet,
   generateWorksheetPlan,
+  getExportDays,
+  getReinforcementQuestionCounts,
   getWorksheetDayPlan,
-  MENTAL_METHODS,
-  normalizeWorksheetConfig,
+  MAX_APPLICATION_QUESTIONS,
+  MAX_WORKSHEET_QUESTIONS,
+  normalizeReinforcementConfig,
+  REINFORCEMENT_WORKSHEET_DAYS,
+  type ApplicationQuestion,
   type MentalQuestion,
 } from "../lib/tools/math-worksheet";
 
-describe("幼小数学练习生成", () => {
-  it("按默认配置生成三部分共 30 题", () => {
-    const worksheet = generateWorksheet(DEFAULT_WORKSHEET_CONFIG, 42);
+function allQuestions(worksheet: ReturnType<typeof generateDailyWorksheet>) {
+  return worksheet.sections.flatMap((section) => section.questions);
+}
 
-    expect(worksheet.total).toBe(30);
-    expect(worksheet.sections.map((section) => section.title)).toEqual(["相邻数", "比大小", "口算"]);
-    expect(worksheet.sections.map((section) => section.questions.length)).toEqual([8, 8, 14]);
+function mentalQuestions(worksheet: ReturnType<typeof generateDailyWorksheet>) {
+  return allQuestions(worksheet).filter((question): question is MentalQuestion => question.type === "mental");
+}
+
+function calculate(left: number, operator: "+" | "-", right: number) {
+  return operator === "+" ? left + right : left - right;
+}
+
+describe("幼小数学 5 天基础学习 + 25 天强化训练", () => {
+  it("基础五天使用固定精选内容，并保持每天 28 题", () => {
+    const first = generateWorksheetPlan(1);
+    const second = generateWorksheetPlan(999);
+
+    expect(first.foundationDays).toHaveLength(FOUNDATION_WORKSHEET_DAYS);
+    expect(first.foundationDays.map((day) => day.total)).toEqual([28, 28, 28, 28, 28]);
+    expect(first.foundationDays.map((day) => day.id)).toEqual([
+      "foundation-1", "foundation-2", "foundation-3", "foundation-4", "foundation-5",
+    ]);
+    expect(first.foundationDays.map((day) => day.sections.map((section) => [section.type, section.questions.length]))).toEqual(
+      second.foundationDays.map((day) => day.sections.map((section) => [section.type, section.questions.length])),
+    );
+    expect(first.foundationDays[0].methodLesson?.method).toBe("number-bond");
+    expect(first.foundationDays[1].methodLesson?.method).toBe("make-ten");
+    expect(first.foundationDays[2].methodLesson?.method).toBe("break-ten");
+    expect(first.foundationDays[3].methodLesson?.method).toBe("flat-ten");
+    expect(first.foundationDays[4].methodLesson?.method).toBe("picture-equation");
+    expect(first.foundationDays.every((day) => day.pages[0]?.showMethod)).toBe(true);
+    expect(first.reinforcementDays.every((day) => day.pages.every((page) => !page.showMethod))).toBe(true);
+    expect(first.foundationDays[4].sections.find((section) => section.type === "application")?.questions).toHaveLength(8);
   });
 
-  it("相邻数题目会在两个数字之间保留正确的中间数", () => {
-    const worksheet = generateWorksheet({ ...DEFAULT_WORKSHEET_CONFIG, compareCount: 0, mentalCount: 0 }, 7);
-    const questions = worksheet.sections[0].questions;
+  it("固定基础方法的拆分和每一步都能还原答案", () => {
+    const plan = generateWorksheetPlan(42);
+    plan.foundationDays.forEach((day) => {
+      const lesson = day.methodLesson;
+      expect(lesson).toBeDefined();
+      if (!lesson) return;
+      expect(calculate(lesson.original.left, lesson.original.operator, lesson.original.right)).toBe(lesson.original.answer);
+      expect(lesson.split[0] + lesson.split[1]).toBe(lesson.splitSource);
+      lesson.steps.forEach((step) => {
+        expect(step.answer).toBe(calculate(step.left, step.operator, step.right));
+      });
 
-    expect(questions).toHaveLength(8);
-    questions.forEach((question) => {
-      expect(question.type).toBe("neighbor");
-      if (question.type === "neighbor") {
-        expect(question.right - question.left).toBe(2);
-        expect(question.answer).toBe(question.left + 1);
+      if (lesson.method === "make-ten") {
+        expect(lesson.splitSource).toBe(lesson.original.right);
+        expect(lesson.steps[0]).toMatchObject({ left: lesson.original.left, operator: "+", right: lesson.split[0] });
+        expect(lesson.steps[1]).toMatchObject({ left: lesson.steps[0].answer, operator: "+", right: lesson.split[1], answer: lesson.original.answer });
+      } else if (lesson.method === "break-ten") {
+        expect(lesson.splitSource).toBe(lesson.original.left);
+        expect(lesson.steps[0]).toMatchObject({ left: lesson.split[0], operator: "-", right: lesson.original.right });
+        expect(lesson.steps[1]).toMatchObject({ left: lesson.steps[0].answer, operator: "+", right: lesson.split[1], answer: lesson.original.answer });
+      } else if (lesson.method === "flat-ten") {
+        expect(lesson.splitSource).toBe(lesson.original.right);
+        expect(lesson.steps[0]).toMatchObject({ left: lesson.original.left, operator: "-", right: lesson.split[0] });
+        expect(lesson.steps[1]).toMatchObject({ left: lesson.steps[0].answer, operator: "-", right: lesson.split[1], answer: lesson.original.answer });
       }
     });
   });
 
-  it("比大小题目覆盖等于并且答案与数字关系一致", () => {
-    const worksheet = generateWorksheet({ ...DEFAULT_WORKSHEET_CONFIG, neighborCount: 0, mentalCount: 0 }, 9);
-    const questions = worksheet.sections[1].questions;
-
-    expect(questions.some((question) => question.type === "compare" && question.left === question.right)).toBe(true);
-    questions.forEach((question) => {
-      if (question.type === "compare") {
-        const expected = question.left < question.right ? "<" : question.left > question.right ? ">" : "=";
-        expect(question.answer).toBe(expected);
-      }
+  it("基础五天的数量图与题目数字始终一致", () => {
+    const plan = generateWorksheetPlan(20260902);
+    const numberBonds = allQuestions(plan.foundationDays[0]).filter((question) => question.type === "number-bond");
+    expect(numberBonds).toHaveLength(20);
+    numberBonds.forEach((question) => {
+      expect(question.knownPart + question.answer).toBe(question.whole);
     });
-  });
 
-  it("默认主题是凑十法，口算题围绕当前主题生成", () => {
-    const worksheet = generateWorksheet(DEFAULT_WORKSHEET_CONFIG, 21);
-    const questions = worksheet.sections[2].questions;
-    const methods = new Set(questions.filter((question) => question.type === "mental").map((question) => question.method));
-    const expressions = questions
-      .filter((question) => question.type === "mental")
-      .map((question) => question.left + question.operator + question.right);
+    const pictureEquations = allQuestions(plan.foundationDays[4]).filter((question) => question.type === "picture-equation");
+    expect(pictureEquations).toHaveLength(6);
+    pictureEquations.forEach((question) => {
+      expect(calculate(question.leftCount, question.operator, question.rightCount)).toBe(question.answer);
+    });
 
-    expect(worksheet.theme).toBe("make-ten");
-    expect(worksheet.demos[0].equation).toContain("9 + 4");
-    expect(methods).toEqual(new Set(["make-ten"]));
-    expect(questions.filter((question) => question.type === "mental" && question.level === "basic")).toHaveLength(7);
-    expect(questions.filter((question) => question.type === "mental" && question.level === "two-digit")).toHaveLength(7);
-    expect(new Set(expressions).size).toBe(expressions.length);
-    questions.forEach((question) => {
-      if (question.type === "mental") {
-        expect(question.operator).toBe("+");
-        expect(question.left + question.right).toBeLessThanOrEqual(100);
-        if (question.level === "basic") {
-          expect(question.left).toBeLessThan(10);
-          expect(question.right).toBeLessThan(10);
+    plan.foundationDays.slice(1, 4).forEach((day) => {
+      const guidedQuestions = mentalQuestions(day).filter((question) => question.presentation === "guided");
+      expect(guidedQuestions).toHaveLength(2);
+      guidedQuestions.forEach((question) => {
+        const guidance = question.guidance;
+        expect(guidance).toBeDefined();
+        if (!guidance) return;
+        expect(calculate(question.left, question.operator, question.right)).toBe(question.answer);
+        expect(guidance.split[0] + guidance.split[1]).toBe(guidance.splitSource);
+        guidance.steps.forEach((step) => expect(calculate(step.left, step.operator, step.right)).toBe(step.answer));
+        expect(guidance.steps[1].answer).toBe(question.answer);
+
+        if (question.method === "make-ten") {
+          expect(guidance.splitSource).toBe(question.right);
+          expect(guidance.steps[0]).toMatchObject({ left: question.left, operator: "+", right: guidance.split[0] });
+          expect(guidance.steps[1]).toMatchObject({ left: guidance.steps[0].answer, operator: "+", right: guidance.split[1] });
+        } else if (question.method === "break-ten") {
+          expect(guidance.splitSource).toBe(question.left);
+          expect(guidance.steps[0]).toMatchObject({ left: guidance.split[0], operator: "-", right: question.right });
+          expect(guidance.steps[1]).toMatchObject({ left: guidance.steps[0].answer, operator: "+", right: guidance.split[1] });
         } else {
-          expect(question.left).toBeGreaterThanOrEqual(10);
-          expect(question.right).toBeGreaterThanOrEqual(10);
-        }
-        expect(question.answer).toBe(question.operator === "+" ? question.left + question.right : question.left - question.right);
-      }
-    });
-  });
-
-  it("三种方法可以单独练习，混合主题只使用这三种方法", () => {
-    const expectedThemes = ["make-ten", "break-ten", "flat-ten"] as const;
-
-    expectedThemes.forEach((theme) => {
-      const worksheet = generateWorksheet({ ...DEFAULT_WORKSHEET_CONFIG, theme }, 31);
-      const methods = new Set(worksheet.sections[2].questions.map((question) => question.type === "mental" ? question.method : ""));
-
-      expect(worksheet.theme).toBe(theme);
-      expect(methods).toEqual(new Set([theme]));
-      worksheet.sections[2].questions.forEach((question) => {
-        if (question.type === "mental") {
-          expect(question.answer).toBe(question.operator === "+" ? question.left + question.right : question.left - question.right);
-          expect(question.left).toBeLessThanOrEqual(100);
-          expect(question.right).toBeLessThanOrEqual(100);
-          expect(question.answer).toBeLessThanOrEqual(100);
+          expect(guidance.splitSource).toBe(question.right);
+          expect(guidance.steps[0]).toMatchObject({ left: question.left, operator: "-", right: guidance.split[0] });
+          expect(guidance.steps[1]).toMatchObject({ left: guidance.steps[0].answer, operator: "-", right: guidance.split[1] });
         }
       });
     });
-
-    const mixedWorksheet = generateWorksheet({ ...DEFAULT_WORKSHEET_CONFIG, theme: "mixed" }, 32);
-    const mixedMethods = new Set(mixedWorksheet.sections[2].questions.map((question) => question.type === "mental" ? question.method : ""));
-    expect(mixedMethods).toEqual(new Set(MENTAL_METHODS));
-    expect(mixedWorksheet.demos).toHaveLength(3);
   });
 
-  it("会把超出上限的题量压回 30 题以内", () => {
-    const config = normalizeWorksheetConfig({
-      neighborCount: 30,
-      compareCount: 30,
-      mentalCount: 30,
-      theme: "mixed",
-    });
-
-    expect(config.neighborCount + config.compareCount + config.mentalCount).toBeLessThanOrEqual(30);
-    expect(config.theme).toBe("mixed");
+  it("强化配置限制在 10～30 题，应用题最多 25%", () => {
+    const normalized = normalizeReinforcementConfig({ dailyQuestionCount: 99, neighborRatio: 80, compareRatio: 50, applicationRatio: 90 });
+    expect(normalized.dailyQuestionCount).toBe(30);
+    expect(normalized.applicationRatio).toBeLessThanOrEqual(25);
+    expect(normalized.neighborRatio + normalized.compareRatio + normalized.applicationRatio + normalized.mentalRatio).toBe(100);
+    const counts = getReinforcementQuestionCounts(DEFAULT_REINFORCEMENT_CONFIG, 1);
+    expect(counts.neighbor + counts.compare + counts.mental + counts.application).toBe(30);
+    expect(counts.application).toBeLessThanOrEqual(MAX_APPLICATION_QUESTIONS);
   });
 
-  it("会生成 30 天连续计划，并保持每天一张且总量不超过 30 题", () => {
-    const plan = generateWorksheetPlan(20260831);
-
-    expect(plan.totalDays).toBe(30);
-    expect(plan.days).toHaveLength(30);
-    expect(plan.totalQuestions).toBe(plan.days.reduce((sum, day) => sum + day.total, 0));
-    plan.days.forEach((day) => {
-      const blueprint = getWorksheetDayPlan(day.day);
-
-      expect(day.total).toBeLessThanOrEqual(30);
-      expect(day.total).toBe(blueprint.neighborCount + blueprint.compareCount + blueprint.mentalCount);
-      expect(day.phase).toBe(blueprint.phase);
-      expect(day.title).toBe(blueprint.title);
-    });
-
-    expect(plan.days.slice(0, 10).map((day) => day.total)).toEqual(Array.from({ length: 10 }, () => 28));
-    plan.days.forEach((day) => {
-      expect(day.sections[2].questions.some((question) => question.type === "mental" && question.third !== undefined)).toBe(true);
+  it("统一配置应用到全部 25 天，题型数量准确且不超过 30", () => {
+    const config = { dailyQuestionCount: 28, neighborRatio: 15, compareRatio: 15, applicationRatio: 20 };
+    const plan = generateWorksheetPlan(20260902, config);
+    expect(plan.days).toHaveLength(FOUNDATION_WORKSHEET_DAYS + REINFORCEMENT_WORKSHEET_DAYS);
+    expect(plan.reinforcementDays).toHaveLength(REINFORCEMENT_WORKSHEET_DAYS);
+    plan.reinforcementDays.forEach((day) => {
+      const questions = allQuestions(day);
+      const counts = getReinforcementQuestionCounts(plan.reinforcementConfig, day.stageDay);
+      expect(day.total).toBe(28);
+      expect(day.total).toBeLessThanOrEqual(MAX_WORKSHEET_QUESTIONS);
+      expect(questions.filter((question) => question.type === "neighbor")).toHaveLength(counts.neighbor);
+      expect(questions.filter((question) => question.type === "compare")).toHaveLength(counts.compare);
+      expect(questions.filter((question) => question.type === "mental")).toHaveLength(counts.mental);
+      expect(questions.filter((question) => question.type === "application")).toHaveLength(counts.application);
+      expect(new Set(questions.map((question) => question.id)).size).toBe(questions.length);
+      const pageQuestions = day.pages.flatMap((page) => page.sections.flatMap((section) => section.questions));
+      expect(pageQuestions.map((question) => question.number)).toEqual(Array.from({ length: 28 }, (_, index) => index + 1));
     });
   });
 
-  it("前 8 天保持引导主题，并混入两位数和三数挑战题", () => {
-    for (let day = 1; day <= 8; day += 1) {
-      const worksheet = generateDailyWorksheet(day, 100 + day);
-      const mentalQuestions = worksheet.sections[2].questions.filter((question) => question.type === "mental");
-      const twoDigitQuestions = mentalQuestions.filter((question) => question.level === "two-digit-single");
-      const threeNumberQuestions = mentalQuestions.filter((question) => question.third !== undefined);
-      const binaryCount = mentalQuestions.length - Math.round(mentalQuestions.length * worksheet.plan.threeNumberRatio);
+  it("强化题按阶段递进，并在早期保留挑战题", () => {
+    const day1 = generateDailyWorksheet(6, 12);
+    const day10 = generateDailyWorksheet(15, 12);
+    const day20 = generateDailyWorksheet(25, 12);
+    const day30 = generateDailyWorksheet(30, 12);
 
-      expect(worksheet.plan.threeNumberRatio).toBeGreaterThan(0);
-      expect(mentalQuestions).toHaveLength(worksheet.plan.mentalCount);
-      expect(threeNumberQuestions).toHaveLength(Math.round(mentalQuestions.length * worksheet.plan.threeNumberRatio));
-      expect(twoDigitQuestions).toHaveLength(Math.round(binaryCount * worksheet.plan.binaryTwoDigitRatio));
-    }
-  });
-
-  it("会按阶段扩大数值范围，并在后期加入三个数加减混合", () => {
-    const dayOne = generateDailyWorksheet(1, 12);
-    const dayTen = generateDailyWorksheet(10, 12);
-    const dayFifteen = generateDailyWorksheet(15, 12);
-    const dayTwentyOne = generateDailyWorksheet(21, 12);
-    const dayThirty = generateDailyWorksheet(30, 12);
-
-    expect(dayOne.plan.mentalMax).toBe(20);
-    expect(dayTen.plan.mentalMax).toBe(50);
-    expect(dayFifteen.plan.mentalMax).toBe(100);
-    expect(dayTwentyOne.plan.threeNumberRatio).toBeGreaterThan(0);
-    expect(dayTwentyOne.sections[2].questions.some((question) => question.type === "mental" && question.third !== undefined)).toBe(true);
-    expect(dayThirty.plan.mentalMax).toBe(200);
-
-    dayThirty.sections[2].questions.forEach((question) => {
-      if (question.type !== "mental") {
-        return;
-      }
-
+    expect(day1.plan.resultMax).toBe(20);
+    expect(day10.plan.resultMax).toBe(50);
+    expect(day20.plan.resultMax).toBe(100);
+    expect(day30.plan.resultMax).toBe(200);
+    expect(mentalQuestions(day1).some((question) => question.level === "three-number")).toBe(true);
+    expect(mentalQuestions(day30).every((question) => question.third !== undefined)).toBe(true);
+    mentalQuestions(day30).forEach((question) => {
       expect(question.answer).toBeLessThanOrEqual(200);
       if (question.third !== undefined) {
         const intermediate = question.left + (question.operator === "+" ? question.right : -question.right);
-        const answer = intermediate + (question.secondOperator === "+" ? question.third : -question.third);
-
+        const answer = intermediate + (question.secondOperator === "+" ? question.third : -(question.third ?? 0));
         expect(intermediate).toBeGreaterThanOrEqual(0);
-        expect(answer).toBeGreaterThanOrEqual(0);
         expect(answer).toBe(question.answer);
       }
     });
   });
 
-  it("口算题按难度递增排列，三数题集中放在最后", () => {
-    const levelOrder: Record<string, number> = {
-      basic: 0,
-      "two-digit-single": 1,
-      "two-digit": 2,
-      "three-number": 3,
-    };
-    const dayOneLevels = generateDailyWorksheet(1, 22).sections[2].questions.map((question) => (
-      question.type === "mental" ? question.level : ""
-    ));
-    const dayEightLevels = generateDailyWorksheet(8, 22).sections[2].questions.map((question) => (
-      question.type === "mental" ? question.level : ""
-    ));
-    const dayTwentyFourQuestions = generateDailyWorksheet(24, 22).sections[2].questions.filter(
-      (question) => question.type === "mental",
-    );
-    const dayTwentyFourScores = dayTwentyFourQuestions.map((question) => {
-      const level = question.level === "three-number" ? 3 : levelOrder[question.level];
-      const terms = [question.left, question.right, question.third].filter(
-        (term): term is number => term !== undefined,
-      );
-      return level + (question.level === "three-number" ? terms.filter((term) => term >= 10).length : 0);
+  it("应用题的文字情境、步骤和答案保持一致", () => {
+    const plan = generateWorksheetPlan(77);
+    const applications = plan.reinforcementDays.flatMap((day) => allQuestions(day)).filter((question): question is ApplicationQuestion => question.type === "application");
+    expect(applications.length).toBeGreaterThan(0);
+    applications.forEach((question) => {
+      expect(question.prompt).not.toContain("undefined");
+      expect(question.prompt).not.toContain("比它少");
+      expect(question.steps.length).toBe(question.level === "two-step" ? 2 : 1);
+      const last = question.steps[question.steps.length - 1];
+      expect(last.answer).toBe(question.answer);
+      expect(question.equation).toContain("=");
+      expect(question.answer).toBeGreaterThanOrEqual(0);
     });
-
-    expect(dayOneLevels).toEqual([
-      ...Array.from({ length: 8 }, () => "basic"),
-      ...Array.from({ length: 2 }, () => "two-digit-single"),
-      ...Array.from({ length: 4 }, () => "three-number"),
-    ]);
-    expect(dayEightLevels.slice(0, 5).every((level) => level === "basic")).toBe(true);
-    expect(dayEightLevels[5]).toBe("two-digit-single");
-    expect(dayEightLevels.slice(6).every((level) => level === "three-number")).toBe(true);
-    expect(dayEightLevels.map((level) => levelOrder[level])).toEqual(
-      [...dayEightLevels].map((level) => levelOrder[level]).sort((left, right) => left - right),
-    );
-    expect(dayTwentyFourScores).toEqual([...dayTwentyFourScores].sort((left, right) => left - right));
-  });
-
-  it("三数题会把第三个数字和第二个运算符纳入题目表达式", () => {
-    const worksheet = generateDailyWorksheet(30, 18);
-    const questions = worksheet.sections[2].questions.filter(
-      (question) => question.type === "mental" && question.third !== undefined,
-    );
-
-    expect(questions).toHaveLength(16);
-    expect(new Set(questions.map((question) => question.type === "mental"
-      ? question.left + question.operator + question.right + question.secondOperator + question.third
-      : "")).size).toBe(questions.length);
-  });
-
-  it("会根据内容自动生成一到两页，并保留完整题目和连续题号", () => {
-    const plan = generateWorksheetPlan(20260831);
-
-    plan.days.forEach((worksheet) => {
-      const allQuestions = worksheet.sections.flatMap((section) => section.questions);
-      const pageQuestions = worksheet.pages.flatMap((page) => page.sections.flatMap((section) => section.questions));
-      const allIds = new Set(allQuestions.map((question) => question.id));
-      const pagedIds = new Set(pageQuestions.map((question) => question.id));
-      const numbers = pageQuestions.map((question) => question.number);
-
-      expect(worksheet.pages.length).toBeGreaterThanOrEqual(1);
-      expect(worksheet.pages.length).toBeLessThanOrEqual(2);
-      expect(worksheet.pages.reduce((sum, page) => sum + page.questionCount, 0)).toBe(worksheet.total);
-      expect(worksheet.pages.every((page) => page.questionCount > 0 && page.usedHeightMm <= 252)).toBe(true);
-      expect(worksheet.pages.map((page) => page.pageNumber)).toEqual(
-        Array.from({ length: worksheet.pages.length }, (_, index) => index + 1),
-      );
-      expect(worksheet.pages.every((page) => page.pageCount === worksheet.pages.length)).toBe(true);
-      expect(allIds.size).toBe(allQuestions.length);
-      expect(pagedIds).toEqual(allIds);
-      expect(numbers).toEqual(Array.from({ length: worksheet.total }, (_, index) => index + 1));
-
-      const displayedMental = pageQuestions.filter((question): question is MentalQuestion => question.type === "mental");
-      const firstThreeNumberIndex = displayedMental.findIndex((question) => question.third !== undefined);
-      if (firstThreeNumberIndex >= 0) {
-        expect(displayedMental.slice(firstThreeNumberIndex).every((question) => question.third !== undefined)).toBe(true);
-      }
-    });
-
-    const totalPages = plan.days.reduce((sum, worksheet) => sum + worksheet.pages.length, 0);
-    expect(totalPages).toBeGreaterThanOrEqual(30);
-    expect(totalPages).toBeLessThan(60);
-  });
-
-  it("图示引导题的拆分和先算、再算步骤都能还原原题答案", () => {
-    const guidedWorksheets = [1, 4, 5, 8, 10].map((day) => generateDailyWorksheet(day, 700 + day));
-    let guidedCount = 0;
-
-    guidedWorksheets.forEach((worksheet) => {
-      const guidedQuestions = worksheet.pages
-        .flatMap((page) => page.sections)
-        .flatMap((section) => section.questions)
-        .filter((question): question is MentalQuestion => question.type === "mental" && question.presentation === "guided");
-
-      expect(guidedQuestions).toHaveLength(2);
-      guidedQuestions.forEach((question) => {
-          if (question.type !== "mental") {
-            return;
-          }
-
-          guidedCount += 1;
-          expect(question.guidance).toBeDefined();
-
-          if (!question.guidance) {
-            return;
-          }
-
-          expect(question.guidance.split[0] + question.guidance.split[1]).toBe(question.guidance.splitSource);
-          expect(question.guidance.steps).toHaveLength(2);
-          question.guidance.steps.forEach((step) => {
-            const expected = step.operator === "+" ? step.left + step.right : step.left - step.right;
-            expect(step.answer).toBe(expected);
-          });
-
-          const [firstStep, secondStep] = question.guidance.steps;
-          expect(secondStep.answer).toBe(question.answer);
-          expect(firstStep.answer).not.toBeUndefined();
-
-          if (question.method === "break-ten" && question.level === "two-digit-single") {
-            const baseTen = Math.floor(question.left / 10) * 10;
-            expect(question.guidance.split).toEqual([baseTen, question.left - baseTen]);
-            expect(firstStep.left).toBe(baseTen);
-            expect(secondStep.left).toBe(firstStep.answer);
-          }
+    plan.days.forEach((day) => {
+      const dailyApplications = allQuestions(day).filter((question): question is ApplicationQuestion => question.type === "application");
+      const promptPatterns = dailyApplications.map((question) => question.prompt.replace(/\d+/g, "#"));
+      expect(new Set(promptPatterns).size).toBe(promptPatterns.length);
+      day.pages.flatMap((page) => page.sections).filter((section) => section.type === "application").forEach((section) => {
+        expect(section.columns).toBe(1);
+        expect(section.rowHeightMm).toBeGreaterThanOrEqual(30);
+        expect(section.rowHeightMm).toBeLessThanOrEqual(39);
       });
     });
-
-    expect(guidedCount).toBe(10);
+    expect(applications.some((question) => /马里奥|路易吉|蘑菇|金币/.test(question.prompt))).toBe(true);
+    expect(applications.some((question) => /书架|气球|饼干|花圃|球筐/.test(question.prompt))).toBe(true);
+    expect(new Set(applications.map((question) => question.icon)).size).toBeGreaterThanOrEqual(8);
+    expect(plan.reinforcementDays[0].sections.find((section) => section.type === "application")?.questions.every((question) => question.type === "application" && question.level !== "two-step")).toBe(true);
+    expect(plan.reinforcementDays[20].sections.find((section) => section.type === "application")?.questions.some((question) => question.type === "application" && question.level === "two-step")).toBe(true);
   });
 
-  it("方法示例和图示题只出现在计划规定的阶段", () => {
-    for (let day = 1; day <= 30; day += 1) {
-      const worksheet = generateDailyWorksheet(day, 900 + day);
-      const guidedQuestions = worksheet.pages
-        .flatMap((page) => page.sections)
-        .flatMap((section) => section.questions)
-        .filter((question): question is MentalQuestion => question.type === "mental" && question.presentation === "guided");
+  it("分页保持完整题目顺序，并合理利用第二页", () => {
+    const plan = generateWorksheetPlan(20260902);
+    plan.days.forEach((day) => {
+      const questions = day.pages.flatMap((page) => page.sections.flatMap((section) => section.questions));
+      expect(day.pages.length).toBeGreaterThanOrEqual(1);
+      expect(day.pages.length).toBeLessThanOrEqual(2);
+      expect(day.pages.every((page) => page.usedHeightMm <= 252)).toBe(true);
+      if (day.pages.length === 2) expect(day.pages[1].usedHeightMm).toBeGreaterThanOrEqual(110);
+      expect(questions.map((question) => question.number)).toEqual(Array.from({ length: day.total }, (_, index) => index + 1));
+      const mental = questions.filter((question): question is MentalQuestion => question.type === "mental");
+      const firstTriple = mental.findIndex((question) => question.third !== undefined);
+      if (firstTriple >= 0) expect(mental.slice(firstTriple).every((question) => question.third !== undefined)).toBe(true);
+      day.pages.flatMap((page) => page.sections).filter((section) => section.type === "mental").forEach((section) => {
+        const levels = section.questions.filter((question): question is MentalQuestion => question.type === "mental").map((question) => question.level);
+        if (section.columns === 3) expect(levels.every((level) => level === "basic" || level === "two-digit-single")).toBe(true);
+      });
+      const directMentalSections = day.pages.flatMap((page) => page.sections).filter((section) => section.type === "mental");
+      const hasComplexQuestion = mental.some((question) => question.level === "two-digit" || question.level === "three-number");
+      if (hasComplexQuestion) expect(directMentalSections.every((section) => section.columns === 2)).toBe(true);
+    });
+  });
 
-      expect(guidedQuestions.every((question) => question.type !== "mental" || MENTAL_METHODS.includes(question.method))).toBe(true);
-      if (day <= 10) {
-        expect(guidedQuestions).toHaveLength(2);
-      } else {
-        expect(guidedQuestions).toHaveLength(0);
-      }
-      if (day <= 10 && worksheet.theme !== "mixed") {
-        expect(new Set(guidedQuestions.map((question) => question.type === "mental" ? question.method : "")))
-          .toEqual(new Set([worksheet.theme]));
-      }
+  it("是否包含基础学习只影响导出筛选，不改变强化题", () => {
+    const plan = generateWorksheetPlan(20260902);
+    const withFoundation = getExportDays(plan, true);
+    const practiceOnly = getExportDays(plan, false);
+    expect(withFoundation).toHaveLength(30);
+    expect(practiceOnly).toHaveLength(25);
+    expect(practiceOnly[0].id).toBe("practice-1");
+    expect(practiceOnly.map((day) => day.id)).toEqual(plan.reinforcementDays.map((day) => day.id));
+    expect(practiceOnly.flatMap((day) => allQuestions(day)).map((question) => question.id)).toEqual(plan.reinforcementDays.flatMap((day) => allQuestions(day)).map((question) => question.id));
+  });
 
-      expect(worksheet.pages[0].showMethod).toBe(day <= 5 || (day >= 11 && day <= 18));
-      expect(worksheet.pages.slice(1).every((page) => !page.showMethod)).toBe(true);
-    }
+  it("保留旧的单日生成入口，且仍能限制总题量", () => {
+    const worksheet = generateDailyWorksheet(12, 4, { neighborCount: 2, compareCount: 2, mentalCount: 10, applicationCount: 2, theme: "mixed" });
+    expect(worksheet.total).toBe(16);
+    expect(worksheet.total).toBeLessThanOrEqual(MAX_WORKSHEET_QUESTIONS);
+    expect(getWorksheetDayPlan(1).stage).toBe("foundation");
+    expect(getWorksheetDayPlan(6).stage).toBe("reinforcement");
   });
 });

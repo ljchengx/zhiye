@@ -22,7 +22,7 @@ export function KidsShell({ activeTool, children }: KidsShellProps) {
   const closeNavigation = () => setNavigationOpen(false);
 
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} kids-shell`}>
       <header className={styles.header}>
         <Link className={styles.brand} href="/kids" onClick={closeNavigation} aria-label="知页启蒙首页">
           <span className={styles.brandMark} aria-hidden="true">知</span>
