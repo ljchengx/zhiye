@@ -325,8 +325,8 @@ test("幼小数学练习使用动态分页并保持 30 天连续计划", async (
   await page.goto("/math-worksheet");
 
   const paper = page.getByTestId("math-worksheet-paper");
-  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("30 天 / 35 页，可按需双面打印");
-  await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(35);
+  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("35 页内容 / 60 页双面打印包");
+  await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(60);
 
   await expect(paper).toHaveAttribute("data-day", "1");
   await expect(paper).toHaveAttribute("data-page-count", "1");
@@ -360,16 +360,19 @@ test("幼小数学练习使用动态分页并保持 30 天连续计划", async (
   const printOrder = await page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]").evaluateAll((papers) => (
     papers.map((item) => ({
       day: Number(item.getAttribute("data-day")),
-      page: Number(item.getAttribute("data-page")),
-      pageCount: Number(item.getAttribute("data-page-count")),
+      page: item.getAttribute("data-page"),
+      side: item.getAttribute("data-print-side"),
+      blank: item.getAttribute("data-blank") === "true",
     }))
   ));
-  expect(printOrder[0]).toEqual({ day: 1, page: 1, pageCount: 1 });
-  expect(printOrder[1]).toEqual({ day: 2, page: 1, pageCount: 1 });
-  expect(printOrder.at(-1)).toEqual({ day: 30, page: 1, pageCount: 1 });
-  expect(printOrder.every((item, index) => index === 0
-    || item.day > printOrder[index - 1].day
-    || (item.day === printOrder[index - 1].day && item.page === printOrder[index - 1].page + 1))).toBe(true);
+  expect(printOrder).toHaveLength(60);
+  for (let day = 1; day <= 30; day += 1) {
+    const [front, back] = printOrder.slice((day - 1) * 2, day * 2);
+    expect(front).toEqual({ day, page: "1", side: "front", blank: false });
+    expect(back.day).toBe(day);
+    expect(back.side).toBe("back");
+    expect(back.blank ? back.page === null : back.page === "2").toBe(true);
+  }
 });
 
 test("幼小数学练习的横线、方框和题目网格严格对齐", async ({ page }) => {
@@ -452,7 +455,7 @@ test("幼小数学练习打印包保持 A4 边界且素材全部加载", async (
     })
   ));
 
-  expect(metrics).toHaveLength(35);
+  expect(metrics).toHaveLength(60);
   expect(metrics.every(({ width, height, overflow, questionOverflow }) => (
     width >= 793 && width <= 795
     && height >= 1122 && height <= 1124

@@ -837,6 +837,10 @@
   display: none;
 }
 
+.blankPaper {
+  background: #fff;
+}
+
 .assetPreload {
   position: absolute;
   width: 1px;

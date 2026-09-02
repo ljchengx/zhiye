@@ -339,6 +339,8 @@ function WorksheetPaper({ worksheet, page, printCopy = false }: {
       data-page-count={page.pageCount}
       data-used-height={page.usedHeightMm}
       data-print-copy={printCopy || undefined}
+      data-print-side={printCopy ? (page.pageNumber === 1 ? "front" : "back") : undefined}
+      data-blank={printCopy ? "false" : undefined}
       aria-label={`第 ${worksheet.day} 天数学练习第 ${page.pageNumber} 页`}
     >
       <header className={styles.paperHeader}>
@@ -365,6 +367,19 @@ function WorksheetPaper({ worksheet, page, printCopy = false }: {
   );
 }
 
+function WorksheetBlankBack({ day }: { day: number }) {
+  return (
+    <article
+      className={`${styles.paper} ${styles.blankPaper}`}
+      data-print-copy="true"
+      data-day={day}
+      data-print-side="back"
+      data-blank="true"
+      aria-label={`第 ${day} 天空白背面`}
+    />
+  );
+}
+
 function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinition }) {
   const seedRef = useRef(INITIAL_SEED);
   const [selectedDay, setSelectedDay] = useState(1);
@@ -375,6 +390,8 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
   const selectedPage = selectedWorksheet?.pages[previewPageIndex] ?? selectedWorksheet?.pages[0];
   const selectedTotal = selectedWorksheet?.total ?? 0;
   const totalPages = plan.days.reduce((sum, worksheet) => sum + worksheet.pages.length, 0);
+  const blankBackPages = plan.days.filter((worksheet) => worksheet.pages.length === 1).length;
+  const totalPrintPages = totalPages + blankBackPages;
   const selectedCounts = selectedWorksheet ? {
     neighborCount: getSectionCount(selectedWorksheet, "neighbor"),
     compareCount: getSectionCount(selectedWorksheet, "compare"),
@@ -452,7 +469,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
   };
 
   const printPlan = () => {
-    setStatus({ tone: "success", text: `已打开打印窗口，共 ${totalPages} 页` });
+    setStatus({ tone: "success", text: `已打开打印窗口，共 ${totalPrintPages} 页，含 ${blankBackPages} 页空白背面` });
     window.print();
   };
 
@@ -485,7 +502,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
           <div className={styles.overview}>
             <span><b>{plan.totalDays}</b> 天</span>
             <span><b>{plan.totalQuestions}</b> 题</span>
-            <span><b>{totalPages}</b> 页</span>
+            <span><b>{totalPages}</b> 内容页</span>
           </div>
 
           <nav className={styles.dayNav} aria-label="30 天学习计划">
@@ -550,7 +567,9 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
             <span>{status.text}</span>
           </div>
           <p className={styles.local}><ShieldCheck size={15} />题目在浏览器本地生成</p>
-          <p className={styles.printSummary} data-testid="worksheet-print-summary">30 天 / {totalPages} 页，可按需双面打印</p>
+          <p className={styles.printSummary} data-testid="worksheet-print-summary">
+            {totalPages} 页内容 / {totalPrintPages} 页双面打印包
+          </p>
         </aside>
 
         <section className={styles.preview} aria-label="当天 A4 版面预览">
@@ -584,10 +603,16 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
         </section>
       </section>
 
-      <div className={styles.printPack} data-testid="worksheet-print-pack" aria-label="30 天打印内容">
-        {plan.days.flatMap((day) => day.pages.map((page) => (
-          <WorksheetPaper worksheet={day} page={page} printCopy key={`${day.day}-${page.pageNumber}`} />
-        )))}
+      <div className={styles.printPack} data-testid="worksheet-print-pack" aria-label="30 天双面打印内容">
+        {plan.days.flatMap((day) => {
+          const contentPages = day.pages.map((page) => (
+            <WorksheetPaper worksheet={day} page={page} printCopy key={`${day.day}-${page.pageNumber}`} />
+          ));
+
+          return day.pages.length === 1
+            ? [...contentPages, <WorksheetBlankBack day={day.day} key={`${day.day}-blank-back`} />]
+            : contentPages;
+        })}
       </div>
       <div className={styles.assetPreload} aria-hidden="true">
         {ALL_OBJECT_ASSETS.map((src) => <img src={src} alt="" key={src} />)}
