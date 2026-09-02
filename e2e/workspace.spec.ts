@@ -320,75 +320,143 @@ test("时间戳工具支持双向转换和真实交互", async ({ page }) => {
   await expect(page.getByLabel("选择要转换的日期和时间")).not.toHaveValue("");
 });
 
-test("幼小数学练习支持 30 天计划、主题安排与 A4 打印包", async ({ page }) => {
+test("幼小数学练习使用动态分页并保持 30 天连续计划", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/math-worksheet");
 
-  await expect(page).toHaveTitle("幼小数学练习生成器 - 30 天连续作业与 A4 打印 | 知页");
-  await expect(page.getByRole("link", { name: "数学练习" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByTestId("math-worksheet-paper")).toBeVisible();
-  await expect(page.getByTestId("math-worksheet-question")).toHaveCount(24);
-  await expect(page.getByTestId("worksheet-column-guide")).toHaveCount(0);
-  await expect(page.getByText("相邻数").first()).toBeVisible();
-  await expect(page.getByTestId("worksheet-demo")).toContainText("凑十法");
-  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
-  await expect(page.getByTestId("worksheet-day-30")).toBeVisible();
-  await expect(page.locator(".math-worksheet-print-pack .math-worksheet-paper")).toHaveCount(30);
-  await expect(page.locator(".math-worksheet-theme-track")).toHaveCount(0);
+  const paper = page.getByTestId("math-worksheet-paper");
+  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("30 天 / 35 页，可按需双面打印");
+  await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(35);
 
-  await page.getByTestId("worksheet-day-9").click();
-  await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "9");
-  await expect(page.getByTestId("math-worksheet-question")).toHaveCount(26);
-  await expect(page.getByTestId("worksheet-demo")).toContainText("混合主题");
-  await expect(page.getByTestId("worksheet-column-guide")).toContainText("相同数位对齐");
-  await expect(page.getByTestId("worksheet-column-guide").locator(".math-worksheet-column-guide__stack")).toHaveCount(1);
-  await expect(page.getByTestId("worksheet-day-summary")).toContainText("迈向 50");
+  await expect(paper).toHaveAttribute("data-day", "1");
+  await expect(paper).toHaveAttribute("data-page-count", "1");
+  await expect(paper.getByTestId("worksheet-demo")).toBeVisible();
+  await expect(paper.locator("[data-display=guided]")).toHaveCount(2);
+  await expect(paper.locator("[data-type=neighbor]")).toHaveCount(7);
+  await expect(paper.locator("[data-type=compare]")).toHaveCount(7);
+
+  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(28);
+
+  await page.getByTestId("worksheet-day-6").click();
+  await expect(paper).toHaveAttribute("data-page-count", "1");
+  await expect(page.getByText("共 1 页")).toBeVisible();
+  await expect(paper.getByTestId("worksheet-demo")).toHaveCount(0);
+  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(28);
+
+  await page.getByTestId("worksheet-day-15").click();
+  await expect(paper).toHaveAttribute("data-page-count", "2");
+  await expect(paper.getByTestId("worksheet-demo")).toBeVisible();
 
   await page.getByTestId("worksheet-day-21").click();
-  await expect(page.getByTestId("math-worksheet-question")).toHaveCount(30);
-  await expect(page.locator('[data-testid="math-worksheet-question"][data-level="three-number"]')).toHaveCount(10);
-  await expect(page.getByTestId("worksheet-column-guide")).toContainText("连续两步列式");
-  await expect(page.getByTestId("worksheet-column-guide")).toContainText("第 1 步");
-  await expect(page.getByTestId("worksheet-column-guide")).toContainText("第 2 步");
-  await expect(page.getByTestId("worksheet-column-guide").locator(".math-worksheet-column-guide__stack")).toHaveCount(2);
+  await expect(paper).toHaveAttribute("data-page-count", "1");
+  await expect(paper.getByTestId("worksheet-demo")).toHaveCount(0);
+  await expect(paper.locator("[data-level=three-number]")).toHaveCount(16);
+  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(30);
 
   await page.getByTestId("worksheet-day-30").click();
-  await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "30");
-  await expect(page.locator('[data-testid="math-worksheet-question"][data-level="three-number"]')).toHaveCount(20);
-  await expect(page.getByTestId("worksheet-day-summary")).toContainText("阶段测评");
-  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
-  await expect(page.getByTestId("worksheet-theme")).toContainText("混合主题");
-  await expect(page.getByRole("button", { name: "选择平十法" })).toHaveCount(0);
-  await page.getByRole("button", { name: "本日换一套" }).click();
-  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
-  await expect(page.getByTestId("worksheet-demo")).toContainText("混合主题");
+  await expect(paper).toHaveAttribute("data-page-count", "1");
+  await expect(paper.locator("[data-level=three-number]")).toHaveCount(16);
 
-  await page.getByRole("button", { name: "重新生成计划" }).click();
-  await expect(page.getByRole("status")).toContainText("难度结构保持不变");
-  await expect(page.getByTestId("worksheet-theme")).toContainText("计划主题");
+  const printOrder = await page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]").evaluateAll((papers) => (
+    papers.map((item) => ({
+      day: Number(item.getAttribute("data-day")),
+      page: Number(item.getAttribute("data-page")),
+      pageCount: Number(item.getAttribute("data-page-count")),
+    }))
+  ));
+  expect(printOrder[0]).toEqual({ day: 1, page: 1, pageCount: 1 });
+  expect(printOrder[1]).toEqual({ day: 2, page: 1, pageCount: 1 });
+  expect(printOrder.at(-1)).toEqual({ day: 30, page: 1, pageCount: 1 });
+  expect(printOrder.every((item, index) => index === 0
+    || item.day > printOrder[index - 1].day
+    || (item.day === printOrder[index - 1].day && item.page === printOrder[index - 1].page + 1))).toBe(true);
 });
 
-test("幼小数学练习打印时最后一道题不会压住页脚", async ({ page }) => {
+test("幼小数学练习的横线、方框和题目网格严格对齐", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/math-worksheet");
+  await page.getByTestId("worksheet-day-21").click();
+
+  const paper = page.getByTestId("math-worksheet-paper");
+  const metrics = await paper.evaluate((element) => {
+    const collect = (selector: string) => Array.from(element.querySelectorAll(selector)).map((question, index) => {
+      const answer = question.querySelector("[aria-hidden=true]");
+      const rect = answer?.getBoundingClientRect();
+      return { index, left: rect ? Math.round(rect.left) : -1, top: rect ? Math.round(rect.top) : -1 };
+    });
+    const body = element.querySelector("[data-testid=worksheet-paper-body]")?.getBoundingClientRect();
+    const footer = element.querySelector("[data-testid=worksheet-paper-footer]")?.getBoundingClientRect();
+    const questions = Array.from(element.querySelectorAll("[data-testid=math-worksheet-question]"));
+    return {
+      neighbors: collect("[data-type=neighbor]"),
+      compares: collect("[data-type=compare]"),
+      mental: collect("[data-type=mental]"),
+      overflow: (element as HTMLElement).scrollHeight - (element as HTMLElement).clientHeight,
+      bodyBottom: body?.bottom ?? 0,
+      footerTop: footer?.top ?? 0,
+      questionBottom: Math.max(...questions.map((question) => question.getBoundingClientRect().bottom)),
+    };
+  });
+
+  for (const positions of [metrics.neighbors, metrics.compares, metrics.mental]) {
+    expect(new Set(positions.filter(({ index }) => index % 2 === 0).map(({ left }) => left)).size).toBe(1);
+    expect(new Set(positions.filter(({ index }) => index % 2 === 1).map(({ left }) => left)).size).toBe(1);
+  }
+  expect(metrics.overflow).toBeLessThanOrEqual(0);
+  expect(metrics.questionBottom).toBeLessThanOrEqual(metrics.bodyBottom + 1);
+  expect(metrics.bodyBottom).toBeLessThanOrEqual(metrics.footerTop + 1);
+});
+
+test("幼小数学练习在移动端可完整缩放预览", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/math-worksheet");
+
+  const paperBox = await page.getByTestId("math-worksheet-paper").boundingBox();
+  const canvasBox = await page.getByTestId("math-worksheet-paper").locator("..").boundingBox();
+  expect(paperBox).not.toBeNull();
+  expect(canvasBox).not.toBeNull();
+  expect(paperBox!.width).toBeLessThanOrEqual(canvasBox!.width + 1);
+  await expect(page.getByRole("button", { name: "导出 30 天 PDF" })).toBeVisible();
+});
+
+test("幼小数学练习打印包保持 A4 边界且素材全部加载", async ({ page }) => {
+  await page.goto("/math-worksheet");
+
+  const assets = await page.locator("img[src*='/math-worksheet/objects/']").evaluateAll((images) => (
+    Array.from(new Map(images.map((image) => {
+      const item = image as HTMLImageElement;
+      return [item.getAttribute("src"), { src: item.getAttribute("src"), loaded: item.complete && item.naturalWidth > 0 }];
+    })).values())
+  ));
+  for (const name of ["apple", "pineapple", "heart", "star", "fish", "ten-frame", "ten-rod", "one-stick"]) {
+    expect(assets.find((asset) => asset.src?.endsWith(name + ".svg"))?.loaded).toBe(true);
+  }
+
   await page.emulateMedia({ media: "print" });
-  await page.waitForTimeout(500);
-
-  const overlaps = await page.locator(".math-worksheet-print-pack .math-worksheet-paper").evaluateAll((papers) => (
-    papers
-      .map((paper) => {
-        const footer = paper.querySelector(".math-worksheet-paper__footer");
-        const questions = paper.querySelectorAll(".math-worksheet-paper__question");
-        const lastQuestion = questions[questions.length - 1];
-
-        if (!footer || !lastQuestion) {
-          return null;
-        }
-
-        return lastQuestion.getBoundingClientRect().bottom > footer.getBoundingClientRect().top + 0.5
-          ? paper.getAttribute("data-day")
-          : null;
-      })
-      .filter((day): day is string => day !== null)
+  const metrics = await page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]").evaluateAll((papers) => (
+    papers.map((paper) => {
+      const rect = paper.getBoundingClientRect();
+      const footer = paper.querySelector("footer")?.getBoundingClientRect();
+      const questions = Array.from(paper.querySelectorAll("[data-testid=math-worksheet-question]"));
+      return {
+        width: rect.width,
+        height: rect.height,
+        overflow: (paper as HTMLElement).scrollHeight - (paper as HTMLElement).clientHeight,
+        questionOverflow: questions.some((question) => {
+          const questionRect = question.getBoundingClientRect();
+          return questionRect.left < rect.left - 0.5
+            || questionRect.right > rect.right + 0.5
+            || (footer ? questionRect.bottom > footer.top + 0.5 : false);
+        }),
+      };
+    })
   ));
 
-  expect(overlaps).toEqual([]);
+  expect(metrics).toHaveLength(35);
+  expect(metrics.every(({ width, height, overflow, questionOverflow }) => (
+    width >= 793 && width <= 795
+    && height >= 1122 && height <= 1124
+    && overflow <= 0
+    && !questionOverflow
+  ))).toBe(true);
 });

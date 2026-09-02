@@ -12,26 +12,31 @@ import {
   Target,
   TriangleAlert,
 } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { recordRecentTool } from "@/lib/recent-tools";
 import {
+  createWorksheetGuidance,
   generateDailyWorksheet,
   generateWorksheetPlan,
   MAX_WORKSHEET_QUESTIONS,
-  WORKSHEET_PHASES,
+  MENTAL_METHOD_LABELS,
   WORKSHEET_PLAN_DAYS,
   WORKSHEET_THEME_DESCRIPTIONS,
   WORKSHEET_THEME_LABELS,
   type DailyWorksheet,
   type MentalQuestion,
   type WorksheetDayOverrides,
+  type WorksheetGuidance,
+  type WorksheetIconKey,
+  type WorksheetPageSection,
   type WorksheetPlan,
+  type WorksheetPrintPage,
   type WorksheetQuestion,
 } from "@/lib/tools/math-worksheet";
 import type { ToolDefinition } from "@/lib/tools/registry";
 
+import styles from "./math-worksheet-workspace.module.css";
 import { PulseShell } from "./pulse-shell";
 
 type StatusTone = "idle" | "success" | "error";
@@ -42,13 +47,44 @@ interface StatusMessage {
   text: string;
 }
 
+interface MethodLesson {
+  question: MentalQuestion;
+  guidance: WorksheetGuidance;
+}
+
 const INITIAL_SEED = 20260831;
+
+const WORKSHEET_CHARACTERS = [
+  { name: "mario", src: "/math-worksheet/characters/mario.png" },
+  { name: "luigi", src: "/math-worksheet/characters/luigi.png" },
+  { name: "bowser-jr", src: "/math-worksheet/characters/bowser-jr.png" },
+  { name: "boo", src: "/math-worksheet/characters/boo.png" },
+] as const;
+
+const OBJECT_SOURCES: Record<WorksheetIconKey, string> = {
+  apple: "/math-worksheet/objects/apple.svg",
+  pineapple: "/math-worksheet/objects/pineapple.svg",
+  heart: "/math-worksheet/objects/heart.svg",
+  star: "/math-worksheet/objects/star.svg",
+  fish: "/math-worksheet/objects/fish.svg",
+};
+
+const ALL_OBJECT_ASSETS = [
+  ...Object.values(OBJECT_SOURCES),
+  "/math-worksheet/objects/ten-frame.svg",
+  "/math-worksheet/objects/ten-rod.svg",
+  "/math-worksheet/objects/one-stick.svg",
+] as const;
 
 const countFields: readonly { key: CountKey; label: string; inputLabel: string }[] = [
   { key: "neighborCount", label: "相邻数", inputLabel: "相邻数题数" },
   { key: "compareCount", label: "比大小", inputLabel: "比大小题数" },
   { key: "mentalCount", label: "口算", inputLabel: "口算题数" },
 ];
+
+function getWorksheetCharacter(day: number) {
+  return WORKSHEET_CHARACTERS[(Math.max(1, day) - 1) % WORKSHEET_CHARACTERS.length];
+}
 
 function getSectionCount(worksheet: DailyWorksheet, type: "neighbor" | "compare" | "mental"): number {
   return worksheet.sections.find((section) => section.type === type)?.questions.length ?? 0;
@@ -63,295 +99,294 @@ function getWorksheetOverrides(worksheet: DailyWorksheet): WorksheetDayOverrides
   };
 }
 
-function questionAriaLabel(question: WorksheetQuestion): string {
-  if (question.type === "neighbor") {
-    return "相邻数 " + question.left + " 待填写 " + question.right;
+function getMethodLesson(worksheet: DailyWorksheet): MethodLesson | undefined {
+  const mentalQuestions = worksheet.sections
+    .find((section) => section.type === "mental")?.questions
+    .filter((question): question is MentalQuestion => question.type === "mental" && question.third === undefined) ?? [];
+
+  for (const question of mentalQuestions) {
+    const guidance = createWorksheetGuidance(question, "apple");
+    if (guidance) {
+      return { question, guidance };
+    }
   }
 
-  if (question.type === "compare") {
-    return "比大小 " + question.left + " 待填写 " + question.right;
-  }
-
-  const expression = question.third === undefined
-    ? question.left + question.operator + question.right
-    : question.left + question.operator + question.right + (question.secondOperator ?? "") + question.third;
-
-  return "口算 " + expression + " 等于待填写";
+  return undefined;
 }
 
-function QuestionContent({ question }: { question: WorksheetQuestion }) {
-  if (question.type === "neighbor") {
+function ObjectSprite({ asset }: { asset: WorksheetIconKey }) {
+  return <img className={styles.objectSprite} src={OBJECT_SOURCES[asset]} alt="" draggable="false" />;
+}
+
+function CountGroup({ count, icon, compact = false }: { count: number; icon: WorksheetIconKey; compact?: boolean }) {
+  const safeCount = Math.max(0, Math.trunc(count));
+
+  if (safeCount <= 10) {
     return (
-      <>
-        <span>{question.left}</span>
-        <span className="math-worksheet-blank" aria-hidden="true" />
-        <span>{question.right}</span>
-      </>
+      <span className={styles.countGroup} data-compact={compact || undefined} aria-label={safeCount + " 个"}>
+        {Array.from({ length: safeCount }, (_, index) => <ObjectSprite asset={icon} key={index} />)}
+      </span>
     );
   }
 
-  if (question.type === "compare") {
-    return (
-      <>
-        <span>{question.left}</span>
-        <span className="math-worksheet-blank math-worksheet-blank--symbol" aria-hidden="true" />
-        <span>{question.right}</span>
-      </>
-    );
-  }
+  const tens = Math.floor(safeCount / 10);
+  const ones = safeCount % 10;
 
   return (
-    <>
-      <span>{question.left}</span>
-      <span>{question.operator}</span>
-      <span>{question.right}</span>
-      {question.third === undefined ? null : (
-        <>
-          <span>{question.secondOperator}</span>
-          <span>{question.third}</span>
-        </>
-      )}
-      <span>=</span>
-      <span className="math-worksheet-blank" aria-hidden="true" />
-    </>
+    <span className={styles.placeValueGroup} data-compact={compact || undefined} aria-label={tens + " 个十和 " + ones + " 个一"}>
+      <span className={styles.placeValueObjects} aria-hidden="true">
+        <span className={styles.placeValueTens}>
+          {Array.from({ length: tens }, (_, index) => (
+            <img src="/math-worksheet/objects/ten-rod.svg" alt="" key={"ten-" + index} />
+          ))}
+        </span>
+        <span className={styles.placeValueOnes}>
+          {Array.from({ length: ones }, (_, index) => (
+            <img src="/math-worksheet/objects/one-stick.svg" alt="" key={"one-" + index} />
+          ))}
+        </span>
+      </span>
+    </span>
   );
 }
 
-function getColumnGuideQuestion(worksheet: DailyWorksheet): MentalQuestion | undefined {
-  const mentalSection = worksheet.sections.find((section) => section.type === "mental");
-  const questions = mentalSection?.questions.filter(
-    (question): question is MentalQuestion => question.type === "mental" && question.level !== "basic",
-  ) ?? [];
-
-  if (worksheet.plan.threeNumberRatio > 0) {
-    return questions.find((question) => question.third !== undefined) ?? questions[0];
-  }
-
-  return questions[0];
+function AnswerLine({ symbol = false }: { symbol?: boolean }) {
+  return <span className={symbol ? styles.symbolBox : styles.answerLine} aria-hidden="true" />;
 }
 
-function ColumnMethodStack({
-  left,
-  operator,
-  right,
-  answer,
-}: {
-  left: number;
-  operator: "+" | "-";
-  right: number;
-  answer: number;
-}) {
+function MethodExample({ lesson }: { lesson: MethodLesson }) {
+  const { question, guidance } = lesson;
+
   return (
-    <div className="math-worksheet-column-guide__stack" aria-hidden="true">
-      <div className="math-worksheet-column-guide__row">
-        <span />
-        <strong>{left}</strong>
+    <section className={styles.methodExample} data-testid="worksheet-demo">
+      <header className={styles.methodTitle}>
+        <strong>{MENTAL_METHOD_LABELS[question.method]}</strong>
+        <span>{question.left} {question.operator} {question.right} = {question.answer}</span>
+      </header>
+      <div className={styles.methodVisual} aria-hidden="true">
+        <CountGroup count={question.left} icon={guidance.icon} compact />
+        <b>{question.operator}</b>
+        <CountGroup count={question.right} icon={guidance.icon} compact />
       </div>
-      <div className="math-worksheet-column-guide__row">
-        <span>{operator}</span>
-        <strong>{right}</strong>
+      <div className={styles.methodSplit}>
+        <span>拆</span>
+        <strong>{guidance.splitSource} = {guidance.split[0]} + {guidance.split[1]}</strong>
       </div>
-      <div className="math-worksheet-column-guide__rule" />
-      <div className="math-worksheet-column-guide__row math-worksheet-column-guide__answer">
-        <span />
-        <strong>{answer}</strong>
+      <div className={styles.methodSteps}>
+        {guidance.steps.map((step, index) => (
+          <span key={index}>
+            <em>{index === 0 ? "先" : "再"}</em>
+            <strong>{step.left} {step.operator} {step.right} = {step.answer}</strong>
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GuidedQuestion({ question }: { question: MentalQuestion }) {
+  const guidance = question.guidance;
+  if (!guidance) {
+    return null;
+  }
+
+  return (
+    <div className={styles.guidedQuestion} data-testid="math-worksheet-question" data-display="guided">
+      <div className={styles.guidedTopline}>
+        <span>{question.number}.</span>
+        <strong>{MENTAL_METHOD_LABELS[question.method]}</strong>
+      </div>
+      <div className={styles.guidedVisual} aria-hidden="true">
+        <CountGroup count={question.left} icon={guidance.icon} compact />
+        <b>{question.operator}</b>
+        <CountGroup count={question.right} icon={guidance.icon} compact />
+      </div>
+      <div className={styles.guidedEquation}>
+        <strong>{question.left} {question.operator} {question.right} =</strong>
+        <AnswerLine symbol />
+      </div>
+      <div className={styles.guidedSplit}>
+        <em>拆</em><b>{guidance.splitSource}</b><i>=</i><AnswerLine symbol /><i>+</i><AnswerLine symbol />
+      </div>
+      <div className={styles.guidedSteps}>
+        {guidance.steps.map((step, index) => (
+          <span key={index}>
+            <em>{index === 0 ? "先" : "再"}</em>
+            <b>{step.left}</b><i>{step.operator}</i><AnswerLine symbol /><i>=</i><AnswerLine symbol />
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
-function ColumnMethodGuide({ question, printCopy }: { question: MentalQuestion; printCopy: boolean }) {
-  const firstAnswer = question.operator === "+"
-    ? question.left + question.right
-    : question.left - question.right;
-  const isThreeNumber = question.third !== undefined;
+function NeighborQuestionView({ question }: { question: WorksheetQuestion }) {
+  if (question.type !== "neighbor") {
+    return null;
+  }
+
+  return (
+    <div className={styles.senseQuestion} data-testid="math-worksheet-question" data-type="neighbor">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <strong>{question.left}</strong>
+      <AnswerLine />
+      <strong>{question.right}</strong>
+    </div>
+  );
+}
+
+function CompareQuestionView({ question }: { question: WorksheetQuestion }) {
+  if (question.type !== "compare") {
+    return null;
+  }
+
+  return (
+    <div className={styles.senseQuestion} data-testid="math-worksheet-question" data-type="compare">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <strong>{question.left}</strong>
+      <AnswerLine symbol />
+      <strong>{question.right}</strong>
+    </div>
+  );
+}
+
+function NumberSenseSection({ section }: { section: WorksheetPageSection }) {
+  const neighbors = section.questions.filter((question) => question.type === "neighbor");
+  const compares = section.questions.filter((question) => question.type === "compare");
+
+  return (
+    <section className={styles.numberSenseSection} data-columns={section.columns} data-testid="worksheet-number-sense">
+      <div className={styles.senseColumn}>
+        <h3>相邻数</h3>
+        <div className={styles.senseGrid}>
+          {neighbors.map((question) => <NeighborQuestionView question={question} key={question.id} />)}
+        </div>
+      </div>
+      <div className={styles.senseColumn}>
+        <h3>比大小</h3>
+        <div className={styles.senseGrid}>
+          {compares.map((question) => <CompareQuestionView question={question} key={question.id} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MentalQuestionView({ question }: { question: WorksheetQuestion }) {
+  if (question.type !== "mental") {
+    return null;
+  }
 
   return (
     <div
-      className="math-worksheet-column-guide"
-      data-testid={printCopy ? undefined : "worksheet-column-guide"}
-      aria-label="竖式计算方法提示"
+      className={styles.mentalQuestion}
+      data-testid="math-worksheet-question"
+      data-type="mental"
+      data-level={question.level}
     >
-      <div className="math-worksheet-column-guide__copy">
-        <span>列式提示</span>
-        <strong>{question.third === undefined ? "相同数位对齐" : "连续两步列式"}</strong>
-        <small>
-          {isThreeNumber
-            ? "每一步相同数位对齐，先算前两项，再把得数带入第二步"
-            : "个位对齐个位，从个位开始计算"}
-        </small>
-      </div>
-      <div className="math-worksheet-column-guide__example">
-        <span>示范</span>
-        {isThreeNumber ? (
-          <div className="math-worksheet-column-guide__steps" aria-hidden="true">
-            <div className="math-worksheet-column-guide__step">
-              <span>第 1 步</span>
-              <ColumnMethodStack
-                left={question.left}
-                operator={question.operator}
-                right={question.right}
-                answer={firstAnswer}
-              />
-            </div>
-            <span className="math-worksheet-column-guide__then">再算</span>
-            <div className="math-worksheet-column-guide__step">
-              <span>第 2 步</span>
-              <ColumnMethodStack
-                left={firstAnswer}
-                operator={question.secondOperator ?? "+"}
-                right={question.third ?? 0}
-                answer={question.answer}
-              />
-            </div>
-          </div>
-        ) : (
-          <ColumnMethodStack
-            left={question.left}
-            operator={question.operator}
-            right={question.right}
-            answer={question.answer}
-          />
-        )}
-      </div>
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <span className={styles.expression}>
+        {question.left} {question.operator} {question.right}
+        {question.third === undefined ? "" : " " + question.secondOperator + " " + question.third} =
+      </span>
+      <AnswerLine />
     </div>
   );
 }
 
-function WorksheetPaper({ worksheet, printCopy = false }: { worksheet: DailyWorksheet; printCopy?: boolean }) {
-  let questionNumber = 0;
-  const paperTestId = printCopy ? undefined : "math-worksheet-paper";
-  const demoTestId = printCopy ? undefined : "worksheet-demo";
-  const demoTitleId = "worksheet-demo-title-" + worksheet.day + (printCopy ? "-print" : "");
-  const columnGuideQuestion = getColumnGuideQuestion(worksheet);
+function WorksheetPageSectionView({ section }: { section: WorksheetPageSection }) {
+  if (section.type === "guided") {
+    return (
+      <section className={styles.guidedSection} data-testid="worksheet-guided-section">
+        <h3>{section.title}</h3>
+        <div className={styles.guidedGrid}>
+          {section.questions.map((question) => question.type === "mental"
+            ? <GuidedQuestion question={question} key={question.id} />
+            : null)}
+        </div>
+      </section>
+    );
+  }
+
+  if (section.type === "number-sense") {
+    return <NumberSenseSection section={section} />;
+  }
+
+  return (
+    <section className={styles.mentalSection} data-columns={section.columns} data-testid="worksheet-mental-section">
+      {section.title ? <h3>{section.title}</h3> : null}
+      <div className={styles.mentalGrid}>
+        {section.questions.map((question) => <MentalQuestionView question={question} key={question.id} />)}
+      </div>
+    </section>
+  );
+}
+
+function WorksheetPaper({ worksheet, page, printCopy = false }: {
+  worksheet: DailyWorksheet;
+  page: WorksheetPrintPage;
+  printCopy?: boolean;
+}) {
+  const character = getWorksheetCharacter(worksheet.day);
+  const lesson = page.showMethod ? getMethodLesson(worksheet) : undefined;
 
   return (
     <article
-      className={"math-worksheet-paper" + (printCopy ? " math-worksheet-paper--print-copy" : "")}
-      data-testid={paperTestId}
+      className={styles.paper}
+      data-testid={printCopy ? undefined : "math-worksheet-paper"}
       data-day={worksheet.day}
-      aria-label={"第 " + worksheet.day + " 天 A4 数学练习题"}
+      data-page={page.pageNumber}
+      data-page-count={page.pageCount}
+      data-used-height={page.usedHeightMm}
+      data-print-copy={printCopy || undefined}
+      aria-label={`第 ${worksheet.day} 天数学练习第 ${page.pageNumber} 页`}
     >
-      <header className="math-worksheet-paper__header">
-        <div>
-          <span className="math-worksheet-paper__eyebrow">知页 · 30 天学习计划</span>
-          <h2>幼小数学练习</h2>
-          <p>第 {worksheet.day} 天 · {worksheet.title}</p>
+      <header className={styles.paperHeader}>
+        <div className={styles.paperTitle}>
+          <strong>第 {worksheet.day} 天</strong>
+          <h2>数学练习</h2>
         </div>
-        <div className="math-worksheet-paper__fields" aria-label="填写信息">
-          <span>姓名 <i aria-hidden="true" /></span>
-          <span>日期 <i aria-hidden="true" /></span>
-        </div>
+        <img className={styles.character} src={character.src} alt="" data-character={character.name} draggable="false" />
+        <div className={styles.dateField}>日期 <span aria-hidden="true" /></div>
       </header>
 
-      <div className="math-worksheet-paper__rule" aria-hidden="true" />
-
-      <section
-        className={"math-worksheet-demo" + (worksheet.demos.length === 1 ? " math-worksheet-demo--single" : "")}
-        data-testid={demoTestId}
-        aria-labelledby={demoTitleId}
-      >
-        <div className="math-worksheet-demo__lead">
-          <span>本日重点</span>
-          <strong id={demoTitleId}>{WORKSHEET_THEME_LABELS[worksheet.theme]}</strong>
-          <small>{WORKSHEET_THEME_DESCRIPTIONS[worksheet.theme]}</small>
-          <p>{worksheet.objective}</p>
-        </div>
-        <div className="math-worksheet-demo__examples">
-          {worksheet.demos.map((demo) => (
-            <div className="math-worksheet-demo__example" key={demo.title}>
-              <span>{demo.title}</span>
-              <strong>{demo.equation}</strong>
-              <small>{demo.note}</small>
-            </div>
-          ))}
-          {columnGuideQuestion ? (
-            <ColumnMethodGuide question={columnGuideQuestion} printCopy={printCopy} />
-          ) : null}
-        </div>
-      </section>
-
-      <div className="math-worksheet-paper__sections">
-        {worksheet.sections.map((section, sectionIndex) => {
-          const startNumber = questionNumber + 1;
-          questionNumber += section.questions.length;
-          const sectionId = "worksheet-section-" + worksheet.day + "-" + section.type + (printCopy ? "-print" : "");
-
-          return (
-            <section className="math-worksheet-paper__section" key={section.type} aria-labelledby={sectionId}>
-              <header>
-                <div>
-                  <span className="math-worksheet-paper__section-number">0{sectionIndex + 1}</span>
-                  <h3 id={sectionId}>{section.title}</h3>
-                </div>
-                <span>{section.questions.length} 题</span>
-              </header>
-              {section.questions.length > 0 ? (
-                <ol
-                  className={
-                    "math-worksheet-paper__questions"
-                    + (section.type === "mental" ? " math-worksheet-paper__questions--mental" : "")
-                  }
-                  start={startNumber}
-                >
-                  {section.questions.map((question, index) => (
-                    <li
-                      className={
-                        "math-worksheet-paper__question"
-                        + (question.type === "mental" && question.third !== undefined
-                          ? " math-worksheet-paper__question--three-number"
-                          : "")
-                      }
-                      data-testid={printCopy ? undefined : "math-worksheet-question"}
-                      data-method={!printCopy && question.type === "mental" ? question.method : undefined}
-                      data-level={!printCopy && question.type === "mental" ? question.level : undefined}
-                      aria-label={questionAriaLabel(question)}
-                      key={question.id}
-                    >
-                      <span className="math-worksheet-paper__question-number">{startNumber + index}.</span>
-                      <span className="math-worksheet-paper__question-content">
-                        <QuestionContent question={question} />
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="math-worksheet-paper__empty">本部分未分配题目</p>
-              )}
-            </section>
-          );
-        })}
+      <div className={styles.paperBody} data-testid={printCopy ? undefined : "worksheet-paper-body"}>
+        {lesson ? <MethodExample lesson={lesson} /> : null}
+        {page.sections.map((section, index) => (
+          <WorksheetPageSectionView section={section} key={`${section.type}-${index}`} />
+        ))}
       </div>
 
-      <footer className="math-worksheet-paper__footer">
-        <span>第 {worksheet.day} / {WORKSHEET_PLAN_DAYS} 天 · {worksheet.phaseTitle}</span>
-        <span>共 {worksheet.total} 题</span>
+      <footer className={styles.paperFooter} data-testid={printCopy ? undefined : "worksheet-paper-footer"}>
+        <span>第 {worksheet.day} / {WORKSHEET_PLAN_DAYS} 天</span>
+        <span>第 {page.pageNumber} / {page.pageCount} 页 · 本页 {page.questionCount} 题</span>
       </footer>
     </article>
   );
 }
 
 function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinition }) {
-  const reducedMotion = useReducedMotion();
   const seedRef = useRef(INITIAL_SEED);
   const [selectedDay, setSelectedDay] = useState(1);
+  const [previewPageIndex, setPreviewPageIndex] = useState(0);
   const [plan, setPlan] = useState<WorksheetPlan>(() => generateWorksheetPlan(INITIAL_SEED));
   const [status, setStatus] = useState<StatusMessage>({ tone: "idle", text: "30 天连续作业已准备好" });
   const selectedWorksheet = plan.days[selectedDay - 1] ?? plan.days[0];
+  const selectedPage = selectedWorksheet?.pages[previewPageIndex] ?? selectedWorksheet?.pages[0];
   const selectedTotal = selectedWorksheet?.total ?? 0;
-  const selectedCounts = selectedWorksheet
-    ? {
-        neighborCount: getSectionCount(selectedWorksheet, "neighbor"),
-        compareCount: getSectionCount(selectedWorksheet, "compare"),
-        mentalCount: getSectionCount(selectedWorksheet, "mental"),
-      }
-    : { neighborCount: 0, compareCount: 0, mentalCount: 0 };
+  const totalPages = plan.days.reduce((sum, worksheet) => sum + worksheet.pages.length, 0);
+  const selectedCounts = selectedWorksheet ? {
+    neighborCount: getSectionCount(selectedWorksheet, "neighbor"),
+    compareCount: getSectionCount(selectedWorksheet, "compare"),
+    mentalCount: getSectionCount(selectedWorksheet, "mental"),
+  } : { neighborCount: 0, compareCount: 0, mentalCount: 0 };
+
   useEffect(() => {
     recordRecentTool(definition.slug);
   }, [definition.slug]);
 
   const nextSeed = () => {
-    seedRef.current += 1;
+    seedRef.current += 7919;
     return seedRef.current;
   };
 
@@ -359,26 +394,21 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
     setPlan((previous) => {
       const current = previous.days[selectedDay - 1];
       const days = previous.days.map((day) => day.day === nextWorksheet.day ? nextWorksheet : day);
-
       return {
         ...previous,
         days,
         totalQuestions: previous.totalQuestions - (current?.total ?? 0) + nextWorksheet.total,
       };
     });
+    setPreviewPageIndex(0);
   };
 
   const rebuildSelectedDay = (overrides: WorksheetDayOverrides, text: string) => {
-    const nextWorksheet = generateDailyWorksheet(selectedDay, nextSeed(), overrides);
-    replaceSelectedDay(nextWorksheet);
+    replaceSelectedDay(generateDailyWorksheet(selectedDay, nextSeed(), overrides));
     setStatus({ tone: "success", text });
   };
 
   const updateCount = (key: CountKey, value: number) => {
-    if (!selectedWorksheet) {
-      return;
-    }
-
     const safeValue = Number.isFinite(value)
       ? Math.max(0, Math.min(MAX_WORKSHEET_QUESTIONS, Math.trunc(value)))
       : 0;
@@ -387,148 +417,101 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
       ...selectedCounts,
       [key]: Math.min(safeValue, MAX_WORKSHEET_QUESTIONS - otherTotal),
     };
-
     rebuildSelectedDay(
       { ...getWorksheetOverrides(selectedWorksheet), ...nextCounts },
-      "第 " + selectedDay + " 天题目数量已更新",
+      `第 ${selectedDay} 天题目数量已更新`,
     );
   };
 
   const regenerateDay = () => {
-    if (!selectedWorksheet || selectedTotal === 0) {
+    if (selectedTotal === 0) {
       setStatus({ tone: "error", text: "请至少保留 1 道题" });
       return;
     }
-
-    rebuildSelectedDay(getWorksheetOverrides(selectedWorksheet), "第 " + selectedDay + " 天已重新出题");
+    rebuildSelectedDay(getWorksheetOverrides(selectedWorksheet), `第 ${selectedDay} 天已重新出题`);
   };
 
   const regeneratePlan = () => {
     setPlan(generateWorksheetPlan(nextSeed()));
-    setStatus({ tone: "success", text: "30 天计划已重新生成，难度结构保持不变" });
+    setPreviewPageIndex(0);
+    setStatus({ tone: "success", text: "30 天计划已重新生成" });
   };
 
   const selectDay = (day: number) => {
     setSelectedDay(day);
-    setStatus({ tone: "idle", text: "正在查看第 " + day + " 天" });
+    setPreviewPageIndex(0);
+    setStatus({ tone: "idle", text: `正在查看第 ${day} 天` });
   };
 
   const reset = () => {
-    setSelectedDay(1);
-    setPlan(generateWorksheetPlan(INITIAL_SEED));
     seedRef.current = INITIAL_SEED;
+    setSelectedDay(1);
+    setPreviewPageIndex(0);
+    setPlan(generateWorksheetPlan(INITIAL_SEED));
     setStatus({ tone: "success", text: "已恢复默认 30 天计划" });
   };
 
   const printPlan = () => {
-    if (plan.days.length !== WORKSHEET_PLAN_DAYS || plan.totalQuestions === 0) {
-      setStatus({ tone: "error", text: "30 天计划还没有准备完成" });
-      return;
-    }
-
-    setStatus({ tone: "success", text: "已打开打印窗口，可选择保存为 30 页 PDF" });
+    setStatus({ tone: "success", text: `已打开打印窗口，共 ${totalPages} 页` });
     window.print();
   };
 
-  if (!selectedWorksheet) {
+  if (!selectedWorksheet || !selectedPage) {
     return null;
   }
 
   return (
-    <motion.section
-      className="pulse-workbench pulse-workbench--math-worksheet"
+    <section
+      className={`pulse-workbench ${styles.workbench}`}
       aria-labelledby="tool-title"
-      initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reducedMotion ? 0 : 0.4, ease: "easeOut" }}
     >
       <header className="pulse-workbench__header">
         <div>
           <div className="pulse-workbench__meta" aria-hidden="true">
-            <span>知页 / 工具</span>
-            <i />
-            <span>{definition.category}</span>
+            <span>知页 / 工具</span><i /><span>{definition.category}</span>
           </div>
           <h1 id="tool-title">{definition.seo.h1}</h1>
           <p>{definition.description}</p>
         </div>
       </header>
 
-      <section className="math-worksheet-layout" aria-label="30 天数学练习生成工作区">
-        <aside className="math-worksheet-settings" aria-label="30 天练习设置">
-          <header className="math-worksheet-settings__header">
-            <div>
-              <span>30 天连续作业</span>
-              <h2>第 {selectedDay} 天</h2>
-            </div>
-            <strong className={selectedTotal === MAX_WORKSHEET_QUESTIONS ? "is-complete" : ""}>
-              {selectedTotal}<small>/ {MAX_WORKSHEET_QUESTIONS} 题</small>
-            </strong>
+      <section className={styles.layout} aria-label="30 天数学练习生成工作区">
+        <aside className={styles.settings} aria-label="30 天练习设置">
+          <header className={styles.settingsHeader}>
+            <div><span>30 天连续作业</span><h2>第 {selectedDay} 天</h2></div>
+            <strong>{selectedTotal}<small>/ {MAX_WORKSHEET_QUESTIONS} 题</small></strong>
           </header>
 
-          <section className="math-worksheet-plan-overview" aria-label="计划概览">
-            <div>
-              <strong>{plan.totalDays}</strong>
-              <span>天计划</span>
-            </div>
-            <div>
-              <strong>{plan.totalQuestions}</strong>
-              <span>道总题</span>
-            </div>
-            <div>
-              <strong>{WORKSHEET_PHASES.length}</strong>
-              <span>个阶段</span>
-            </div>
-          </section>
+          <div className={styles.overview}>
+            <span><b>{plan.totalDays}</b> 天</span>
+            <span><b>{plan.totalQuestions}</b> 题</span>
+            <span><b>{totalPages}</b> 页</span>
+          </div>
 
-          <nav className="math-worksheet-day-nav" aria-label="30 天学习计划">
-            <header className="math-worksheet-day-nav__header">
-              <div>
-                <CalendarDays aria-hidden="true" size={16} strokeWidth={1.8} />
-                <span>阶段导航</span>
-              </div>
-              <small>点击查看当天</small>
-            </header>
-            <div className="math-worksheet-day-nav__list">
-              {WORKSHEET_PHASES.map((phase) => (
-                <section className="math-worksheet-day-nav__phase" key={phase.number}>
-                  <header>
-                    <span>阶段 {phase.number}</span>
-                    <strong>{phase.title}</strong>
-                    <small>{phase.startDay}-{phase.endDay} 天</small>
-                  </header>
-                  <div className="math-worksheet-day-nav__days">
-                    {phase.days.map((dayBlueprint, index) => {
-                      const day = phase.startDay + index;
-                      const currentDay = plan.days[day - 1];
-
-                      return (
-                        <button
-                          type="button"
-                          className={day === selectedDay ? "is-current" : ""}
-                          key={day}
-                          aria-label={"第 " + day + " 天：" + dayBlueprint.title}
-                          aria-pressed={day === selectedDay}
-                          onClick={() => selectDay(day)}
-                          data-testid={"worksheet-day-" + day}
-                        >
-                          <strong>{String(day).padStart(2, "0")}</strong>
-                          <span>{currentDay?.theme ? WORKSHEET_THEME_LABELS[currentDay.theme] : "练习"}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
+          <nav className={styles.dayNav} aria-label="30 天学习计划">
+            <header><CalendarDays aria-hidden="true" size={16} /><span>选择日期</span></header>
+            <div className={styles.dayGrid}>
+              {plan.days.map((day) => (
+                <button
+                  type="button"
+                  className={day.day === selectedDay ? styles.currentDay : ""}
+                  aria-label={`第 ${day.day} 天：${day.title}`}
+                  aria-pressed={day.day === selectedDay}
+                  onClick={() => selectDay(day.day)}
+                  data-testid={`worksheet-day-${day.day}`}
+                  key={day.day}
+                >
+                  {day.day}
+                </button>
               ))}
             </div>
           </nav>
 
-          <section className="math-worksheet-settings__group" aria-labelledby="worksheet-count-title">
-            <div className="math-worksheet-settings__label">
-              <span id="worksheet-count-title">第 {selectedDay} 天题型数量</span>
-              <small>总量上限 30 题</small>
+          <section className={styles.settingGroup} aria-labelledby="worksheet-count-title">
+            <div className={styles.settingLabel}>
+              <span id="worksheet-count-title">当天题量</span><small>总量上限 30 题</small>
             </div>
-            <div className="math-worksheet-counts">
+            <div className={styles.counts}>
               {countFields.map((field) => (
                 <label key={field.key}>
                   <span>{field.label}</span>
@@ -546,79 +529,70 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: ToolDefinit
             </div>
           </section>
 
-          <section className="math-worksheet-settings__group" aria-labelledby="worksheet-theme-title">
-            <div className="math-worksheet-settings__label">
-              <span id="worksheet-theme-title">本日主题</span>
-              <small>按 30 天计划安排</small>
-            </div>
-            <div className="math-worksheet-theme-current" data-testid="worksheet-theme">
-              <span>计划主题</span>
+          <section className={styles.settingGroup}>
+            <div className={styles.settingLabel}><span>本日主题</span><small>按计划安排</small></div>
+            <div className={styles.theme} data-testid="worksheet-theme">
               <strong>{WORKSHEET_THEME_LABELS[selectedWorksheet.theme]}</strong>
-              <small>{WORKSHEET_THEME_DESCRIPTIONS[selectedWorksheet.theme]}</small>
+              <span>{WORKSHEET_THEME_DESCRIPTIONS[selectedWorksheet.theme]}</span>
             </div>
-            <p className="math-worksheet-level-note">
-              当天口算结果上限 {selectedWorksheet.plan.mentalMax}；
-              {selectedWorksheet.plan.threeNumberRatio > 0
-                ? "已加入三个数加减混合"
-                : selectedWorksheet.plan.binaryTwoDigitRatio > 0
-                  ? "逐步加入两位数题"
-                  : "先巩固 20 以内基础"}
-            </p>
           </section>
 
-          <div className="math-worksheet-actions">
-            <button className="math-worksheet-button math-worksheet-button--primary" type="button" onClick={regeneratePlan}>
-              <Dices aria-hidden="true" size={17} strokeWidth={1.8} />
-              重新生成计划
-            </button>
-            <button className="math-worksheet-button math-worksheet-button--print" type="button" onClick={printPlan}>
-              <Printer aria-hidden="true" size={17} strokeWidth={1.8} />
-              导出 30 天 PDF
-            </button>
-            <button className="math-worksheet-button math-worksheet-button--secondary" type="button" onClick={regenerateDay} disabled={selectedTotal === 0}>
-              <ClipboardList aria-hidden="true" size={16} strokeWidth={1.8} />
-              本日换一套
-            </button>
-            <button className="math-worksheet-button math-worksheet-button--quiet" type="button" onClick={reset}>
-              <RotateCcw aria-hidden="true" size={16} strokeWidth={1.8} />
-              恢复默认
-            </button>
+          <div className={styles.actions}>
+            <button type="button" className={styles.primaryButton} onClick={regeneratePlan}><Dices size={17} />重新生成计划</button>
+            <button type="button" className={styles.printButton} onClick={printPlan}><Printer size={17} />导出 30 天 PDF</button>
+            <button type="button" onClick={regenerateDay}><ClipboardList size={16} />本日换一套</button>
+            <button type="button" onClick={reset}><RotateCcw size={16} />恢复默认</button>
           </div>
 
-          <div className={"math-worksheet-status math-worksheet-status--" + status.tone} role="status" aria-live="polite">
-            {status.tone === "success" ? <Check aria-hidden="true" size={15} strokeWidth={2} /> : null}
-            {status.tone === "error" ? <TriangleAlert aria-hidden="true" size={15} strokeWidth={1.8} /> : null}
+          <div className={styles.status} data-tone={status.tone} role="status" aria-live="polite">
+            {status.tone === "success" ? <Check size={15} /> : null}
+            {status.tone === "error" ? <TriangleAlert size={15} /> : null}
             <span>{status.text}</span>
           </div>
-          <p className="math-worksheet-local"><ShieldCheck aria-hidden="true" size={15} />题目在浏览器本地生成</p>
+          <p className={styles.local}><ShieldCheck size={15} />题目在浏览器本地生成</p>
+          <p className={styles.printSummary} data-testid="worksheet-print-summary">30 天 / {totalPages} 页，可按需双面打印</p>
         </aside>
 
-        <section className="math-worksheet-preview" aria-label="当天 A4 版面预览">
-          <header className="math-worksheet-preview__toolbar">
-            <div>
-              <Calculator aria-hidden="true" size={17} strokeWidth={1.7} />
-              <span>第 {selectedDay} 天 · A4 竖版预览</span>
-            </div>
-            <span>{selectedWorksheet.phaseTitle} · {selectedTotal} 题</span>
+        <section className={styles.preview} aria-label="当天 A4 版面预览">
+          <header className={styles.previewToolbar}>
+            <div><Calculator size={17} /><span>第 {selectedDay} 天 · A4 预览</span></div>
+            {selectedWorksheet.pages.length > 1 ? (
+              <div className={styles.pageTabs} role="tablist" aria-label="选择预览页">
+                {selectedWorksheet.pages.map((page, index) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={previewPageIndex === index}
+                    className={previewPageIndex === index ? styles.currentTab : ""}
+                    onClick={() => setPreviewPageIndex(index)}
+                    key={page.pageNumber}
+                  >
+                    第 {page.pageNumber} 页
+                  </button>
+                ))}
+              </div>
+            ) : <span className={styles.singlePage}>共 1 页</span>}
           </header>
-          <div className="math-worksheet-preview__context" data-testid="worksheet-day-summary">
-            <div>
-              <span><Target aria-hidden="true" size={14} strokeWidth={1.8} />今日目标</span>
-              <strong>{selectedWorksheet.title}</strong>
-            </div>
+          <div className={styles.daySummary} data-testid="worksheet-day-summary">
+            <span><Target size={14} />今日目标</span>
+            <strong>{selectedWorksheet.title}</strong>
             <p>{selectedWorksheet.objective}</p>
-            <small>{selectedWorksheet.phaseSummary}</small>
           </div>
-          <WorksheetPaper worksheet={selectedWorksheet} />
+          <div className={styles.previewCanvas}>
+            <WorksheetPaper worksheet={selectedWorksheet} page={selectedPage} />
+          </div>
         </section>
       </section>
 
-      <div className="math-worksheet-print-pack" aria-label="30 天打印内容">
-        {plan.days.map((day) => (
-          <WorksheetPaper key={day.day} worksheet={day} printCopy />
-        ))}
+      <div className={styles.printPack} data-testid="worksheet-print-pack" aria-label="30 天打印内容">
+        {plan.days.flatMap((day) => day.pages.map((page) => (
+          <WorksheetPaper worksheet={day} page={page} printCopy key={`${day.day}-${page.pageNumber}`} />
+        )))}
       </div>
-    </motion.section>
+      <div className={styles.assetPreload} aria-hidden="true">
+        {ALL_OBJECT_ASSETS.map((src) => <img src={src} alt="" key={src} />)}
+      </div>
+    </section>
   );
 }
 
