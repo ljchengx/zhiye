@@ -28,7 +28,7 @@ test("首页作为产品介绍页，并可进入独立工作台", async ({ page 
 test("主站与通用工作台不暴露启蒙产品线", async ({ page }) => {
   for (const path of ["/", "/tools"]) {
     await page.goto(path);
-    await expect(page.getByText("知页启蒙", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("一程一成长", { exact: true })).toHaveCount(0);
     await expect(page.getByText("幼小数学练习", { exact: true })).toHaveCount(0);
     await expect(page.locator('a[href="/kids"]')).toHaveCount(0);
     await expect(page.locator('a[href="/kids/math-worksheet"]')).toHaveCount(0);
@@ -337,15 +337,16 @@ test("旧数学地址永久跳转到启蒙工具地址", async ({ request }) => 
   expect(response.headers().location).toBe("/kids/math-worksheet");
 });
 
-test("知页启蒙主页只展示真实工具并提供独立入口", async ({ page }) => {
+test("一程一成长主页只展示真实工具并提供独立入口", async ({ page }) => {
   await page.goto("/kids");
 
-  await expect(page).toHaveTitle("知页启蒙 - 把每天一点练习，变成看得见的进步");
-  await expect(page.getByRole("heading", { name: "知页启蒙", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("一程一成长 - 陪孩子走好成长的每一步");
+  await expect(page.getByRole("heading", { name: "陪孩子走好成长的每一步", level: 1 })).toBeVisible();
   await expect(page.getByText("1 个可用工具", { exact: true })).toBeVisible();
+  await expect(page.getByAltText("一程一成长微信公众号二维码")).toBeVisible();
   await expect(page.getByRole("link", { name: "开始使用" })).toHaveAttribute("href", "/kids/math-worksheet");
   await expect(page.getByText("敬请期待", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "知页启蒙首页" })).toHaveAttribute("href", "/kids");
+  await expect(page.getByRole("link", { name: "一程一成长首页" })).toHaveAttribute("href", "/kids");
 
   const structuredData = await page.locator('script[type="application/ld+json"]').textContent();
   expect(structuredData).toContain("https://www.yzfl.top/kids/math-worksheet");

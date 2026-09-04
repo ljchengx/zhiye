@@ -20,7 +20,7 @@
 }
 
 .heroCopy {
-  max-width: 540px;
+  max-width: 640px;
 }
 
 .eyebrow,
@@ -44,27 +44,10 @@
 .hero h1 {
   margin: 17px 0 0;
   color: var(--kids-ink);
-  font-size: 58px;
+  font-size: 54px;
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.08;
-}
-
-.heroLead {
-  max-width: 420px;
-  margin: 20px 0 0;
-  color: var(--kids-ink);
-  font-size: 25px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.heroNote {
-  max-width: 390px;
-  margin: 12px 0 0;
-  color: var(--kids-muted);
-  font-size: 14px;
-  line-height: 1.8;
 }
 
 .heroActions {
@@ -73,6 +56,85 @@
   align-items: center;
   gap: 12px 20px;
   margin-top: 28px;
+}
+
+.heroPath {
+  max-width: 600px;
+  margin-top: 42px;
+  padding-top: 16px;
+  border-top: 1px solid var(--kids-line);
+}
+
+.heroPathHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--kids-muted);
+  font-size: 11px;
+}
+
+.heroPathHeader strong {
+  color: var(--kids-ink);
+  font-size: 12px;
+}
+
+.heroPathSteps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.heroPathSteps::before {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 12px;
+  border-top: 1px dashed var(--kids-line);
+  content: "";
+}
+
+.heroPathStep {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.heroPathMarker {
+  display: grid;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--kids-ink);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 0 1px var(--kids-line);
+}
+
+.heroPathStep[data-accent="green"] .heroPathMarker {
+  background: var(--kids-green);
+}
+
+.heroPathStep[data-accent="coral"] .heroPathMarker {
+  background: var(--kids-coral);
+}
+
+.heroPathStep[data-accent="blue"] .heroPathMarker {
+  background: var(--kids-blue);
+}
+
+.heroPathStep strong {
+  color: var(--kids-ink);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .primaryAction,
@@ -114,6 +176,9 @@
   align-self: center;
   justify-self: end;
   width: min(100%, 340px);
+  padding: 18px 18px 15px;
+  border-top: 2px solid var(--kids-coral);
+  background: #fff8f3;
 }
 
 .sheetFrame {
@@ -138,7 +203,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 16px;
   color: var(--kids-muted);
   font-size: 11px;
 }
@@ -167,6 +232,14 @@
   font-size: 28px;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.sectionDescription {
+  max-width: 720px;
+  margin: 12px 0 0;
+  color: var(--kids-muted);
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 .sectionHeader > span {
@@ -362,25 +435,65 @@
 }
 
 .footer {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 28px;
   min-height: 76px;
   margin-top: 46px;
-  padding: 0 clamp(4px, 2vw, 28px);
+  padding: 16px clamp(4px, 2vw, 28px);
   border-top: 1px solid var(--kids-line);
   color: var(--kids-muted);
   font-size: 11px;
 }
 
-.footer strong {
+.footerMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 20px;
+}
+
+.footerMeta strong {
   color: var(--kids-ink);
   font-size: 15px;
 }
 
-.footer small {
-  justify-self: end;
+.footerMeta small {
+  color: var(--kids-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.wechat {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.wechatCopy {
+  display: grid;
+  gap: 5px;
+  text-align: right;
+}
+
+.wechatCopy strong {
+  font-size: 13px;
+}
+
+.wechatCopy span {
+  color: var(--kids-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.wechat img {
+  display: block;
+  width: 104px;
+  height: 104px;
+  object-fit: cover;
+  border: 1px solid var(--kids-line);
 }
 
 @media (max-width: 900px) {
@@ -419,23 +532,19 @@
     font-size: 42px;
   }
 
-  .heroLead {
-    margin-top: 14px;
-    font-size: 21px;
-  }
-
-  .heroNote {
-    font-size: 13px;
-  }
-
   .heroActions {
     margin-top: 22px;
+  }
+
+  .heroPath {
+    margin-top: 32px;
   }
 
   .heroSheet {
     align-self: center;
     width: min(218px, 70vw);
     margin-right: 8px;
+    padding: 12px 12px 10px;
   }
 
   .sheetFrame {
@@ -546,16 +655,37 @@
   }
 
   .footer {
-    grid-template-columns: 1fr auto;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px 16px;
     margin-top: 34px;
-    padding-inline: 0;
+    padding: 16px 0 20px;
   }
 
-  .footer small {
+  .footerMeta {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 16px;
+  }
+
+  .footerMeta small {
     grid-column: 1 / -1;
-    grid-row: 2;
     justify-self: start;
+  }
+
+  .wechat {
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid var(--kids-line);
+  }
+
+  .wechatCopy {
+    text-align: left;
+  }
+
+  .wechat img {
+    width: 112px;
+    height: 112px;
   }
 }
 

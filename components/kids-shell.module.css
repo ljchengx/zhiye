@@ -34,15 +34,19 @@
 }
 
 .brandMark {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 8px 8px 8px 2px;
-  background: var(--kids-coral);
-  color: #fff;
-  font-size: 17px;
-  font-weight: 700;
+  display: block;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.brandMark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.55);
 }
 
 .brand > span:last-child {

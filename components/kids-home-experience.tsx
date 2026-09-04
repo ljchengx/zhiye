@@ -29,6 +29,12 @@ const learningPrinciples = [
   },
 ] as const;
 
+const heroSteps = [
+  { marker: "01", label: "看见起点", accent: "green" },
+  { marker: "02", label: "每天练习", accent: "coral" },
+  { marker: "03", label: "留下变化", accent: "blue" },
+] as const;
+
 function toolGridClass(count: number) {
   if (count === 1) {
     return styles.toolGridSingle;
@@ -47,10 +53,8 @@ export function KidsHomeExperience() {
       <div className={styles.page}>
         <section className={styles.hero} aria-labelledby="kids-home-title">
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>给孩子的每天一页</p>
-            <h1 id="kids-home-title">知页启蒙</h1>
-            <p className={styles.heroLead}>把每天一点练习，变成看得见的进步</p>
-            <p className={styles.heroNote}>为 4～7 岁孩子准备的轻量学习工具，家长选择，孩子动手。</p>
+            <p className={styles.eyebrow}>给孩子的每天一步</p>
+            <h1 id="kids-home-title">陪孩子走好成长的每一步</h1>
             <div className={styles.heroActions}>
               <a className={styles.primaryAction} href="#tools">
                 看看有哪些工具
@@ -62,6 +66,20 @@ export function KidsHomeExperience() {
                   <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />
                 </Link>
               ) : null}
+            </div>
+            <div className={styles.heroPath} aria-label="每日成长路径">
+              <div className={styles.heroPathHeader}>
+                <span>每天的成长节奏</span>
+                <strong>一小步，也算数</strong>
+              </div>
+              <div className={styles.heroPathSteps}>
+                {heroSteps.map(({ marker, label, accent }) => (
+                  <div className={styles.heroPathStep} data-accent={accent} key={marker}>
+                    <span className={styles.heroPathMarker}>{marker}</span>
+                    <strong>{label}</strong>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -81,8 +99,9 @@ export function KidsHomeExperience() {
         <section className={styles.toolsSection} id="tools" aria-labelledby="kids-tools-title">
           <header className={styles.sectionHeader}>
             <div>
-              <p className={styles.sectionKicker}>启蒙工具</p>
-              <h2 id="kids-tools-title">现在，就从一张练习单开始。</h2>
+              <p className={styles.sectionKicker}>产品介绍</p>
+              <h2 id="kids-tools-title">成长不必一蹴而就</h2>
+              <p className={styles.sectionDescription}>我们把复杂的学习目标，拆成孩子每天都能完成的一小步。少一点压力，多一点尝试；少一点比较，多一点看见。</p>
             </div>
             <span>{kidsToolDefinitions.length} 个可用工具</span>
           </header>
@@ -119,8 +138,9 @@ export function KidsHomeExperience() {
         <section className={styles.approach} id="approach" aria-labelledby="kids-approach-title">
           <header className={styles.sectionHeader}>
             <div>
-              <p className={styles.sectionKicker}>学习方式</p>
-              <h2 id="kids-approach-title">把练习放进每天的节奏里。</h2>
+              <p className={styles.sectionKicker}>家长价值</p>
+              <h2 id="kids-approach-title">不只看结果，更看见孩子正在发生的变化。</h2>
+              <p className={styles.sectionDescription}>为 4—7 岁孩子准备的轻量学习工具。把每天一点练习，变成孩子看得见、家长感受得到的成长。</p>
             </div>
           </header>
           <div className={styles.principleGrid}>
@@ -135,9 +155,18 @@ export function KidsHomeExperience() {
         </section>
 
         <footer className={styles.footer}>
-          <strong>知页启蒙</strong>
-          <span>当前有 {kidsToolDefinitions.length} 个工具</span>
-          <small>本地生成 · 为每天的练习留一页</small>
+          <div className={styles.footerMeta}>
+            <strong>一程一成长</strong>
+            <span>当前有 {kidsToolDefinitions.length} 个工具</span>
+            <small>本地生成 · 为每天的练习留一页</small>
+          </div>
+          <div className={styles.wechat}>
+            <div className={styles.wechatCopy}>
+              <strong>关注公众号</strong>
+              <span>扫码获取更多成长内容</span>
+            </div>
+            <img src="/kids/wechat-qrcode.jpg" alt="一程一成长微信公众号二维码" loading="lazy" />
+          </div>
         </footer>
       </div>
     </KidsShell>

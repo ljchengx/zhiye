@@ -24,15 +24,17 @@ export function KidsShell({ activeTool, children }: KidsShellProps) {
   return (
     <div className={`${styles.shell} kids-shell`}>
       <header className={styles.header}>
-        <Link className={styles.brand} href="/kids" onClick={closeNavigation} aria-label="知页启蒙首页">
-          <span className={styles.brandMark} aria-hidden="true">知</span>
+        <Link className={styles.brand} href="/kids" onClick={closeNavigation} aria-label="一程一成长首页">
+          <span className={styles.brandMark} aria-hidden="true">
+            <img src="/kids/logo.webp" alt="" />
+          </span>
           <span>
-            <strong>知页启蒙</strong>
+            <strong>一程一成长</strong>
             <small>每天一点，慢慢会</small>
           </span>
         </Link>
 
-        <nav className={styles.nav} aria-label="知页启蒙导航">
+        <nav className={styles.nav} aria-label="一程一成长导航">
           <Link href="/kids#tools" onClick={closeNavigation}>全部启蒙工具</Link>
           <Link href="/kids#approach" onClick={closeNavigation}>学习方式</Link>
         </nav>

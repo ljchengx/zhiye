@@ -9,10 +9,10 @@ export function getKidsToolMetadata(tool: KidsToolDefinition): Metadata {
 
   return {
     title: {
-      absolute: `${tool.metadata.title} | 知页启蒙`,
+      absolute: `${tool.metadata.title} | 一程一成长`,
     },
     description: tool.metadata.description,
-    keywords: [...tool.keywords, tool.title, "知页启蒙", "幼小阶段"],
+    keywords: [...tool.keywords, tool.title, "一程一成长", "幼小阶段"],
     alternates: {
       canonical: canonicalPath,
     },
@@ -20,14 +20,14 @@ export function getKidsToolMetadata(tool: KidsToolDefinition): Metadata {
       type: "website",
       locale: "zh_CN",
       url: canonicalPath,
-      siteName: "知页启蒙",
-      title: `${tool.metadata.title} | 知页启蒙`,
+      siteName: "一程一成长",
+      title: `${tool.metadata.title} | 一程一成长`,
       description: tool.metadata.description,
       images: ["/kids/opengraph-image"],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${tool.metadata.title} | 知页启蒙`,
+      title: `${tool.metadata.title} | 一程一成长`,
       description: tool.metadata.description,
       images: ["/kids/opengraph-image"],
     },
@@ -40,7 +40,7 @@ export function KidsToolPageContent({ definition }: { definition: KidsToolDefini
       definition={definition}
       relatedTools={kidsToolDefinitions}
       pagePath={getKidsToolHref(definition)}
-      productName="知页启蒙"
+      productName="一程一成长"
       productPath="/kids"
       applicationCategory="EducationalApplication"
     />

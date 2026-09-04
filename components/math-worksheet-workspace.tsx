@@ -362,7 +362,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
   if (!selectedWorksheet || !selectedPage) return null;
   return (
     <section className={`pulse-workbench ${styles.workbench}`} aria-labelledby="tool-title">
-      <header className="pulse-workbench__header"><div><div className="pulse-workbench__meta" aria-hidden="true"><span>知页启蒙 / 工具</span><i /><span>{definition.category}</span></div><h1 id="tool-title">{definition.seo.h1}</h1><p>{definition.description}</p></div></header>
+      <header className="pulse-workbench__header"><div><div className="pulse-workbench__meta" aria-hidden="true"><span>一程一成长 / 工具</span><i /><span>{definition.category}</span></div><h1 id="tool-title">{definition.seo.h1}</h1><p>{definition.description}</p></div></header>
       <section className={styles.layout} aria-label="幼小数学练习生成工作区">
         <aside className={styles.settings} aria-label="数学练习设置">
           <header className={styles.settingsHeader}><div><span>一个月学习计划</span><h2>{selectedWorksheet.stage === "foundation" ? `基础 ${selectedWorksheet.stageDay}` : `强化 ${selectedWorksheet.stageDay}`}</h2></div><strong>{selectedWorksheet.total}<small>题</small></strong></header>

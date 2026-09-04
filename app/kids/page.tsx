@@ -3,15 +3,15 @@ import type { Metadata } from "next";
 import { KidsHomeExperience } from "@/components/kids-home-experience";
 import { kidsToolDefinitions } from "@/lib/tools/kids-registry";
 
-const title = "知页启蒙 - 把每天一点练习，变成看得见的进步";
-const description = "知页启蒙为 4～7 岁孩子准备轻量、递进、方便打印的学习工具，从每天一张数学练习单开始。";
+const title = "一程一成长 - 陪孩子走好成长的每一步";
+const description = "一程一成长为 4—7 岁孩子准备轻量学习工具，把每天一点练习，变成孩子看得见、家长感受得到的成长。";
 
 export const metadata: Metadata = {
   title: {
     absolute: title,
   },
   description,
-  keywords: ["知页启蒙", "幼小工具", "儿童学习工具", "幼小数学", "数学练习打印"],
+  keywords: ["一程一成长", "幼小工具", "儿童学习工具", "幼小数学", "数学练习打印"],
   alternates: {
     canonical: "/kids",
   },
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "zh_CN",
     url: "/kids",
-    siteName: "知页启蒙",
+    siteName: "一程一成长",
     title,
     description,
     images: [
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
         url: "/kids/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "知页启蒙",
+        alt: "一程一成长",
       },
     ],
   },
@@ -46,14 +46,14 @@ const structuredData = {
       "@type": "WebSite",
       "@id": "https://www.yzfl.top/kids#website",
       url: "https://www.yzfl.top/kids",
-      name: "知页启蒙",
+      name: "一程一成长",
       description,
       inLanguage: "zh-CN",
     },
     {
       "@type": "ItemList",
       "@id": "https://www.yzfl.top/kids#tools",
-      name: "知页启蒙工具",
+      name: "一程一成长工具",
       numberOfItems: kidsToolDefinitions.length,
       itemListElement: kidsToolDefinitions.map((tool, index) => ({
         "@type": "ListItem",
