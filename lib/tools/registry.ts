@@ -2,7 +2,7 @@ export type ToolSlug = "base64" | "json-formatter" | "markdown-cleaner" | "image
 
 export type ToolPath = "base64" | "json" | "markdown" | "image-watermark" | "timestamp";
 
-export type ToolIconName = "binary" | "braces" | "eraser" | "stamp" | "clock" | "calculator";
+export type ToolIconName = "binary" | "braces" | "eraser" | "stamp" | "clock" | "calculator" | "languages";
 
 export type ToolAccent = "amber" | "sage" | "clay";
 

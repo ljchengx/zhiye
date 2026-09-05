@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { MathWorksheetWorkspace } from "@/components/math-worksheet-workspace";
+import { PinyinWorksheetWorkspace } from "@/components/pinyin-worksheet-workspace";
 import { ToolSeoContent } from "@/components/tool-seo-content";
 import { kidsToolDefinitions, getKidsToolHref, type KidsToolDefinition } from "@/lib/tools/kids-registry";
 
@@ -48,6 +49,10 @@ export function KidsToolPageContent({ definition }: { definition: KidsToolDefini
 
   if (definition.component === "math-worksheet") {
     return <MathWorksheetWorkspace definition={definition} seoContent={seoContent} />;
+  }
+
+  if (definition.component === "pinyin-worksheet") {
+    return <PinyinWorksheetWorkspace definition={definition} seoContent={seoContent} />;
   }
 
   return null;

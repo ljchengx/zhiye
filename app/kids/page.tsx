@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     absolute: title,
   },
   description,
-  keywords: ["一程一成长", "幼小工具", "儿童学习工具", "幼小数学", "数学练习打印"],
+  keywords: ["一程一成长", "幼小工具", "儿童学习工具", "幼小数学", "数学练习打印", "幼小拼音", "拼音描红", "拼音练习纸", "四线三格"],
   alternates: {
     canonical: "/kids",
   },

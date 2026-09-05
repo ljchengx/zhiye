@@ -1,7 +1,7 @@
 import type { ToolDefinitionBase } from "./registry";
 
-export type KidsToolSlug = "math-worksheet";
-export type KidsToolPath = "math-worksheet";
+export type KidsToolSlug = "math-worksheet" | "pinyin-worksheet";
+export type KidsToolPath = "math-worksheet" | "pinyin-worksheet";
 
 export interface KidsToolDefinition extends ToolDefinitionBase<KidsToolSlug, KidsToolPath> {
   href: `/kids/${KidsToolPath}`;
@@ -102,6 +102,98 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
         {
           question: "如何把练习保存成 PDF？",
           answer: "点击工具中的“导出 PDF”打开浏览器打印窗口，然后选择“另存为 PDF”或系统提供的 PDF 打印机即可。",
+        },
+      ],
+    },
+  },
+  {
+    slug: "pinyin-worksheet",
+    path: "pinyin-worksheet",
+    href: "/kids/pinyin-worksheet",
+    component: "pinyin-worksheet",
+    title: "幼小拼音练习",
+    titleEn: "Early Pinyin Worksheet",
+    shortTitle: "拼音练习",
+    shortTitleEn: "Pinyin Worksheet",
+    summary: "从一个声母、韵母或整体认读开始，生成轻量的四线三格 A4 拼音练习纸。",
+    description: "每天练一个拼音项目，描红、拼读和看图选择都在浏览器本地完成。",
+    descriptionEn: "A gentle local worksheet maker for daily pinyin practice.",
+    category: "启蒙拼音",
+    categoryEn: "Early pinyin",
+    keywords: [
+      "幼小拼音练习",
+      "拼音描红",
+      "四线三格",
+      "拼音练习纸",
+      "声母练习",
+      "韵母练习",
+      "整体认读音节",
+      "看图选音节",
+      "A4 拼音打印",
+    ],
+    icon: "languages",
+    accent: "sage",
+    stage: "4～7 岁",
+    skillAreas: ["声母韵母", "四线三格", "两拼三拼", "看图认读"],
+    previewImage: "/kids/pinyin-worksheet-preview.png",
+    order: 2,
+    metadata: {
+      title: "幼小拼音练习纸生成器 - 四线三格 A4 打印",
+      description: "为 4～7 岁孩子生成声母、韵母和整体认读音节练习纸，包含四线三格描红、两拼三拼、看图选音节与本地完成记录。",
+    },
+    seo: {
+      heading: "幼小拼音练习在线生成与 A4 打印",
+      summary: "每天选择一个拼音项目，生成描红、拼读和看图认读练习纸。",
+      intro: "一程一成长拼音练习适合 4～7 岁孩子的家庭启蒙练习。家长可以从声母、韵母或整体认读音节中选择一个项目，在当前浏览器生成适合 A4 打印的练习页。",
+      features: [
+        "标准拼音表：覆盖 23 个声母、24 个韵母和 16 个整体认读音节。",
+        "四线三格描红：浅灰示范字配合空白格，练习纸笔书写。",
+        "拼读与认读：按项目生成两拼、三拼或整体认读练习。",
+        "看图选音节：用原创风格实物图增加一点趣味。",
+        "本地记录：完成进度只保存在当前浏览器，不需要账号。",
+      ],
+      steps: [
+        "选择一个声母、韵母或整体认读音节，也可以使用今日推荐。",
+        "调整描红行数、拼读题和看图题数量，查看右侧 A4 预览。",
+        "标记今日练习完成，然后打印或在打印窗口中另存为 PDF。",
+      ],
+      h1: "幼小拼音练习",
+      sections: [
+        {
+          heading: "每天一个拼音项目",
+          paragraphs: [
+            "把拼音启蒙拆成一个个可以完成的小步骤。今天可以只练一个声母，也可以选择一个韵母或整体认读音节。",
+          ],
+        },
+        {
+          heading: "描红、拼读和看图认读",
+          paragraphs: [
+            "练习纸包含四线三格描红、两拼或三拼练习，以及带实物图的选音节题。整体认读音节使用认读题，不强行拆分。",
+          ],
+        },
+        {
+          heading: "A4 练习纸与本地处理",
+          paragraphs: [
+            "所有内容在当前浏览器中生成，页面按 A4 竖版排版。完成记录不会上传，也不需要注册账号；练习纸标注家庭自用、不替代教学。",
+          ],
+        },
+      ],
+      faqs: [
+        {
+          question: "一次可以练多少个拼音？",
+          answer: "每次选择一个声母、韵母或整体认读音节，保持每天一小步的练习节奏。",
+        },
+        {
+          question: "拼音练习会自动批改吗？",
+          answer: "不会。它只生成纸笔练习，不做 AI 批改、评测或教学。",
+        },
+        {
+          question: "完成进度会上传吗？",
+          answer: "不会。完成项目和最近练习时间只保存在当前浏览器的本地存储中。",
+        },
+        {
+          question: "如何保存成 PDF？",
+          answer: "点击打印或导出 PDF，在浏览器打印窗口选择“另存为 PDF”即可。",
         },
       ],
     },

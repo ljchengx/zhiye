@@ -342,14 +342,265 @@ test("一程一成长主页只展示真实工具并提供独立入口", async ({
 
   await expect(page).toHaveTitle("一程一成长 - 陪孩子走好成长的每一步");
   await expect(page.getByRole("heading", { name: "陪孩子走好成长的每一步", level: 1 })).toBeVisible();
-  await expect(page.getByText("1 个可用工具", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 个可用工具", { exact: true })).toBeVisible();
   await expect(page.getByAltText("一程一成长微信公众号二维码")).toBeVisible();
-  await expect(page.getByRole("link", { name: "开始使用" })).toHaveAttribute("href", "/kids/math-worksheet");
+  await expect(page.getByRole("link", { name: "开始使用" }).first()).toHaveAttribute("href", "/kids/math-worksheet");
+  await expect(page.getByRole("link", { name: "开始使用" }).nth(1)).toHaveAttribute("href", "/kids/pinyin-worksheet");
   await expect(page.getByText("敬请期待", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "一程一成长首页" })).toHaveAttribute("href", "/kids");
 
   const structuredData = await page.locator('script[type="application/ld+json"]').textContent();
   expect(structuredData).toContain("https://www.yzfl.top/kids/math-worksheet");
+  expect(structuredData).toContain("https://www.yzfl.top/kids/pinyin-worksheet");
+});
+
+test("幼小拼音练习支持按项目选择、生成练习和本地完成记录", async ({ page }) => {
+  await page.goto("/kids/pinyin-worksheet");
+  await page.evaluate(() => window.localStorage.clear());
+  await page.reload();
+
+  await expect(page).toHaveTitle("幼小拼音练习纸生成器 - 四线三格 A4 打印 | 一程一成长");
+  await expect(page.getByRole("heading", { name: "幼小拼音练习", level: 1 })).toBeVisible();
+  await expect(page.getByRole("group", { name: "选择练习量" }).getByRole("button")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: /轻松/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("details").filter({ hasText: "详细调整" })).not.toHaveAttribute("open", "");
+  await expect(page.getByTestId("pinyin-paper-body").getByTestId("pinyin-trace-section")).toBeVisible();
+  await expect(page.getByTestId("pinyin-paper-body").getByTestId("pinyin-trace-section").getByTestId("pinyin-grid-row")).toHaveCount(2);
+  const traceRowForms = await page.getByTestId("pinyin-paper-body").getByTestId("pinyin-grid-row").evaluateAll((rows) => rows.map((row) => Array.from(row.children)
+    .map((cell) => cell.textContent?.trim() ?? "")
+    .filter(Boolean)));
+  expect(traceRowForms).toEqual([["a", "a", "a"], ["ā", "ā", "ā"]]);
+  const exerciseNumbers = await page.getByTestId("pinyin-print-pack").locator("[class*=traceRowNumber], [class*=questionNumber]").allTextContents();
+  expect(exerciseNumbers).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
+  const sectionMarker = await page.getByTestId("pinyin-worksheet-paper").locator("[class*=sectionRule]").first().evaluate((marker) => {
+    const rect = marker.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  expect(sectionMarker.height).toBeGreaterThan(sectionMarker.width * 3);
+  await expect(page.getByTestId("pinyin-print-pack").locator('[data-type="blend"], [data-type="contrast"]')).toHaveCount(2);
+  await expect(page.getByTestId("pinyin-print-pack").locator('[data-type="picture"]')).toHaveCount(3);
+  const readability = await page.getByTestId("pinyin-worksheet-paper").evaluate((paper) => {
+    const traceCell = paper.querySelector<HTMLElement>("[class*=traceCell]");
+    const coreText = paper.querySelector<HTMLElement>("[class*=blendComponents]");
+    const optionText = paper.querySelector<HTMLElement>("[class*=choiceDots]");
+    const picture = paper.querySelector("img");
+    return {
+      traceFont: traceCell ? Number.parseFloat(getComputedStyle(traceCell).fontSize) : 0,
+      coreFont: coreText ? Number.parseFloat(getComputedStyle(coreText).fontSize) : 0,
+      optionFont: optionText ? Number.parseFloat(getComputedStyle(optionText).fontSize) : 0,
+      pictureWidth: picture?.getBoundingClientRect().width ?? 0,
+    };
+  });
+  expect(readability.traceFont).toBeGreaterThanOrEqual(68);
+  expect(readability.coreFont).toBeGreaterThanOrEqual(28);
+  expect(readability.optionFont).toBeGreaterThanOrEqual(22);
+  expect(readability.pictureWidth).toBeGreaterThanOrEqual(158);
+
+  await page.getByRole("button", { name: /标准/ }).click();
+  const aPictures = page.getByTestId("pinyin-print-pack").locator('[data-type="picture"]');
+  await expect(aPictures).toHaveCount(3);
+  const aPictureLabels = await aPictures.locator("[class*=pictureObject] span").allTextContents();
+  expect(new Set(aPictureLabels).size).toBe(3);
+  expect(aPictureLabels.every((label) => ["花", "鸭", "嫩芽", "西瓜"].includes(label))).toBe(true);
+  await page.getByRole("tab", { name: "第 2 页" }).click();
+  const pictureLayout = await page.getByTestId("pinyin-worksheet-paper").locator("[class*=pictureGrid]").evaluate((grid) => {
+    const rows = Array.from(grid.querySelectorAll<HTMLElement>('[data-type="picture"]'), (question) => question.getBoundingClientRect());
+    return {
+      columnCount: getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length,
+      rowCount: rows.length,
+      verticallyStacked: rows.length >= 2 && rows.slice(1).every((row, index) => row.top >= rows[index]!.bottom),
+    };
+  });
+  expect(pictureLayout).toEqual({ columnCount: 1, rowCount: 3, verticallyStacked: true });
+
+  await page.getByRole("button", { name: "韵母 ui" }).click();
+  const uiPictures = page.getByTestId("pinyin-print-pack").locator('[data-type="picture"]');
+  await expect(uiPictures).toHaveCount(3);
+  expect((await uiPictures.locator("[class*=pictureObject] span").allTextContents()).sort()).toEqual(["乌龟", "吹风", "水滴"].sort());
+  expect((await uiPictures.allTextContents()).join(" ")).not.toMatch(/花|伞|车/);
+
+  await page.getByRole("button", { name: "前鼻韵母 in", exact: true }).click();
+  const inPictures = page.getByTestId("pinyin-print-pack").locator('[data-type="picture"]');
+  await expect(inPictures).toHaveCount(3);
+  const inPictureLabels = await inPictures.locator("[class*=pictureObject] span").allTextContents();
+  expect(new Set(inPictureLabels).size).toBe(3);
+  expect(inPictureLabels.every((label) => ["心", "音符", "饮料", "阴天"].includes(label))).toBe(true);
+
+  await page.getByRole("button", { name: "后鼻韵母 eng", exact: true }).click();
+  const longTraceMetrics = await page.getByTestId("pinyin-paper-body").getByTestId("pinyin-grid-row").evaluateAll((rows) => rows.map((row) => ({
+    cellCount: row.children.length,
+    guidesFit: Array.from(row.children).filter((cell) => cell.textContent).every((cell) => (cell as HTMLElement).scrollWidth <= (cell as HTMLElement).clientWidth + 1),
+  })));
+  expect(longTraceMetrics.every((row) => row.cellCount === 4 && row.guidesFit)).toBe(true);
+
+  await page.getByRole("button", { name: "韵母 ui" }).click();
+
+  const uiQuestionsBefore = (await page.getByTestId("pinyin-print-pack").locator('[data-type="blend"], [data-type="contrast"]').allTextContents()).join(" ");
+  await page.getByRole("button", { name: "换一组题" }).click();
+  await expect(page.getByTestId("pinyin-worksheet-paper")).toContainText("韵母 · ui");
+  const uiQuestionsAfter = (await page.getByTestId("pinyin-print-pack").locator('[data-type="blend"], [data-type="contrast"]').allTextContents()).join(" ");
+  expect(uiQuestionsAfter).not.toBe(uiQuestionsBefore);
+
+  await page.evaluate(() => { window.print = () => undefined; });
+  await page.getByRole("button", { name: "打印 / 导出 PDF" }).click();
+  await expect(page.getByRole("status")).toContainText("双面打印包");
+
+  await page.getByRole("tab", { name: /声母/ }).click();
+  await page.getByRole("button", { name: "声母 b" }).click();
+  await expect(page.getByTestId("pinyin-worksheet-paper")).toContainText("声母 · b");
+  await expect(page.getByTestId("pinyin-worksheet-paper").locator('[data-mode="two"]')).not.toHaveCount(0);
+
+  await page.getByRole("tab", { name: /整体认读/ }).click();
+  await page.getByRole("button", { name: "整体认读 zhi" }).click();
+  await expect(page.getByTestId("pinyin-print-pack").locator('[data-type="recognition"]')).toHaveCount(4);
+  await expect(page.getByTestId("pinyin-print-pack").locator('[data-type="blend"]')).toHaveCount(0);
+
+  await page.getByRole("button", { name: "标记完成" }).click();
+  await expect(page.getByRole("status")).toContainText("zhi 已记入本地进度");
+  await expect(page.getByText("1 / 63", { exact: true }).first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("1 / 63", { exact: true }).first()).toBeVisible();
+
+  await page.getByText("详细调整", { exact: true }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "清空拼音记录" }).click();
+  await expect(page.getByText("0 / 63", { exact: true }).first()).toBeVisible();
+});
+
+test("幼小拼音练习的 A4 打印包保留四线三格和完整分页", async ({ page }) => {
+  await page.goto("/kids/pinyin-worksheet");
+  await page.getByText("详细调整", { exact: true }).click();
+  await page.getByRole("button", { name: "减少描红行数" }).click();
+  await expect(page.getByTestId("pinyin-trace-rows")).toHaveAttribute("data-value", "1");
+  await expect(page.getByTestId("pinyin-core-count")).toHaveAttribute("data-value", "2");
+  await expect(page.getByTestId("pinyin-picture-count")).toHaveCount(0);
+  await expect(page.getByText("2 页内容 · 2 页双面打印包", { exact: true })).toBeVisible();
+
+  const printCopies = page.getByTestId("pinyin-print-pack").locator("[data-print-copy=true]");
+  await expect(printCopies).toHaveCount(2);
+  await expect(page.getByTestId("pinyin-print-pack").locator('[data-blank="true"]')).toHaveCount(0);
+
+  const fontsReady = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return document.fonts.status === "loaded" && document.fonts.check("16px Andika");
+  });
+  expect(fontsReady).toBe(true);
+
+  await page.emulateMedia({ media: "print" });
+  const metrics = await printCopies.evaluateAll((papers) => papers.map((paper) => {
+    const element = paper as HTMLElement;
+    const rect = element.getBoundingClientRect();
+    const body = element.querySelector<HTMLElement>("[class*=paperBody]")?.getBoundingClientRect();
+    const row = element.querySelector("[data-testid=pinyin-grid-row]")?.getBoundingClientRect();
+    const choice = element.querySelector<HTMLElement>("[class*=choiceDots]");
+    return {
+      width: rect.width,
+      height: rect.height,
+      leftInset: body ? body.left - rect.left : 0,
+      rightInset: body ? rect.right - body.right : 0,
+      rowHeight: row?.height ?? 0,
+      choiceFontSize: choice ? Number.parseFloat(getComputedStyle(choice).fontSize) : 0,
+      overflow: element.scrollHeight - element.clientHeight,
+    };
+  }));
+  expect(metrics[0]?.width).toBeGreaterThanOrEqual(793);
+  expect(metrics[0]?.width).toBeLessThanOrEqual(795);
+  expect(metrics[0]?.height).toBeGreaterThanOrEqual(1122);
+  expect(metrics[0]?.height).toBeLessThanOrEqual(1124);
+  expect(metrics[0]?.leftInset).toBeGreaterThanOrEqual(60);
+  expect(metrics[0]?.rightInset).toBeGreaterThanOrEqual(60);
+  expect(metrics[0]?.rowHeight).toBeGreaterThan(40);
+  expect(metrics[0]?.choiceFontSize).toBeGreaterThanOrEqual(18);
+  expect(metrics.every((metric) => metric.overflow <= 1)).toBe(true);
+
+  await page.emulateMedia({ media: "screen" });
+  await page.getByRole("button", { name: /标准/ }).click();
+  await page.getByRole("button", { name: "增加核心练习" }).click();
+  await page.getByRole("button", { name: "增加核心练习" }).click();
+  await expect(page.getByText("2 页内容 · 2 页双面打印包", { exact: true })).toBeVisible();
+  await expect(printCopies).toHaveCount(2);
+  await expect(page.getByTestId("pinyin-print-pack").locator('[data-blank="true"]')).toHaveCount(0);
+
+  await page.emulateMedia({ media: "print" });
+  const maxContentMetrics = await printCopies.evaluateAll((papers) => papers.map((paper) => {
+    const element = paper as HTMLElement;
+    const paperRect = element.getBoundingClientRect();
+    const bodyRect = element.querySelector<HTMLElement>("[class*=paperBody]")?.getBoundingClientRect();
+    const footerRect = element.querySelector("footer")?.getBoundingClientRect();
+    const sections = Array.from(element.querySelectorAll<HTMLElement>("section"));
+    return {
+      overflow: element.scrollHeight - element.clientHeight,
+      contentInsidePaper: sections.every((section) => {
+        const rect = section.getBoundingClientRect();
+        return rect.left >= paperRect.left - 1
+          && rect.right <= paperRect.right + 1
+          && (!bodyRect || rect.bottom <= bodyRect.bottom + 1)
+          && (!footerRect || rect.bottom <= footerRect.top + 1);
+      }),
+    };
+  }));
+  expect(maxContentMetrics).toHaveLength(2);
+  expect(maxContentMetrics.every((metric) => metric.overflow <= 1 && metric.contentInsidePaper)).toBe(true);
+
+  const assets = await page.locator("img[src*='/math-worksheet/objects/'], img[src*='/pinyin-worksheet/objects/']").evaluateAll((images) => Array.from(new Map(images.map((image) => {
+    const item = image as HTMLImageElement;
+    return [item.getAttribute("src"), { src: item.getAttribute("src"), loaded: item.complete && item.naturalWidth > 0 }];
+  })).values()));
+  expect(assets.length).toBe(87);
+  expect(assets.every((asset) => asset.loaded)).toBe(true);
+});
+
+test("幼小拼音练习的 63 个项目均有精确图片示例", async ({ page }) => {
+  const itemGroups = [
+    {
+      tab: /声母/,
+      labels: ["b", "p", "m", "f", "d", "t", "n", "l", "g", "k", "h", "j", "q", "x", "zh", "ch", "sh", "r", "z", "c", "s", "y", "w"].map((item) => `声母 ${item}`),
+    },
+    {
+      tab: /韵母/,
+      labels: [
+        ...["a", "o", "e", "i", "u", "ü"].map((item) => `单韵母 ${item}`),
+        ...["ai", "ei", "ui", "ao", "ou", "iu", "ie", "üe", "er"].map((item) => `复韵母 ${item}`),
+        ...["an", "en", "in", "un", "ün"].map((item) => `前鼻韵母 ${item}`),
+        ...["ang", "eng", "ing", "ong"].map((item) => `后鼻韵母 ${item}`),
+      ],
+    },
+    {
+      tab: /整体认读/,
+      labels: ["zhi", "chi", "shi", "ri", "zi", "ci", "si", "yi", "wu", "yu", "ye", "yue", "yuan", "yin", "yun", "ying"].map((item) => `整体认读 ${item}`),
+    },
+  ];
+
+  await page.goto("/kids/pinyin-worksheet");
+  for (const group of itemGroups) {
+    await page.getByRole("tab", { name: group.tab }).click();
+    for (const label of group.labels) {
+      await page.getByRole("button", { name: label, exact: true }).click();
+      const pictures = page.getByTestId("pinyin-print-pack").locator('[data-type="picture"]');
+      await expect(pictures).toHaveCount(3);
+      expect(new Set(await pictures.locator("img").evaluateAll((images) => images.map((image) => image.getAttribute("src")))).size).toBe(3);
+    }
+  }
+});
+
+test("幼小拼音练习在手机视口不产生横向溢出", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids/pinyin-worksheet");
+  const metrics = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    bodyWidth: document.body.scrollWidth,
+  }));
+  expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewport + 1);
+  expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewport + 1);
+
+  const fittedPaper = await page.getByTestId("pinyin-worksheet-paper").boundingBox();
+  expect(fittedPaper?.width ?? 0).toBeLessThanOrEqual(390);
+  await page.getByRole("button", { name: "放大预览" }).click();
+  const expandedPaper = await page.getByTestId("pinyin-worksheet-paper").boundingBox();
+  expect(expandedPaper?.width ?? 0).toBeGreaterThan(390);
+  await page.getByRole("button", { name: "退出放大预览" }).click();
+  await expect(page.getByRole("button", { name: "打印 / 导出 PDF" })).toBeVisible();
 });
 
 test("幼小数学练习使用 5 天基础加 25 天强化，并按天配对双面打印", async ({ page }) => {

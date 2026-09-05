@@ -153,11 +153,12 @@ describe("工具注册表", () => {
 });
 
 describe("启蒙工具注册表", () => {
-  it("只注册真实存在的数学工具，并使用唯一启蒙路径", () => {
-    expect(kidsToolDefinitions.map((tool) => tool.slug)).toEqual(["math-worksheet"]);
+  it("注册真实存在的数学与拼音工具，并使用唯一启蒙路径", () => {
+    expect(kidsToolDefinitions.map((tool) => tool.slug)).toEqual(["math-worksheet", "pinyin-worksheet"]);
     expect(new Set(kidsToolDefinitions.map((tool) => tool.href)).size).toBe(kidsToolDefinitions.length);
     expect(kidsToolDefinitions[0]?.summary).toContain("5 天基础");
     expect(kidsToolDefinitions[0]?.summary).toContain("25 天强化");
     expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
+    expect(getKidsToolByPath("pinyin-worksheet")?.href).toBe("/kids/pinyin-worksheet");
   });
 });
