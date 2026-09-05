@@ -15,6 +15,11 @@ import {
   type ApplicationQuestion,
   type MentalQuestion,
 } from "../lib/tools/math-worksheet";
+import {
+  getMathBulkPdfFilename,
+  getMathWorkbookPageEntries,
+  getMathWorkbookPrintPageCount,
+} from "../lib/tools/math-pdf";
 
 function allQuestions(worksheet: ReturnType<typeof generateDailyWorksheet>) {
   return worksheet.sections.flatMap((section) => section.questions);
@@ -28,7 +33,7 @@ function calculate(left: number, operator: "+" | "-", right: number) {
   return operator === "+" ? left + right : left - right;
 }
 
-describe("幼小数学 5 天基础学习 + 25 天强化训练", () => {
+describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
   it("基础五天使用固定精选内容，并保持每天 28 题", () => {
     const first = generateWorksheetPlan(1);
     const second = generateWorksheetPlan(999);
@@ -227,7 +232,7 @@ describe("幼小数学 5 天基础学习 + 25 天强化训练", () => {
     });
   });
 
-  it("是否包含基础学习只影响导出筛选，不改变强化题", () => {
+  it("是否包含基础引导只影响导出筛选，不改变强化题", () => {
     const plan = generateWorksheetPlan(20260902);
     const withFoundation = getExportDays(plan, true);
     const practiceOnly = getExportDays(plan, false);
@@ -236,6 +241,24 @@ describe("幼小数学 5 天基础学习 + 25 天强化训练", () => {
     expect(practiceOnly[0].id).toBe("practice-1");
     expect(practiceOnly.map((day) => day.id)).toEqual(plan.reinforcementDays.map((day) => day.id));
     expect(practiceOnly.flatMap((day) => allQuestions(day)).map((question) => question.id)).toEqual(plan.reinforcementDays.flatMap((day) => allQuestions(day)).map((question) => question.id));
+  });
+
+  it("全量 PDF 严格按练习日顺序排列，并为单数内容页补空白背面", () => {
+    const plan = generateWorksheetPlan(20260902);
+    const entries = getMathWorkbookPageEntries(plan.days);
+
+    expect(entries.map((entry) => entry.day)).toEqual([...entries.map((entry) => entry.day)].sort((left, right) => left - right));
+    expect(entries[0]).toEqual({ day: 1, pageNumber: 1, blank: false });
+    expect(entries.at(-1)?.day).toBe(30);
+    expect(getMathWorkbookPrintPageCount(plan.days)).toBe(entries.length);
+    expect(getMathBulkPdfFilename(true)).toBe("一程一成长-幼小数学练习-30天.pdf");
+    expect(getMathBulkPdfFilename(false)).toBe("一程一成长-幼小数学练习-强化25天.pdf");
+
+    const onePageDay = { ...plan.days[0], pages: plan.days[0].pages.slice(0, 1) };
+    expect(getMathWorkbookPageEntries([onePageDay])).toEqual([
+      { day: 1, pageNumber: 1, blank: false },
+      { day: 1, pageNumber: null, blank: true },
+    ]);
   });
 
   it("保留旧的单日生成入口，且仍能限制总题量", () => {

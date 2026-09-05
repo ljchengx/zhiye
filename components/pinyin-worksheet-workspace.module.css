@@ -62,8 +62,7 @@
 .local,
 .previewNote,
 .singlePage,
-.itemGroupTitle small,
-.recommendation button {
+.itemGroupTitle small {
   color: var(--pinyin-muted);
   font-size: 13px;
 }
@@ -73,86 +72,6 @@
   color: var(--pinyin-ink);
   font-size: 24px;
   letter-spacing: 0;
-}
-
-.progressStat {
-  display: grid;
-  justify-items: end;
-  gap: 1px;
-}
-
-.progressStat strong {
-  color: var(--pinyin-coral);
-  font-size: 27px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.progressStat strong small {
-  color: #aab6b4;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.progressStat span {
-  color: var(--pinyin-muted);
-  font-size: 12px;
-}
-
-.recommendation {
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 14px;
-  padding: 8px 10px;
-  border-left: 3px solid var(--pinyin-yellow);
-  background: #fff9e9;
-}
-
-.recommendation > div {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-}
-
-.recommendation svg {
-  flex: 0 0 auto;
-  color: #c58c22;
-}
-
-.recommendation span {
-  color: #856a32;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.recommendation strong {
-  min-width: 0;
-  color: var(--pinyin-ink);
-  font-family: "Andika", "KaiTi", "STKaiti", sans-serif;
-  font-size: 22px;
-  line-height: 1;
-}
-
-.recommendation button {
-  flex: 0 0 auto;
-  min-height: 34px;
-  padding: 0 11px;
-  border: 1px solid #e4cf91;
-  border-radius: 4px;
-  background: transparent;
-  color: #8a6a2d;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.recommendation button:hover,
-.recommendation button:focus-visible {
-  border-color: #c99b3b;
-  background: #fff3ce;
 }
 
 .categoryTabs {
@@ -256,7 +175,6 @@
   color: #b64735;
 }
 
-.progressPanel,
 .practiceLevel,
 .advancedSettings {
   margin-top: 16px;
@@ -264,7 +182,6 @@
   border-top: 1px solid #e3ebe8;
 }
 
-.progressHeader,
 .settingLabel {
   display: flex;
   align-items: center;
@@ -273,38 +190,6 @@
   color: #3e514e;
   font-size: 14px;
   font-weight: 700;
-}
-
-.progressHeader strong {
-  color: var(--pinyin-green);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.progressBar {
-  height: 5px;
-  margin-top: 9px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: #e7eeeb;
-}
-
-.progressBar span {
-  display: block;
-  height: 100%;
-  min-width: 0;
-  border-radius: inherit;
-  background: var(--pinyin-green);
-  transition: width 180ms ease;
-}
-
-.progressBreakdown {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 9px;
-  margin-top: 8px;
-  color: #7c8d89;
-  font-size: 12px;
 }
 
 .practiceLevel .settingLabel {
@@ -472,10 +357,6 @@
   text-decoration: underline;
 }
 
-.clearProgress {
-  color: #9a7770 !important;
-}
-
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -496,6 +377,11 @@
   cursor: pointer;
 }
 
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .printButton {
   grid-column: 1 / -1;
   border: 1px solid var(--pinyin-coral);
@@ -508,7 +394,21 @@
   background: #cc5540;
 }
 
+.bulkPrintButton {
+  grid-column: 1 / -1;
+  border: 1px solid #d6b75f;
+  background: #fff9e8;
+  color: #765d1d;
+}
+
+.bulkPrintButton:hover,
+.bulkPrintButton:focus-visible {
+  border-color: #c19c33;
+  background: #fff3cf;
+}
+
 .regenerateButton {
+  grid-column: 1 / -1;
   border: 1px solid #dce5e3;
   background: #fff;
   color: #526b65;
@@ -518,18 +418,6 @@
 .regenerateButton:focus-visible {
   border-color: #aebfbb;
   color: #2f7159;
-}
-
-.completeButton {
-  border: 1px solid #bdd9ca;
-  background: #f0f8f3;
-  color: #35795d;
-}
-
-.completeButton:hover,
-.completeButton:focus-visible {
-  border-color: var(--pinyin-green);
-  background: #e5f4eb;
 }
 
 .status {
@@ -1092,20 +980,6 @@
   display: none;
 }
 
-.assetPreload {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.assetPreload img {
-  width: 1px;
-  height: 1px;
-}
-
 @media (max-width: 1239px) {
   .layout {
     grid-template-columns: 1fr;
@@ -1196,12 +1070,6 @@
 
   .previewExpanded .previewCanvas .paper {
     zoom: 0.72;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .progressBar span {
-    transition: none;
   }
 }
 

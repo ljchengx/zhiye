@@ -2,11 +2,16 @@ import type { ToolDefinitionBase } from "./registry";
 
 export type KidsToolSlug = "math-worksheet" | "pinyin-worksheet";
 export type KidsToolPath = "math-worksheet" | "pinyin-worksheet";
+export type KidsToolFormat = "printable" | "interactive" | "creative";
+export type KidsContentDomain = "math" | "pinyin" | "chinese" | "spatial" | "logic" | "science";
 
 export interface KidsToolDefinition extends ToolDefinitionBase<KidsToolSlug, KidsToolPath> {
   href: `/kids/${KidsToolPath}`;
   summary: string;
   stage: string;
+  format: KidsToolFormat;
+  domain: KidsContentDomain;
+  estimatedMinutes: number;
   skillAreas: readonly string[];
   previewImage: string;
   order: number;
@@ -22,7 +27,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     titleEn: "Early Math Worksheet",
     shortTitle: "数学练习",
     shortTitleEn: "Math Worksheet",
-    summary: "5 天基础学习加 25 天强化训练，按需加入应用题并生成 A4 练习页。",
+    summary: "5 天基础引导加 25 天强化训练，按需加入应用题并生成 A4 练习页。",
     description: "先学方法，再按比例生成计算、数感和应用题练习。",
     descriptionEn: "A progressive daily math practice set designed for young learners.",
     category: "启蒙数学",
@@ -42,28 +47,31 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     icon: "calculator",
     accent: "amber",
     stage: "4～7 岁",
+    format: "printable",
+    domain: "math",
+    estimatedMinutes: 15,
     skillAreas: ["相邻数", "比大小", "计算式", "应用题"],
     previewImage: "/kids/math-worksheet-preview.webp",
     order: 1,
     metadata: {
-      title: "幼小数学练习生成器 - 基础学习与强化训练 A4 打印",
-      description: "在线生成幼小阶段 5 天基础学习与 25 天强化训练，按需配置相邻数、比大小、计算式和应用题比例，并自动排成 A4 练习页。",
+      title: "幼小数学练习生成器 - 基础引导与强化训练 A4 打印",
+      description: "在线生成幼小阶段 5 天基础引导与 25 天强化训练，按需配置相邻数、比大小、计算式和应用题比例，并自动排成 A4 练习页。",
     },
     seo: {
       heading: "幼小数学练习在线生成与 A4 打印",
       summary: "先用 5 天固定内容学方法，再用 25 天强化练习巩固数感、计算和应用题。",
-      intro: "知页启蒙数学练习适合 4～7 岁孩子的日常练习。前 5 天是固定精选的基础学习，后 25 天按统一配置生成强化训练；每天 10～30 题，难度从 20 以内逐步提升到 200 以内三个数加减混合，并按实际内容自动排成 1 到 2 页。",
+      intro: "一程一成长启蒙数学练习适合 4～7 岁孩子的日常练习。前 5 天是固定精选的基础引导，后 25 天按统一配置生成强化训练；每天 10～30 题，难度从 20 以内逐步提升到 200 以内三个数加减混合，并按实际内容自动排成 1 到 2 页。",
       features: [
         "相邻数：生成如“26 __ 28”的填中间数题目。",
         "比大小：生成数字比较题，练习小于、大于和等于。",
-        "基础学习：用 5 天依次学习数的组成、凑十法、破十法、平十法和看图列式。",
+        "基础引导：用 5 天依次认识数的组成、凑十法、破十法、平十法和看图列式。",
         "强化训练：统一配置每天题量和题型比例，自动加入两位数、三个数加减和应用题。",
         "A4 打印：按实际内容生成 1 到 2 页；单页会自动补空白背面，方便双面打印。",
       ],
       steps: [
-        "先选择是否包含 5 天基础学习，再设置强化训练的每天题量和题型比例。",
+        "先选择是否包含 5 天基础引导，再设置强化训练的每天题量和题型比例。",
         "点击计划中的某一天，查看当天目标、题量和 A4 预览；基础内容固定，强化内容可以重新生成。",
-        "点击导出 PDF，在打印窗口中保存完整计划或纯强化训练打印包。",
+        "点击导出 PDF 可直接下载完整计划或纯强化训练打印包；只需要某一天时，使用“打印当前一天”。",
       ],
       h1: "幼小数学练习",
       sections: [
@@ -74,9 +82,9 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
           ],
         },
         {
-          heading: "基础学习和强化训练",
+          heading: "基础引导和强化训练",
           paragraphs: [
-            "基础学习用 5 天固定内容示范数的组成、凑十法、破十法、平十法和看图列式。强化训练再按天递进，加入两位数、三个数加减混合和应用题。",
+            "基础引导用 5 天固定内容示范数的组成、凑十法、破十法、平十法和看图列式。强化训练再按天递进，加入两位数、三个数加减混合和应用题。",
           ],
         },
         {
@@ -89,10 +97,10 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
       faqs: [
         {
           question: "每天有多少题？",
-          answer: "基础学习每天 28 题；强化训练每天可设置 10～30 题，默认 30 题。相邻数、比大小和应用题按比例分配，计算式自动使用剩余比例。",
+          answer: "基础引导每天 28 题；强化训练每天可设置 10～30 题，默认 30 题。相邻数、比大小和应用题按比例分配，计算式自动使用剩余比例。",
         },
         {
-          question: "基础学习可以修改吗？",
+          question: "基础引导可以修改吗？",
           answer: "前 5 天是固定精选内容，保证方法、顺序和题目稳定；强化训练使用一套配置，可重新生成 25 天题目。",
         },
         {
@@ -101,7 +109,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
         },
         {
           question: "如何把练习保存成 PDF？",
-          answer: "点击工具中的“导出 PDF”打开浏览器打印窗口，然后选择“另存为 PDF”或系统提供的 PDF 打印机即可。",
+          answer: "导出完整计划时会直接下载 PDF；只保存当前一天时，点击“打印当前一天”，再在浏览器打印窗口中选择“另存为 PDF”。",
         },
       ],
     },
@@ -134,12 +142,15 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     icon: "languages",
     accent: "sage",
     stage: "4～7 岁",
+    format: "printable",
+    domain: "pinyin",
+    estimatedMinutes: 10,
     skillAreas: ["声母韵母", "四线三格", "两拼三拼", "看图认读"],
     previewImage: "/kids/pinyin-worksheet-preview.png",
     order: 2,
     metadata: {
       title: "幼小拼音练习纸生成器 - 四线三格 A4 打印",
-      description: "为 4～7 岁孩子生成声母、韵母和整体认读音节练习纸，包含四线三格描红、两拼三拼、看图选音节与本地完成记录。",
+      description: "为 4～7 岁孩子生成声母、韵母和整体认读音节练习纸，包含四线三格描红、两拼三拼和看图选音节。",
     },
     seo: {
       heading: "幼小拼音练习在线生成与 A4 打印",
@@ -150,12 +161,12 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
         "四线三格描红：浅灰示范字配合空白格，练习纸笔书写。",
         "拼读与认读：按项目生成两拼、三拼或整体认读练习。",
         "看图选音节：用原创风格实物图增加一点趣味。",
-        "本地记录：完成进度只保存在当前浏览器，不需要账号。",
+        "本地生成：内容只在当前浏览器中生成，不保存使用记录。",
       ],
       steps: [
-        "选择一个声母、韵母或整体认读音节，也可以使用今日推荐。",
+        "选择一个声母、韵母或整体认读音节。",
         "调整描红行数、拼读题和看图题数量，查看右侧 A4 预览。",
-        "标记今日练习完成，然后打印或在打印窗口中另存为 PDF。",
+        "打印当前项目，或在打印窗口中另存为 PDF。",
       ],
       h1: "幼小拼音练习",
       sections: [
@@ -174,7 +185,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
         {
           heading: "A4 练习纸与本地处理",
           paragraphs: [
-            "所有内容在当前浏览器中生成，页面按 A4 竖版排版。完成记录不会上传，也不需要注册账号；练习纸标注家庭自用、不替代教学。",
+            "所有内容在当前浏览器中生成，页面按 A4 竖版排版。工具不保存项目选择或使用记录，也不需要登录；练习纸标注家庭自用、不替代教学。",
           ],
         },
       ],
@@ -186,10 +197,6 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
         {
           question: "拼音练习会自动批改吗？",
           answer: "不会。它只生成纸笔练习，不做 AI 批改、评测或教学。",
-        },
-        {
-          question: "完成进度会上传吗？",
-          answer: "不会。完成项目和最近练习时间只保存在当前浏览器的本地存储中。",
         },
         {
           question: "如何保存成 PDF？",
@@ -206,4 +213,11 @@ export function getKidsToolByPath(path: string): KidsToolDefinition | undefined 
 
 export function getKidsToolHref(tool: Pick<KidsToolDefinition, "href">): string {
   return tool.href;
+}
+
+export function getKidsToolsByFormat(format: KidsToolFormat): KidsToolDefinition[] {
+  return kidsToolDefinitions
+    .filter((tool) => tool.format === format)
+    .slice()
+    .sort((left, right) => left.order - right.order);
 }

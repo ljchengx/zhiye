@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { PDFDocument } from "pdf-lib";
 
 test("首页作为产品介绍页，并可进入独立工作台", async ({ page }) => {
   await page.goto("/");
@@ -338,11 +340,21 @@ test("旧数学地址永久跳转到启蒙工具地址", async ({ request }) => 
 });
 
 test("一程一成长主页只展示真实工具并提供独立入口", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.clear());
   await page.goto("/kids");
 
   await expect(page).toHaveTitle("一程一成长 - 陪孩子走好成长的每一步");
   await expect(page.getByRole("heading", { name: "陪孩子走好成长的每一步", level: 1 })).toBeVisible();
-  await expect(page.getByText("2 个可用工具", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "登录", exact: true }).first()).toHaveAttribute("href", "/kids/login?next=%2Fkids");
+  await expect(page.getByLabel("当前登录用户：橙子小朋友")).toHaveCount(0);
+  await expect(page.getByText("2 个打印练习", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "打印练习", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "互动探究", level: 2 })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "自由创造", level: 2 })).toHaveCount(0);
+  await expect(page.getByText("探索足迹", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("约 15 分钟", { exact: true })).toBeVisible();
+  await expect(page.getByText("约 10 分钟", { exact: true })).toBeVisible();
+  await expect(page.getByText("A4 打印", { exact: true })).toHaveCount(2);
   await expect(page.getByAltText("一程一成长微信公众号二维码")).toBeVisible();
   await expect(page.getByRole("link", { name: "开始使用" }).first()).toHaveAttribute("href", "/kids/math-worksheet");
   await expect(page.getByRole("link", { name: "开始使用" }).nth(1)).toHaveAttribute("href", "/kids/pinyin-worksheet");
@@ -354,13 +366,46 @@ test("一程一成长主页只展示真实工具并提供独立入口", async ({
   expect(structuredData).toContain("https://www.yzfl.top/kids/pinyin-worksheet");
 });
 
-test("幼小拼音练习支持按项目选择、生成练习和本地完成记录", async ({ page }) => {
+test("橙子测试账号需要输入正确账号密码后才登录", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.clear());
+  await page.goto("/kids/login");
+
+  await expect(page.getByRole("heading", { name: "登录橙子小朋友", level: 1 })).toBeVisible();
+  await expect(page.getByText("orange", { exact: true })).toBeVisible();
+  await expect(page.getByText("orange123", { exact: true })).toBeVisible();
+  await page.getByLabel("账号", { exact: true }).fill("orange");
+  await page.getByLabel("密码", { exact: true }).fill("wrong");
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+  await expect(page.locator("#kids-login-error")).toHaveText("账号或密码不正确");
+
+  await page.getByLabel("密码", { exact: true }).fill("orange123");
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+  await expect(page).toHaveURL("/kids");
+  await expect(page.getByLabel("当前登录用户：橙子小朋友")).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem("yicheng-kids:auth-session:v1") ?? "null"))).toMatchObject({
+    version: 1,
+    session: { userId: "usr_orange_001", activeChildId: "kid_orange_001", provider: "mock" },
+  });
+
+  await page.getByRole("button", { name: "退出橙子小朋友账号" }).click();
+  await expect(page.getByRole("link", { name: "登录", exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => window.localStorage.getItem("yicheng-kids:auth-session:v1"))).toBeNull();
+
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/kids/login");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test("幼小拼音练习支持按项目选择、生成和打印且不记录状态", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.clear());
   await page.goto("/kids/pinyin-worksheet");
-  await page.evaluate(() => window.localStorage.clear());
-  await page.reload();
 
   await expect(page).toHaveTitle("幼小拼音练习纸生成器 - 四线三格 A4 打印 | 一程一成长");
   await expect(page.getByRole("heading", { name: "幼小拼音练习", level: 1 })).toBeVisible();
+  await expect(page.getByText("练习内容只在当前浏览器中生成，不保存使用记录", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "标记完成" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "清空拼音记录" })).toHaveCount(0);
+  await expect(page.getByText("本地成长记录", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("group", { name: "选择练习量" }).getByRole("button")).toHaveCount(2);
   await expect(page.getByRole("button", { name: /轻松/ })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("details").filter({ hasText: "详细调整" })).not.toHaveAttribute("open", "");
@@ -442,7 +487,7 @@ test("幼小拼音练习支持按项目选择、生成练习和本地完成记�
   expect(uiQuestionsAfter).not.toBe(uiQuestionsBefore);
 
   await page.evaluate(() => { window.print = () => undefined; });
-  await page.getByRole("button", { name: "打印 / 导出 PDF" }).click();
+  await page.getByRole("button", { name: "打印 / 导出当前项目" }).click();
   await expect(page.getByRole("status")).toContainText("双面打印包");
 
   await page.getByRole("tab", { name: /声母/ }).click();
@@ -455,16 +500,39 @@ test("幼小拼音练习支持按项目选择、生成练习和本地完成记�
   await expect(page.getByTestId("pinyin-print-pack").locator('[data-type="recognition"]')).toHaveCount(4);
   await expect(page.getByTestId("pinyin-print-pack").locator('[data-type="blend"]')).toHaveCount(0);
 
-  await page.getByRole("button", { name: "标记完成" }).click();
-  await expect(page.getByRole("status")).toContainText("zhi 已记入本地进度");
-  await expect(page.getByText("1 / 63", { exact: true }).first()).toBeVisible();
-  await page.reload();
-  await expect(page.getByText("1 / 63", { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => window.localStorage.getItem("yicheng-kids:exploration-traces:v1"))).toBeNull();
+});
 
-  await page.getByText("详细调整", { exact: true }).click();
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "清空拼音记录" }).click();
-  await expect(page.getByText("0 / 63", { exact: true }).first()).toBeVisible();
+test("幼小拼音练习可一次导出全部 63 个项目", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/kids/pinyin-worksheet");
+  const printCopies = page.getByTestId("pinyin-print-pack").locator("[data-print-copy=true]");
+  await expect(printCopies).toHaveCount(2);
+  const downloadPromise = page.waitForEvent("download", { timeout: 120_000 });
+  await page.getByRole("button", { name: "一键导出全部 63 项" }).click();
+  await expect(page.getByRole("button", { name: /取消导出/ })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(/正在生成 \d+ \/ 63/);
+  await expect(printCopies).toHaveCount(2);
+  await expect(page.getByTestId("pinyin-print-pack")).toHaveAttribute("data-print-mode", "single");
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("一程一成长-幼小拼音练习-全部63项.pdf");
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const pdf = await PDFDocument.load(await readFile(downloadPath as string));
+  expect(pdf.getPageCount()).toBe(126);
+  expect((await readFile(downloadPath as string)).byteLength).toBeGreaterThan(500_000);
+  await expect(page.getByRole("status")).toContainText("全部 63 项已导出，共 126 页");
+  await expect(page.getByTestId("pinyin-print-pack")).toHaveAttribute("data-print-mode", "single");
+  await expect(printCopies).toHaveCount(2);
+});
+
+test("幼小拼音全部导出可随时取消", async ({ page }) => {
+  await page.goto("/kids/pinyin-worksheet");
+  await page.getByRole("button", { name: "一键导出全部 63 项" }).click();
+  await page.getByRole("button", { name: /取消导出/ }).click();
+  await expect(page.getByRole("status")).toContainText("已取消全部拼音导出");
+  await expect(page.getByRole("button", { name: "一键导出全部 63 项" })).toBeVisible();
+  await expect(page.getByTestId("pinyin-print-pack").locator("[data-print-copy=true]")).toHaveCount(2);
 });
 
 test("幼小拼音练习的 A4 打印包保留四线三格和完整分页", async ({ page }) => {
@@ -542,11 +610,13 @@ test("幼小拼音练习的 A4 打印包保留四线三格和完整分页", asyn
   expect(maxContentMetrics).toHaveLength(2);
   expect(maxContentMetrics.every((metric) => metric.overflow <= 1 && metric.contentInsidePaper)).toBe(true);
 
-  const assets = await page.locator("img[src*='/math-worksheet/objects/'], img[src*='/pinyin-worksheet/objects/']").evaluateAll((images) => Array.from(new Map(images.map((image) => {
+  const assetSelector = "img[src*='/math-worksheet/objects/'], img[src*='/pinyin-worksheet/objects/']";
+  await page.waitForFunction((selector) => Array.from(document.querySelectorAll<HTMLImageElement>(selector)).every((image) => image.complete && image.naturalWidth > 0), assetSelector);
+  const assets = await page.locator(assetSelector).evaluateAll((images) => Array.from(new Map(images.map((image) => {
     const item = image as HTMLImageElement;
     return [item.getAttribute("src"), { src: item.getAttribute("src"), loaded: item.complete && item.naturalWidth > 0 }];
   })).values()));
-  expect(assets.length).toBe(87);
+  expect(assets.length).toBe(3);
   expect(assets.every((asset) => asset.loaded)).toBe(true);
 });
 
@@ -600,10 +670,11 @@ test("幼小拼音练习在手机视口不产生横向溢出", async ({ page }) 
   const expandedPaper = await page.getByTestId("pinyin-worksheet-paper").boundingBox();
   expect(expandedPaper?.width ?? 0).toBeGreaterThan(390);
   await page.getByRole("button", { name: "退出放大预览" }).click();
-  await expect(page.getByRole("button", { name: "打印 / 导出 PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "打印 / 导出当前项目" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "一键导出全部 63 项" })).toBeVisible();
 });
 
-test("幼小数学练习使用 5 天基础加 25 天强化，并按天配对双面打印", async ({ page }) => {
+test("幼小数学练习只挂载当前日打印节点，全量导出交给后台生成", async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
@@ -613,7 +684,12 @@ test("幼小数学练习使用 5 天基础加 25 天强化，并按天配对双�
 
   const paper = page.getByTestId("math-worksheet-paper");
   await expect(page.getByTestId("worksheet-print-summary")).toHaveText(/^\d+ 页内容 \/ 60 页双面打印包$/);
-  await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(60);
+  const printPack = page.getByTestId("worksheet-print-pack");
+  await expect(printPack).toHaveAttribute("data-render-scope", "selected-day");
+  await expect(printPack.locator("[data-print-copy=true]")).toHaveCount(2);
+  await expect(printPack.locator('[data-print-copy=true][data-day="1"]')).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "导出 30 天 PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "打印当前一天" })).toBeVisible();
 
   await expect(paper).toHaveAttribute("data-day", "1");
   await expect(paper).toHaveAttribute("data-page-count", "1");
@@ -640,7 +716,9 @@ test("幼小数学练习使用 5 天基础加 25 天强化，并按天配对双�
   await page.getByTestId("worksheet-day-6").click();
   await expect(paper).toHaveAttribute("data-page-count", "2");
   await expect(paper.getByTestId("worksheet-demo")).toHaveCount(0);
-  const daySixQuestionCount = await page.getByTestId("worksheet-print-pack").locator('[data-print-copy=true][data-day="6"] [data-testid="math-worksheet-question"]').count();
+  await expect(printPack.locator('[data-print-copy=true][data-day="6"]')).toHaveCount(2);
+  await expect(printPack.locator('[data-print-copy=true]:not([data-day="6"])')).toHaveCount(0);
+  const daySixQuestionCount = await printPack.locator('[data-print-copy=true][data-day="6"] [data-testid="math-worksheet-question"]').count();
   expect(daySixQuestionCount).toBe(30);
 
   await page.getByTestId("worksheet-day-15").click();
@@ -650,13 +728,13 @@ test("幼小数学练习使用 5 天基础加 25 天强化，并按天配对双�
   await page.getByTestId("worksheet-day-21").click();
   await expect(paper).toHaveAttribute("data-page-count", "2");
   await expect(paper.getByTestId("worksheet-demo")).toHaveCount(0);
-  await expect(page.getByTestId("worksheet-print-pack").locator('[data-print-copy=true][data-day="21"] [data-level=three-number]')).not.toHaveCount(0);
+  await expect(printPack.locator('[data-print-copy=true][data-day="21"] [data-level=three-number]')).not.toHaveCount(0);
 
   await page.getByTestId("worksheet-day-30").click();
   await expect(paper).toHaveAttribute("data-page-count", "2");
   await expect(paper.locator("[data-level=three-number]")).not.toHaveCount(0);
 
-  const printOrder = await page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]").evaluateAll((papers) => (
+  const printOrder = await printPack.locator("[data-print-copy=true]").evaluateAll((papers) => (
     papers.map((item) => ({
       day: Number(item.getAttribute("data-day")),
       page: item.getAttribute("data-page"),
@@ -664,17 +742,10 @@ test("幼小数学练习使用 5 天基础加 25 天强化，并按天配对双�
       blank: item.getAttribute("data-blank") === "true",
     }))
   ));
-  expect(printOrder).toHaveLength(60);
-  for (let day = 1; day <= 30; day += 1) {
-    const [front, back] = printOrder.slice((day - 1) * 2, day * 2);
-    expect(front.day).toBe(day);
-    expect(front.page).toBe("1");
-    expect(front.side).toBe("front");
-    expect(front.blank).toBe(false);
-    expect(back.day).toBe(day);
-    expect(back.side).toBe("back");
-    expect(back.blank ? back.page === null : back.page === "2").toBe(true);
-  }
+  expect(printOrder).toEqual([
+    { day: 30, page: "1", side: "front", blank: false },
+    { day: 30, page: "2", side: "back", blank: false },
+  ]);
   expect(consoleErrors).toEqual([]);
 });
 
@@ -714,6 +785,7 @@ test("基础五天的数量图、原式和拆分步骤保持同一数学语义",
     if (model.method === "break-ten") expect([model.left, model.operator, model.right]).toEqual([13, "-", 5]);
   }
 
+  await page.getByTestId("worksheet-day-1").click();
   const printPack = page.getByTestId("worksheet-print-pack");
   const numberBonds = await printPack.locator('[data-print-copy=true][data-day="1"] [data-type="number-bond"]').evaluateAll((questions) => questions.map((question) => ({
     whole: Number(question.getAttribute("data-whole")),
@@ -730,7 +802,6 @@ test("基础五天的数量图、原式和拆分步骤保持同一数学语义",
     }
   });
 
-  await page.getByTestId("worksheet-day-1").click();
   const pictureBondLayout = await page.getByTestId("math-worksheet-paper").locator('[data-type="number-bond"][data-mode="picture-split"]').evaluateAll((questions) => questions.map((question) => {
     const questionRect = question.getBoundingClientRect();
     const number = question.children[0].getBoundingClientRect();
@@ -798,6 +869,8 @@ test("基础五天的数量图、原式和拆分步骤保持同一数学语义",
   expect(Math.max(...splitLayout.map((layout) => layout.answerOffset)) - Math.min(...splitLayout.map((layout) => layout.answerOffset))).toBeLessThanOrEqual(1);
   expect(splitLayout.every((layout) => layout.formulaGap >= 3 && layout.formulaGap <= 6)).toBe(true);
 
+  await page.getByTestId("worksheet-day-5").click();
+  await expect(printPack.locator('[data-print-copy=true][data-day="5"]')).toHaveCount(2);
   const pictureEquations = await printPack.locator('[data-print-copy=true][data-day="5"] [data-type="picture-equation"]').evaluateAll((questions) => questions.map((question) => ({
     left: Number(question.getAttribute("data-left-count")),
     operator: question.getAttribute("data-operator"),
@@ -812,7 +885,6 @@ test("基础五天的数量图、原式和拆分步骤保持同一数学语义",
     expect(question.shown.find((part) => part.role === "right-operand")?.count).toBe(question.right);
   });
 
-  await page.getByTestId("worksheet-day-5").click();
   const pictureEquationLayout = await page.getByTestId("math-worksheet-paper").locator('[data-type="picture-equation"]').evaluateAll((questions) => questions.map((question) => {
     const questionRect = question.getBoundingClientRect();
     const number = question.children[0].getBoundingClientRect();
@@ -841,22 +913,26 @@ test("基础五天的数量图、原式和拆分步骤保持同一数学语义",
     expect(layout.hasPrefilledEquation).toBe(false);
   });
 
-  const guidedQuestions = await printPack.locator('[data-print-copy=true][data-day="2"], [data-print-copy=true][data-day="3"], [data-print-copy=true][data-day="4"]').locator('[data-display="guided"]').evaluateAll((questions) => questions.map((question) => ({
-    left: Number(question.getAttribute("data-original-left")),
-    operator: question.getAttribute("data-original-operator"),
-    right: Number(question.getAttribute("data-original-right")),
-    answer: Number(question.getAttribute("data-original-answer")),
-    splitSource: Number(question.getAttribute("data-split-source")),
-    split: question.getAttribute("data-split-parts")?.split(",").map(Number) ?? [],
-    shown: Array.from(question.querySelectorAll<HTMLElement>("[data-count-role]"), (group) => ({ role: group.dataset.countRole, count: Number(group.dataset.count) })),
-  })));
-  expect(guidedQuestions).toHaveLength(6);
-  guidedQuestions.forEach((question) => {
-    expect(question.operator === "+" ? question.left + question.right : question.left - question.right).toBe(question.answer);
-    expect(question.split.reduce((sum, value) => sum + value, 0)).toBe(question.splitSource);
-    expect(question.shown.find((part) => part.role === "left-operand")?.count).toBe(question.left);
-    expect(question.shown.find((part) => part.role === "right-operand")?.count).toBe(question.right);
-  });
+  for (const day of [2, 3, 4]) {
+    await page.getByTestId(`worksheet-day-${day}`).click();
+    await expect(printPack.locator(`[data-print-copy=true][data-day="${day}"]`)).toHaveCount(2);
+    const guidedQuestions = await printPack.locator('[data-display="guided"]').evaluateAll((questions) => questions.map((question) => ({
+      left: Number(question.getAttribute("data-original-left")),
+      operator: question.getAttribute("data-original-operator"),
+      right: Number(question.getAttribute("data-original-right")),
+      answer: Number(question.getAttribute("data-original-answer")),
+      splitSource: Number(question.getAttribute("data-split-source")),
+      split: question.getAttribute("data-split-parts")?.split(",").map(Number) ?? [],
+      shown: Array.from(question.querySelectorAll<HTMLElement>("[data-count-role]"), (group) => ({ role: group.dataset.countRole, count: Number(group.dataset.count) })),
+    })));
+    expect(guidedQuestions).toHaveLength(2);
+    guidedQuestions.forEach((question) => {
+      expect(question.operator === "+" ? question.left + question.right : question.left - question.right).toBe(question.answer);
+      expect(question.split.reduce((sum, value) => sum + value, 0)).toBe(question.splitSource);
+      expect(question.shown.find((part) => part.role === "left-operand")?.count).toBe(question.left);
+      expect(question.shown.find((part) => part.role === "right-operand")?.count).toBe(question.right);
+    });
+  }
 });
 
 test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async ({ page }) => {
@@ -934,26 +1010,27 @@ test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async (
 test("强化训练配置支持应用题 0% 到 25%，并可只导出强化阶段", async ({ page }) => {
   await page.goto("/kids/math-worksheet");
 
-  const includeFoundation = page.getByRole("checkbox", { name: "包含 5 天基础学习" });
+  const includeFoundation = page.getByRole("checkbox", { name: "包含 5 天基础引导" });
   await includeFoundation.uncheck();
   await expect(page.getByRole("button", { name: "导出 25 天 PDF" })).toBeVisible();
-  await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(50);
+  const printPack = page.getByTestId("worksheet-print-pack");
+  await expect(printPack.locator("[data-print-copy=true]")).toHaveCount(2);
   await expect(page.getByTestId("worksheet-print-summary")).toHaveText("50 页内容 / 50 页双面打印包");
 
   const applicationRatio = page.getByRole("spinbutton", { name: "应用题占比" });
   await applicationRatio.fill("0");
   await page.getByTestId("worksheet-day-6").click();
-  await expect(page.getByTestId("worksheet-print-pack").locator('[data-print-copy=true][data-day="6"] [data-type=application]')).toHaveCount(0);
+  await expect(printPack.locator('[data-print-copy=true][data-day="6"] [data-type=application]')).toHaveCount(0);
 
   await applicationRatio.fill("25");
-  const applicationCounts = await page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]").evaluateAll((papers) => (
-    [6, 25].map((day) => papers.filter((paper) => paper.getAttribute("data-day") === String(day)).reduce((sum, paper) => sum + paper.querySelectorAll("[data-type=application]").length, 0))
-  ));
-  expect(applicationCounts[0]).toBeGreaterThan(0);
-  expect(applicationCounts[1]).toBeGreaterThan(0);
-  expect(applicationCounts.every((count) => count <= 8)).toBe(true);
+  const daySixApplicationCount = await printPack.locator('[data-print-copy=true][data-day="6"] [data-type=application]').count();
+  await page.getByTestId("worksheet-day-25").click();
+  const dayTwentyFiveApplicationCount = await printPack.locator('[data-print-copy=true][data-day="25"] [data-type=application]').count();
+  expect(daySixApplicationCount).toBeGreaterThan(0);
+  expect(dayTwentyFiveApplicationCount).toBeGreaterThan(0);
+  expect([daySixApplicationCount, dayTwentyFiveApplicationCount].every((count) => count <= 8)).toBe(true);
 
-  const applicationLayouts = await page.getByTestId("worksheet-print-pack").locator('section:has([data-type="application"])').evaluateAll((sections) => sections.map((section) => {
+  const applicationLayouts = await printPack.locator('section:has([data-type="application"])').evaluateAll((sections) => sections.map((section) => {
     const grid = section.querySelector<HTMLElement>("[class*=applicationGrid]");
     const questions = Array.from(section.querySelectorAll<HTMLElement>('[data-type="application"]'));
     const gridRect = grid?.getBoundingClientRect();
@@ -966,7 +1043,7 @@ test("强化训练配置支持应用题 0% 到 25%，并可只导出强化阶段
   expect(applicationLayouts.length).toBeGreaterThan(0);
   expect(applicationLayouts.every((layout) => layout.columns === "1" && layout.fullWidth && layout.hasContextIcon)).toBe(true);
 
-  const application = page.getByTestId("worksheet-print-pack").locator('[data-print-copy=true][data-day="6"] [data-type=application]').first();
+  const application = printPack.locator('[data-print-copy=true][data-day="25"] [data-type=application]').first();
   await expect(application).not.toContainText("列式");
   await expect(application).not.toContainText("答");
   const writingSpace = application.getByTestId("application-writing-space");
@@ -977,11 +1054,40 @@ test("强化训练配置支持应用题 0% 到 25%，并可只导出强化阶段
   await expect(application).toHaveCSS("border-bottom-style", "none");
   await expect(application.locator("strong")).toHaveCount(0);
 
-  const before = await page.getByTestId("worksheet-print-pack").locator('[data-print-copy=true][data-day="6"] [data-type=application]').first().textContent();
+  const before = await application.textContent();
   await page.getByRole("button", { name: "本日换一套" }).click();
   await expect(page.getByRole("status")).toContainText("已换一套题目");
-  const after = await page.getByTestId("worksheet-print-pack").locator('[data-print-copy=true][data-day="6"] [data-type=application]').first().textContent();
+  const after = await printPack.locator('[data-print-copy=true][data-day="25"] [data-type=application]').first().textContent();
   expect(after).not.toBe(before);
+});
+
+test("数学全量 PDF 在后台生成时可随时取消", async ({ page }) => {
+  await page.goto("/kids/math-worksheet");
+  const exportButton = page.getByRole("button", { name: "导出 30 天 PDF" });
+  await exportButton.click();
+  const cancelButton = page.getByRole("button", { name: /取消导出/ });
+  await expect(cancelButton).toBeVisible();
+  await cancelButton.click();
+  await expect(page.getByRole("status")).toContainText("已取消数学练习导出");
+  await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(2);
+});
+
+test("数学全量 PDF 可由后台直接生成并下载", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/kids/math-worksheet");
+  // 先完成一次客户端交互，避免开发服务器并发编译时在水合前点击导出。
+  await page.getByTestId("worksheet-day-2").click();
+  await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "2");
+  const downloadPromise = page.waitForEvent("download", { timeout: 110_000 });
+  await page.getByRole("button", { name: "导出 30 天 PDF" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("一程一成长-幼小数学练习-30天.pdf");
+  const stream = await download.createReadStream();
+  let size = 0;
+  for await (const chunk of stream) size += chunk.length;
+  expect(size).toBeGreaterThan(100_000);
+  await expect(page.getByRole("status")).toContainText("30 天数学练习已导出，共 60 页");
+  await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(2);
 });
 
 test("幼小数学练习在移动端可完整缩放预览", async ({ page }) => {
@@ -1032,6 +1138,7 @@ test("幼小数学练习的桌面 A4 预览不产生滚动条", async ({ page })
 test("幼小数学练习打印包保持 A4 边界且素材全部加载", async ({ page }) => {
   await page.goto("/kids/math-worksheet");
 
+  await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLImageElement>("img[src*='/math-worksheet/objects/']")).every((image) => image.complete && image.naturalWidth > 0));
   const assets = await page.locator("img[src*='/math-worksheet/objects/']").evaluateAll((images) => (
     Array.from(new Map(images.map((image) => {
       const item = image as HTMLImageElement;
@@ -1042,6 +1149,7 @@ test("幼小数学练习打印包保持 A4 边界且素材全部加载", async (
     expect(assets.find((asset) => asset.src?.endsWith(name + ".svg"))?.loaded).toBe(true);
   }
 
+  await page.getByTestId("worksheet-day-17").click();
   await page.emulateMedia({ media: "print" });
   const metrics = await page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]").evaluateAll((papers) => (
     papers.map((paper) => {
@@ -1113,7 +1221,7 @@ test("幼小数学练习打印包保持 A4 边界且素材全部加载", async (
     })
   ));
 
-  expect(metrics).toHaveLength(60);
+  expect(metrics).toHaveLength(2);
   expect(metrics.every(({ width, height, overflow, questionOverflow, complexAnswerDrift, complexWritingGaps, complexSlotDrift, operatorCenterDrift, uncenteredTerms, applicationSingleColumn, invalidEmptySlots }) => (
     width >= 793 && width <= 795
     && height >= 1122 && height <= 1124

@@ -337,6 +337,12 @@
 }
 
 .actions .printButton {
+  border-color: #4f7e6e;
+  background: #4f7e6e;
+  color: #fff;
+}
+
+.actions .bulkPrintButton {
   border-color: var(--worksheet-accent);
   background: var(--worksheet-accent);
   color: #fff;

@@ -1,12 +1,18 @@
 import { ArrowDown, ArrowRight, Calculator, Check, Printer, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
-import { getKidsToolHref, kidsToolDefinitions } from "@/lib/tools/kids-registry";
+import {
+  getKidsToolHref,
+  getKidsToolsByFormat,
+  kidsToolDefinitions,
+  type KidsToolDefinition,
+  type KidsToolFormat,
+} from "@/lib/tools/kids-registry";
 
 import { KidsShell } from "./kids-shell";
 import styles from "./kids-home-experience.module.css";
 
-const learningPrinciples = [
+const experiencePrinciples = [
   {
     title: "每天一点",
     detail: "一张练习单，保持轻量节奏。",
@@ -45,8 +51,71 @@ function toolGridClass(count: number) {
   return styles.toolGridMany;
 }
 
+const formatLabels: Record<KidsToolFormat, string> = {
+  printable: "A4 打印",
+  interactive: "在线互动",
+  creative: "自由创作",
+};
+
+function ToolCollection({
+  tools,
+  sectionId,
+  kicker,
+  title,
+  description,
+}: {
+  tools: readonly KidsToolDefinition[];
+  sectionId: string;
+  kicker: string;
+  title: string;
+  description: string;
+}) {
+  if (tools.length === 0) return null;
+  return (
+    <section className={styles.toolsSection} aria-labelledby={sectionId}>
+      <header className={styles.sectionHeader}>
+        <div>
+          <p className={styles.sectionKicker}>{kicker}</p>
+          <h2 id={sectionId}>{title}</h2>
+          <p className={styles.sectionDescription}>{description}</p>
+        </div>
+        <span>{tools.length} 个{title}</span>
+      </header>
+
+      <div className={`${styles.toolGrid} ${toolGridClass(tools.length)}`}>
+        {tools.map((tool) => (
+          <article className={styles.toolFeature} data-accent={tool.accent} data-format={tool.format} key={tool.slug}>
+            <div className={styles.toolPreview}>
+              <img src={tool.previewImage} alt={`${tool.title}页面预览`} loading="lazy" />
+            </div>
+            <div className={styles.toolInfo}>
+              <div className={styles.toolMeta}>
+                <span>{tool.stage}</span>
+                <span>约 {tool.estimatedMinutes} 分钟</span>
+                <span>{formatLabels[tool.format]}</span>
+              </div>
+              <h3>{tool.title}</h3>
+              <p>{tool.summary}</p>
+              <ul className={styles.skillList} aria-label={`${tool.title}练习内容`}>
+                {tool.skillAreas.map((skill) => <li key={skill}>{skill}</li>)}
+              </ul>
+              <Link className={styles.toolAction} href={getKidsToolHref(tool)}>
+                开始使用
+                <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function KidsHomeExperience() {
   const firstTool = kidsToolDefinitions[0];
+  const interactiveTools = getKidsToolsByFormat("interactive");
+  const printableTools = getKidsToolsByFormat("printable");
+  const creativeTools = getKidsToolsByFormat("creative");
 
   return (
     <KidsShell>
@@ -89,62 +158,47 @@ export function KidsHomeExperience() {
                 <img src={firstTool.previewImage} alt="幼小数学练习 A4 页面预览" loading="eager" />
               </div>
               <div className={styles.sheetCaption}>
-                <span>第一张学习页</span>
+                <span>第一张练习页</span>
                 <strong>A4 数学练习</strong>
               </div>
             </div>
           ) : null}
         </section>
 
-        <section className={styles.toolsSection} id="tools" aria-labelledby="kids-tools-title">
-          <header className={styles.sectionHeader}>
-            <div>
-              <p className={styles.sectionKicker}>产品介绍</p>
-              <h2 id="kids-tools-title">成长不必一蹴而就</h2>
-              <p className={styles.sectionDescription}>我们把复杂的学习目标，拆成孩子每天都能完成的一小步。少一点压力，多一点尝试；少一点比较，多一点看见。</p>
-            </div>
-            <span>{kidsToolDefinitions.length} 个可用工具</span>
-          </header>
-
-          <div className={`${styles.toolGrid} ${toolGridClass(kidsToolDefinitions.length)}`}>
-            {kidsToolDefinitions
-              .slice()
-              .sort((left, right) => left.order - right.order)
-              .map((tool) => (
-                <article className={styles.toolFeature} data-accent={tool.accent} key={tool.slug}>
-                  <div className={styles.toolPreview}>
-                    <img src={tool.previewImage} alt={`${tool.title}页面预览`} loading="lazy" />
-                  </div>
-                  <div className={styles.toolInfo}>
-                    <div className={styles.toolMeta}>
-                      <span>{tool.stage}</span>
-                      <span>{tool.category}</span>
-                    </div>
-                    <h3>{tool.title}</h3>
-                    <p>{tool.summary}</p>
-                    <ul className={styles.skillList} aria-label={`${tool.title}练习内容`}>
-                      {tool.skillAreas.map((skill) => <li key={skill}>{skill}</li>)}
-                    </ul>
-                    <Link className={styles.toolAction} href={getKidsToolHref(tool)}>
-                      开始使用
-                      <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />
-                    </Link>
-                  </div>
-                </article>
-              ))}
-          </div>
-        </section>
+        <div className={styles.toolGroups} id="tools">
+          <ToolCollection
+            tools={interactiveTools}
+            sectionId="kids-interactive-tools-title"
+            kicker="动手探索"
+            title="互动探究"
+            description="通过点击、拖动和观察，把抽象概念变成孩子可以直接操作的体验。"
+          />
+          <ToolCollection
+            tools={printableTools}
+            sectionId="kids-printable-tools-title"
+            kicker="纸笔巩固"
+            title="打印练习"
+            description="按所选内容即时生成 A4 页面，适合家庭陪伴和纸笔练习，不记录使用状态。"
+          />
+          <ToolCollection
+            tools={creativeTools}
+            sectionId="kids-creative-tools-title"
+            kicker="自由表达"
+            title="自由创造"
+            description="没有固定答案，在尝试和组合中留下属于孩子自己的作品。"
+          />
+        </div>
 
         <section className={styles.approach} id="approach" aria-labelledby="kids-approach-title">
           <header className={styles.sectionHeader}>
             <div>
               <p className={styles.sectionKicker}>家长价值</p>
               <h2 id="kids-approach-title">不只看结果，更看见孩子正在发生的变化。</h2>
-              <p className={styles.sectionDescription}>为 4—7 岁孩子准备的轻量学习工具。把每天一点练习，变成孩子看得见、家长感受得到的成长。</p>
+              <p className={styles.sectionDescription}>为 4—7 岁孩子准备的轻量启蒙工具。让每天一点练习和动手探究，变成孩子看得见、家长感受得到的成长。</p>
             </div>
           </header>
           <div className={styles.principleGrid}>
-            {learningPrinciples.map(({ title, detail, icon: Icon }) => (
+            {experiencePrinciples.map(({ title, detail, icon: Icon }) => (
               <article className={styles.principle} key={title}>
                 <Icon aria-hidden="true" size={19} strokeWidth={1.7} />
                 <h3>{title}</h3>

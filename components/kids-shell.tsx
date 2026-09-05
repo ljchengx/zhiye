@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { getKidsToolHref, kidsToolDefinitions, type KidsToolSlug } from "@/lib/tools/kids-registry";
 
+import { KidsUserBadge } from "./kids-user-badge";
 import styles from "./kids-shell.module.css";
 
 interface KidsShellProps {
@@ -36,10 +37,11 @@ export function KidsShell({ activeTool, children }: KidsShellProps) {
 
         <nav className={styles.nav} aria-label="一程一成长导航">
           <Link href="/kids#tools" onClick={closeNavigation}>全部启蒙工具</Link>
-          <Link href="/kids#approach" onClick={closeNavigation}>学习方式</Link>
+          <Link href="/kids#approach" onClick={closeNavigation}>使用方式</Link>
         </nav>
 
         <div className={styles.actions}>
+          <KidsUserBadge />
           <Link className={styles.actionLink} href={currentTool ? getKidsToolHref(currentTool) : primaryHref} onClick={closeNavigation}>
             {currentTool ? "当前工具" : "开始数学练习"}
             <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />
@@ -58,7 +60,7 @@ export function KidsShell({ activeTool, children }: KidsShellProps) {
 
         <div className={`${styles.mobileNav} ${navigationOpen ? styles.mobileNavOpen : ""}`} id="kids-navigation">
           <Link href="/kids#tools" onClick={closeNavigation}>全部启蒙工具</Link>
-          <Link href="/kids#approach" onClick={closeNavigation}>学习方式</Link>
+          <Link href="/kids#approach" onClick={closeNavigation}>使用方式</Link>
           <Link href={currentTool ? getKidsToolHref(currentTool) : primaryHref} onClick={closeNavigation}>
             {currentTool ? "当前工具" : "开始数学练习"}
           </Link>

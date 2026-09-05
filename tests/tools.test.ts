@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { decodeBase64, encodeBase64, TextTransformError } from "../lib/tools/base64";
 import { formatJson, getJsonStructureStats, getJsonSummary, JsonTransformError, minifyJson } from "../lib/tools/json";
 import { stripMarkdown } from "../lib/tools/markdown";
-import { getKidsToolByPath, kidsToolDefinitions } from "../lib/tools/kids-registry";
+import { getKidsToolByPath, getKidsToolsByFormat, kidsToolDefinitions } from "../lib/tools/kids-registry";
 import { searchTools } from "../lib/tools/registry";
 import {
   dateTimeToTimestamp,
@@ -160,5 +160,12 @@ describe("启蒙工具注册表", () => {
     expect(kidsToolDefinitions[0]?.summary).toContain("25 天强化");
     expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
     expect(getKidsToolByPath("pinyin-worksheet")?.href).toBe("/kids/pinyin-worksheet");
+    expect(kidsToolDefinitions.map((tool) => ({ format: tool.format, domain: tool.domain, estimatedMinutes: tool.estimatedMinutes }))).toEqual([
+      { format: "printable", domain: "math", estimatedMinutes: 15 },
+      { format: "printable", domain: "pinyin", estimatedMinutes: 10 },
+    ]);
+    expect(getKidsToolsByFormat("printable").map((tool) => tool.slug)).toEqual(["math-worksheet", "pinyin-worksheet"]);
+    expect(getKidsToolsByFormat("interactive")).toEqual([]);
+    expect(getKidsToolsByFormat("creative")).toEqual([]);
   });
 });

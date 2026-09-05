@@ -1,0 +1,113 @@
+.account {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: #263238;
+}
+
+.login {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid #dce3e6;
+  border-radius: 5px;
+  color: #263238;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.login:hover,
+.login:focus-visible {
+  border-color: #e45d45;
+  color: #c84e3a;
+}
+
+.logout {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #6f7c81;
+}
+
+.logout:hover,
+.logout:focus-visible {
+  background: #f7ece8;
+  color: #c84e3a;
+}
+
+.loading {
+  display: block;
+  width: 92px;
+  height: 34px;
+  border-radius: 5px;
+  background: #f1f4f4;
+}
+
+.avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 0 0 1px #dce3e6;
+}
+
+.copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.copy strong {
+  overflow: hidden;
+  max-width: 96px;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy small {
+  color: #6f7c81;
+  font-size: 9px;
+}
+
+.badge[data-compact] .copy {
+  display: none;
+}
+
+@media (max-width: 440px) {
+  .copy {
+    display: none;
+  }
+
+  .loading {
+    width: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login,
+  .logout {
+    transition: none;
+  }
+}

@@ -2,28 +2,25 @@ import { describe, expect, it } from "vitest";
 
 import {
   addToneMark,
-  createEmptyPinyinProgress,
   createPinyinWorksheet,
   DEFAULT_PINYIN_WORKSHEET_CONFIG,
   getPinyinPictureCandidates,
-  getPinyinProgressCounts,
-  getRecommendedPinyinItem,
   getToneForms,
-  markPinyinCompleted,
-  MAX_PINYIN_HISTORY,
   MAX_PINYIN_CORE_QUESTIONS,
   MAX_PINYIN_PICTURE_QUESTIONS,
   MAX_PINYIN_TRACE_ROWS,
   normalizePinyinConfig,
-  parsePinyinProgress,
   PINYIN_FINALS,
+  PINYIN_BACK_NASAL_FINALS,
+  PINYIN_COMPOUND_FINALS,
+  PINYIN_FRONT_NASAL_FINALS,
   PINYIN_INITIALS,
   PINYIN_ITEMS,
-  PINYIN_LEARNING_ORDER,
+  PINYIN_PRINT_ORDER,
   PINYIN_PAGE_HEIGHT_MM,
+  PINYIN_SIMPLE_FINALS,
   PINYIN_SYLLABLE_BANK,
   PINYIN_WHOLE_SYLLABLES,
-  type PinyinProgressV1,
 } from "../lib/tools/pinyin-worksheet";
 
 describe("幼小拼音标准数据", () => {
@@ -33,7 +30,15 @@ describe("幼小拼音标准数据", () => {
     expect(PINYIN_WHOLE_SYLLABLES).toHaveLength(16);
     expect(PINYIN_ITEMS).toHaveLength(63);
     expect(new Set(PINYIN_ITEMS.map((item) => item.id)).size).toBe(63);
-    expect(PINYIN_LEARNING_ORDER).toHaveLength(63);
+    expect(PINYIN_PRINT_ORDER).toHaveLength(63);
+    expect(PINYIN_PRINT_ORDER.map((item) => item.display)).toEqual([
+      ...PINYIN_SIMPLE_FINALS,
+      ...PINYIN_INITIALS,
+      ...PINYIN_COMPOUND_FINALS,
+      ...PINYIN_FRONT_NASAL_FINALS,
+      ...PINYIN_BACK_NASAL_FINALS,
+      ...PINYIN_WHOLE_SYLLABLES,
+    ]);
   });
 
   it("按规范给声母、韵母和复韵母标调，并处理 ü", () => {
@@ -143,33 +148,5 @@ describe("拼音练习纸生成", () => {
     const contrast = umlautQuestions.find((question) => question.kind === "contrast");
     expect(contrast?.rule).toBe("umlaut");
     expect(contrast?.answer).not.toContain("ü");
-  });
-});
-
-describe("拼音本地完成记录", () => {
-  it("容错损坏数据，并对重复完成保持唯一项目计数", () => {
-    expect(parsePinyinProgress("{bad json")).toEqual(createEmptyPinyinProgress());
-    const first = markPinyinCompleted(createEmptyPinyinProgress(), "final-a", "2026-09-05T00:00:00.000Z");
-    const second = markPinyinCompleted(first, "final-a", "2026-09-05T00:01:00.000Z");
-    expect(getPinyinProgressCounts(second)).toMatchObject({ total: 63, completed: 1, finals: 1 });
-    expect(second.history).toHaveLength(2);
-  });
-
-  it("按教学顺序推荐未完成项目，全部完成后推荐最久未复习项目", () => {
-    let progress = createEmptyPinyinProgress();
-    expect(getRecommendedPinyinItem(progress)?.display).toBe("a");
-    progress = markPinyinCompleted(progress, "final-a", "2026-09-05T00:00:00.000Z");
-    expect(getRecommendedPinyinItem(progress)?.display).toBe("o");
-
-    const completeAll = PINYIN_LEARNING_ORDER.reduce<PinyinProgressV1>((current, item, index) => markPinyinCompleted(current, item.id, `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`), createEmptyPinyinProgress());
-    expect(getRecommendedPinyinItem(completeAll)?.display).toBe("a");
-  });
-
-  it("限制历史长度并过滤未知项目", () => {
-    const entries = Array.from({ length: (MAX_PINYIN_HISTORY + 20) * 2 }, (_, index) => ({ itemId: index % 2 === 0 ? "final-a" : "unknown", completedAt: `2026-09-05T00:${String(index % 60).padStart(2, "0")}:00.000Z` }));
-    const parsed = parsePinyinProgress(JSON.stringify({ version: 1, completedItemIds: ["final-a", "unknown"], history: entries }));
-    expect(parsed.completedItemIds).toEqual(["final-a"]);
-    expect(parsed.history).toHaveLength(MAX_PINYIN_HISTORY);
-    expect(parsed.history.every((entry) => entry.itemId === "final-a")).toBe(true);
   });
 });

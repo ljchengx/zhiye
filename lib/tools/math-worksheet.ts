@@ -821,7 +821,7 @@ function createDailyWorksheet(args: { id: string; day: number; stage: WorksheetS
 function foundationDayPlan(index: number): WorksheetDayPlan {
   const titles = ["数的组成与分解", "凑十法", "破十法", "平十法", "看图列式与一步应用题"];
   const objectives = ["认识一个数可以分成两部分", "把一个数拆开，先凑成 10", "把十几拆成 10 和几再减", "把减数拆开，先减到整十", "从图中看懂数量变化并列式"];
-  return { stageDay: index, day: index, stage: "foundation", phase: 0, phaseTitle: "基础学习", phaseSummary: "5 天固定精选内容，先学方法再进入强化练习。", startDay: 1, endDay: 5, title: titles[index - 1], objective: objectives[index - 1], resultMax: 20, numberMax: 20, binaryShape: "basic", binaryTwoDigitRatio: 0, threeNumberRatio: 0, tripleMinTerm: 1, applicationLevel: "picture", methodTheme: index === 1 || index === 2 ? "make-ten" : index === 3 ? "break-ten" : index === 4 ? "flat-ten" : "mixed" };
+  return { stageDay: index, day: index, stage: "foundation", phase: 0, phaseTitle: "基础引导", phaseSummary: "5 天固定精选内容，先看方法再进入强化练习。", startDay: 1, endDay: 5, title: titles[index - 1], objective: objectives[index - 1], resultMax: 20, numberMax: 20, binaryShape: "basic", binaryTwoDigitRatio: 0, threeNumberRatio: 0, tripleMinTerm: 1, applicationLevel: "picture", methodTheme: index === 1 || index === 2 ? "make-ten" : index === 3 ? "break-ten" : index === 4 ? "flat-ten" : "mixed" };
 }
 
 function buildFoundationDay(index: number): DailyWorksheet {

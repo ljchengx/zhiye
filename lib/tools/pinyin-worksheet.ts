@@ -75,7 +75,7 @@ function createPinyinItems(): PinyinItem[] {
 export const PINYIN_ITEMS: readonly PinyinItem[] = createPinyinItems();
 export const PINYIN_ITEM_IDS: readonly string[] = PINYIN_ITEMS.map((item) => item.id);
 
-const LEARNING_ORDER_DISPLAY = [
+const PRINT_ORDER_DISPLAY = [
   "a", "o", "e", "i", "u", "ü",
   "b", "p", "m", "f", "d", "t", "n", "l", "g", "k", "h", "j", "q", "x", "zh", "ch", "sh", "r", "z", "c", "s", "y", "w",
   "ai", "ei", "ui", "ao", "ou", "iu", "ie", "üe", "er", "an", "en", "in", "un", "ün", "ang", "eng", "ing", "ong",
@@ -86,7 +86,7 @@ function getItemByCategoryAndDisplay(category: PinyinCategory, display: string) 
   return PINYIN_ITEMS.find((item) => item.category === category && item.display === display);
 }
 
-export const PINYIN_LEARNING_ORDER: readonly PinyinItem[] = LEARNING_ORDER_DISPLAY
+export const PINYIN_PRINT_ORDER: readonly PinyinItem[] = PRINT_ORDER_DISPLAY
   .map((display) => PINYIN_ITEMS.find((item) => item.display === display))
   .filter((item): item is PinyinItem => Boolean(item));
 
@@ -773,7 +773,7 @@ function paginateSections(sources: readonly PinyinWorksheetSection[]): readonly 
 }
 
 export function createPinyinWorksheet(itemId: string, seed: number, partialConfig: Partial<PinyinWorksheetConfig> = {}): PinyinWorksheet {
-  const item = getPinyinItem(itemId) ?? PINYIN_LEARNING_ORDER[0] ?? PINYIN_ITEMS[0] as PinyinItem;
+  const item = getPinyinItem(itemId) ?? PINYIN_PRINT_ORDER[0] ?? PINYIN_ITEMS[0] as PinyinItem;
   const config = normalizePinyinConfig(partialConfig);
   const random = createRandom(seed);
   const traceSection: PinyinWorksheetSection = {
@@ -802,76 +802,4 @@ export function createPinyinWorksheet(itemId: string, seed: number, partialConfi
   };
   const sections = [traceSection, ...(blendQuestions.length > 0 ? [blendSection] : []), ...(pictureQuestions.length > 0 ? [pictureSection] : [])];
   return { item, seed, config, sections, pages: paginateSections(sections) };
-}
-
-export const PINYIN_PROGRESS_STORAGE_KEY = "yicheng-kids:pinyin-progress:v1";
-export const MAX_PINYIN_HISTORY = 180;
-
-export interface PinyinProgressHistoryEntry {
-  itemId: string;
-  completedAt: string;
-}
-
-export interface PinyinProgressV1 {
-  version: 1;
-  completedItemIds: readonly string[];
-  history: readonly PinyinProgressHistoryEntry[];
-}
-
-export function createEmptyPinyinProgress(): PinyinProgressV1 {
-  return { version: 1, completedItemIds: [], history: [] };
-}
-
-export function parsePinyinProgress(raw: string | null): PinyinProgressV1 {
-  if (!raw) return createEmptyPinyinProgress();
-  try {
-    const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") return createEmptyPinyinProgress();
-    const record = value as { version?: unknown; completedItemIds?: unknown; history?: unknown };
-    if (record.version !== 1 || !Array.isArray(record.completedItemIds) || !Array.isArray(record.history)) return createEmptyPinyinProgress();
-    const validIds = new Set(PINYIN_ITEM_IDS);
-    const completedItemIds = Array.from(new Set(record.completedItemIds.filter((id): id is string => typeof id === "string" && validIds.has(id))));
-    const history = record.history
-      .filter((entry): entry is PinyinProgressHistoryEntry => Boolean(entry && typeof entry === "object" && typeof (entry as PinyinProgressHistoryEntry).itemId === "string" && typeof (entry as PinyinProgressHistoryEntry).completedAt === "string"))
-      .filter((entry) => validIds.has(entry.itemId))
-      .slice(-MAX_PINYIN_HISTORY);
-    return { version: 1, completedItemIds, history };
-  } catch {
-    return createEmptyPinyinProgress();
-  }
-}
-
-export function serializePinyinProgress(progress: PinyinProgressV1) {
-  return JSON.stringify(progress);
-}
-
-export function markPinyinCompleted(progress: PinyinProgressV1, itemId: string, completedAt: string) {
-  if (!getPinyinItem(itemId)) return progress;
-  const completedItemIds = progress.completedItemIds.includes(itemId) ? [...progress.completedItemIds] : [...progress.completedItemIds, itemId];
-  const history = [...progress.history, { itemId, completedAt }].slice(-MAX_PINYIN_HISTORY);
-  return { version: 1 as const, completedItemIds, history };
-}
-
-export function getRecommendedPinyinItem(progress: PinyinProgressV1) {
-  const completed = new Set(progress.completedItemIds);
-  const next = PINYIN_LEARNING_ORDER.find((item) => !completed.has(item.id));
-  if (next) return next;
-  const lastPracticed = new Map<string, string>();
-  progress.history.forEach((entry) => lastPracticed.set(entry.itemId, entry.completedAt));
-  return [...PINYIN_LEARNING_ORDER].sort((left, right) => {
-    const leftTime = lastPracticed.get(left.id) ?? "";
-    const rightTime = lastPracticed.get(right.id) ?? "";
-    return leftTime.localeCompare(rightTime) || left.order - right.order;
-  })[0] ?? PINYIN_ITEMS[0];
-}
-
-export function getPinyinProgressCounts(progress: PinyinProgressV1) {
-  const completed = new Set(progress.completedItemIds);
-  return {
-    total: PINYIN_ITEMS.length,
-    completed: completed.size,
-    initials: PINYIN_ITEMS.filter((item) => item.category === "initial" && completed.has(item.id)).length,
-    finals: PINYIN_ITEMS.filter((item) => item.category === "final" && completed.has(item.id)).length,
-    wholeSyllables: PINYIN_ITEMS.filter((item) => item.category === "whole-syllable" && completed.has(item.id)).length,
-  };
 }
