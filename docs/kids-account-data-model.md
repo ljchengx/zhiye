@@ -68,7 +68,13 @@ interface KidsExplorationV1 {
 }
 ```
 
-唯一业务键为 `childId + activityId + challengeId`。同一挑战的重复尝试累加 `attempts`，完成状态不会被后续开始事件回退。该模型不包含打印工具专用字段，也不读取或迁移旧的进度键。
+唯一业务键为 `childId + activityId + challengeId`。`started` 表示开始一次新尝试并累加 `attempts`；随后写入 `completed` 只完成本次尝试，不重复累加。已完成状态不会被后续开始事件回退。该模型不包含打印工具专用字段，也不读取或迁移旧的遗留键。
+
+空间旅程每次进入一幕、刷新进入该幕或主动重玩均创建一次新尝试；界面重渲染、切换观察方向、拖拽预览、提示、静音与音频重播均不创建尝试。幕内操作完成并完成表达环节后仅提交一次 `completed`。界面异步写入顺序串行化，数据始终归属触发事件时的儿童 ID。
+
+每幕标识为 `journey-v1:<islandId>:<sceneId>`。首页“已点亮”统计各岛第三幕的完成状态，自由创造岛不记录完成状态。声音偏好属于设备设置，预测、表达选择、提示等级和具体方块布局仅留在当前会话内存中。
+
+持久化失败时明确显示无法保存，当前会话仍允许继续探索；不会把内存完成状态宣称为已保存。当前项目没有历史数据迁移负担，不新增迁移工具、双轨数据来源或兼容实现，也不自动删除用户浏览器的数据。
 
 ## 5. 正式后端映射
 
@@ -79,7 +85,7 @@ interface KidsExplorationV1 {
 | `KidsSession` | 认证服务会话 | `user_id`, `active_child_id`, `expires_at` |
 | `KidsExplorationTrace` | `exploration_traces` | `child_id`, `activity_id`, `challenge_id`, `status`, `attempts`, `updated_at` |
 
-后端应为 `exploration_traces(child_id, activity_id, challenge_id)` 建立唯一约束，通过更新操作累加尝试次数并保护已完成状态。
+后端应为 `exploration_traces(child_id, activity_id, challenge_id)` 建立唯一约束，只在开始新尝试时累加次数，并保护已完成状态。
 
 ## 6. 正式认证接入边界
 

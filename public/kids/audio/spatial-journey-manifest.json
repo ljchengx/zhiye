@@ -1,0 +1,231 @@
+{
+  "voice": "zh-CN-XiaoxiaoNeural",
+  "rate": "-5%",
+  "clips": [
+    {
+      "subtitle": "左边加一块，会变得多高呢？",
+      "audioSrc": "/kids/audio/spatial-journey/2b8e03e7bb46.mp3",
+      "durationSeconds": 3.096
+    },
+    {
+      "subtitle": "转到观察板亮着的方向看看。",
+      "audioSrc": "/kids/audio/spatial-journey/bf2000976a93.mp3",
+      "durationSeconds": 3.144
+    },
+    {
+      "subtitle": "比较观察板上圈出的地方。",
+      "audioSrc": "/kids/audio/spatial-journey/5a2b352af12f.mp3",
+      "durationSeconds": 2.928
+    },
+    {
+      "subtitle": "这里还空着一个位置。",
+      "audioSrc": "/kids/audio/spatial-journey/3b53c1ef1205.mp3",
+      "durationSeconds": 2.424
+    },
+    {
+      "subtitle": "两边一样高。",
+      "audioSrc": "/kids/audio/spatial-journey/78d572d9fd54.mp3",
+      "durationSeconds": 2.112
+    },
+    {
+      "subtitle": "左边再加一块，会怎样呢？",
+      "audioSrc": "/kids/audio/spatial-journey/b25d46a5b2fb.mp3",
+      "durationSeconds": 3.048
+    },
+    {
+      "subtitle": "左边高，右边低。",
+      "audioSrc": "/kids/audio/spatial-journey/6a6606fbb093.mp3",
+      "durationSeconds": 2.4
+    },
+    {
+      "subtitle": "右边加两块，会怎样呢？",
+      "audioSrc": "/kids/audio/spatial-journey/8036a82ee121.mp3",
+      "durationSeconds": 2.928
+    },
+    {
+      "subtitle": "右边高，左边低。",
+      "audioSrc": "/kids/audio/spatial-journey/a49221ce5bce.mp3",
+      "durationSeconds": 2.448
+    },
+    {
+      "subtitle": "跟着小山雀，一块一块搭起来。",
+      "audioSrc": "/kids/audio/spatial-journey/a9b3816e4499.mp3",
+      "durationSeconds": 3.216
+    },
+    {
+      "subtitle": "黄色方块在灰色方块上面。",
+      "audioSrc": "/kids/audio/spatial-journey/95f09adbdb5b.mp3",
+      "durationSeconds": 3.312
+    },
+    {
+      "subtitle": "这块在刚才那块上面。",
+      "audioSrc": "/kids/audio/spatial-journey/4a1a1d914c66.mp3",
+      "durationSeconds": 2.592
+    },
+    {
+      "subtitle": "看看观察板，搭出同样的形状。",
+      "audioSrc": "/kids/audio/spatial-journey/a7c364d26246.mp3",
+      "durationSeconds": 3.432
+    },
+    {
+      "subtitle": "找找左岸、右岸和中间。",
+      "audioSrc": "/kids/audio/spatial-journey/9c8788b44587.mp3",
+      "durationSeconds": 2.976
+    },
+    {
+      "subtitle": "左岸在哪里？",
+      "audioSrc": "/kids/audio/spatial-journey/ef3aced98c29.mp3",
+      "durationSeconds": 2.112
+    },
+    {
+      "subtitle": "这是左岸。",
+      "audioSrc": "/kids/audio/spatial-journey/1d37aaee4ce3.mp3",
+      "durationSeconds": 2.112
+    },
+    {
+      "subtitle": "再找找右岸。",
+      "audioSrc": "/kids/audio/spatial-journey/e182a69c68b1.mp3",
+      "durationSeconds": 2.112
+    },
+    {
+      "subtitle": "这是右岸。",
+      "audioSrc": "/kids/audio/spatial-journey/f3727e53f416.mp3",
+      "durationSeconds": 2.112
+    },
+    {
+      "subtitle": "两岸之间空在哪里？",
+      "audioSrc": "/kids/audio/spatial-journey/0076ec419891.mp3",
+      "durationSeconds": 2.4
+    },
+    {
+      "subtitle": "缺口在两岸中间。",
+      "audioSrc": "/kids/audio/spatial-journey/b5765dff26bc.mp3",
+      "durationSeconds": 2.304
+    },
+    {
+      "subtitle": "接起来以后，小山雀能过去吗？",
+      "audioSrc": "/kids/audio/spatial-journey/1941a1f8a77e.mp3",
+      "durationSeconds": 3.144
+    },
+    {
+      "subtitle": "桥面连起来，小山雀走过去了。",
+      "audioSrc": "/kids/audio/spatial-journey/0948c6a191d5.mp3",
+      "durationSeconds": 3.288
+    },
+    {
+      "subtitle": "这一块和旁边的桥面连起来了。",
+      "audioSrc": "/kids/audio/spatial-journey/233d3e498a6c.mp3",
+      "durationSeconds": 3.192
+    },
+    {
+      "subtitle": "转到侧面，找找藏起来的缺口。",
+      "audioSrc": "/kids/audio/spatial-journey/0b5c690d0f34.mp3",
+      "durationSeconds": 3.528
+    },
+    {
+      "subtitle": "从哪个方向能看见后面的缺口？",
+      "audioSrc": "/kids/audio/spatial-journey/89629d484cea.mp3",
+      "durationSeconds": 3.504
+    },
+    {
+      "subtitle": "转到侧面，后面的缺口露出来了。",
+      "audioSrc": "/kids/audio/spatial-journey/566b24eb2615.mp3",
+      "durationSeconds": 3.528
+    },
+    {
+      "subtitle": "转一转，把看到的形状找出来。",
+      "audioSrc": "/kids/audio/spatial-journey/0d56db2d5ebc.mp3",
+      "durationSeconds": 3.312
+    },
+    {
+      "subtitle": "转到亮着的方向，找出看到的形状。",
+      "audioSrc": "/kids/audio/spatial-journey/1dab9357a5b2.mp3",
+      "durationSeconds": 3.72
+    },
+    {
+      "subtitle": "这是正面看到的形状。",
+      "audioSrc": "/kids/audio/spatial-journey/72911018bd11.mp3",
+      "durationSeconds": 2.52
+    },
+    {
+      "subtitle": "这是侧面看到的形状。",
+      "audioSrc": "/kids/audio/spatial-journey/27916382ca9e.mp3",
+      "durationSeconds": 2.544
+    },
+    {
+      "subtitle": "这是顶部看到的形状。",
+      "audioSrc": "/kids/audio/spatial-journey/73f3adffeb9d.mp3",
+      "durationSeconds": 2.448
+    },
+    {
+      "subtitle": "山坡小路出现了",
+      "audioSrc": "/kids/audio/spatial-journey/25a65f5f04bd.mp3",
+      "durationSeconds": 2.28
+    },
+    {
+      "subtitle": "石阶旁开出野花",
+      "audioSrc": "/kids/audio/spatial-journey/2e236c8c118d.mp3",
+      "durationSeconds": 2.352
+    },
+    {
+      "subtitle": "终点旗帜升起了",
+      "audioSrc": "/kids/audio/spatial-journey/d2d833b44063.mp3",
+      "durationSeconds": 2.232
+    },
+    {
+      "subtitle": "两岸小路显出方向",
+      "audioSrc": "/kids/audio/spatial-journey/e46dc3fb98eb.mp3",
+      "durationSeconds": 2.496
+    },
+    {
+      "subtitle": "小山雀回到云谷",
+      "audioSrc": "/kids/audio/spatial-journey/9ed503478df3.mp3",
+      "durationSeconds": 2.328
+    },
+    {
+      "subtitle": "云路接通了",
+      "audioSrc": "/kids/audio/spatial-journey/0b944af5a789.mp3",
+      "durationSeconds": 2.112
+    },
+    {
+      "subtitle": "风向旗展开了",
+      "audioSrc": "/kids/audio/spatial-journey/55b362428aa3.mp3",
+      "durationSeconds": 2.136
+    },
+    {
+      "subtitle": "塔边灌木长高了",
+      "audioSrc": "/kids/audio/spatial-journey/e70eac38ccf1.mp3",
+      "durationSeconds": 2.232
+    },
+    {
+      "subtitle": "灯塔发出柔光",
+      "audioSrc": "/kids/audio/spatial-journey/22f5d5176bbc.mp3",
+      "durationSeconds": 2.112
+    },
+    {
+      "subtitle": "梯田小路出现了",
+      "audioSrc": "/kids/audio/spatial-journey/fd145abeb920.mp3",
+      "durationSeconds": 2.208
+    },
+    {
+      "subtitle": "树苗和花朵长出来了",
+      "audioSrc": "/kids/audio/spatial-journey/8dc1a539462c.mp3",
+      "durationSeconds": 2.664
+    },
+    {
+      "subtitle": "整片群岛重新点亮",
+      "audioSrc": "/kids/audio/spatial-journey/6f3cfd3c26e4.mp3",
+      "durationSeconds": 2.592
+    },
+    {
+      "subtitle": "再看看观察板上的形状。",
+      "audioSrc": "/kids/audio/spatial-journey/91f45a9dafc4.mp3",
+      "durationSeconds": 2.76
+    },
+    {
+      "subtitle": "这里多出了一块，看看哪个方向不一样。",
+      "audioSrc": "/kids/audio/spatial-journey/9c7a6ca37f67.mp3",
+      "durationSeconds": 3.936
+    }
+  ]
+}

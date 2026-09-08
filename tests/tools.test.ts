@@ -153,19 +153,24 @@ describe("工具注册表", () => {
 });
 
 describe("启蒙工具注册表", () => {
-  it("注册真实存在的数学与拼音工具，并使用唯一启蒙路径", () => {
-    expect(kidsToolDefinitions.map((tool) => tool.slug)).toEqual(["math-worksheet", "pinyin-worksheet"]);
+  it("区分无状态打印工具与空间积木互动模块", () => {
+    expect(kidsToolDefinitions.map((tool) => tool.slug)).toEqual(["math-worksheet", "pinyin-worksheet", "spatial-blocks"]);
     expect(new Set(kidsToolDefinitions.map((tool) => tool.href)).size).toBe(kidsToolDefinitions.length);
     expect(kidsToolDefinitions[0]?.summary).toContain("5 天基础");
     expect(kidsToolDefinitions[0]?.summary).toContain("25 天强化");
     expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
     expect(getKidsToolByPath("pinyin-worksheet")?.href).toBe("/kids/pinyin-worksheet");
+    expect(getKidsToolByPath("spatial-blocks")?.href).toBe("/kids/spatial-blocks");
     expect(kidsToolDefinitions.map((tool) => ({ format: tool.format, domain: tool.domain, estimatedMinutes: tool.estimatedMinutes }))).toEqual([
       { format: "printable", domain: "math", estimatedMinutes: 15 },
       { format: "printable", domain: "pinyin", estimatedMinutes: 10 },
+      { format: "interactive", domain: "spatial", estimatedMinutes: 8 },
     ]);
     expect(getKidsToolsByFormat("printable").map((tool) => tool.slug)).toEqual(["math-worksheet", "pinyin-worksheet"]);
-    expect(getKidsToolsByFormat("interactive")).toEqual([]);
+    expect(getKidsToolsByFormat("printable").every((tool) => !("activityId" in tool))).toBe(true);
+    expect(getKidsToolsByFormat("interactive").map((tool) => ({ slug: tool.slug, activityId: tool.activityId }))).toEqual([
+      { slug: "spatial-blocks", activityId: "spatial-blocks" },
+    ]);
     expect(getKidsToolsByFormat("creative")).toEqual([]);
   });
 });

@@ -1,21 +1,34 @@
 import type { ToolDefinitionBase } from "./registry";
 
-export type KidsToolSlug = "math-worksheet" | "pinyin-worksheet";
-export type KidsToolPath = "math-worksheet" | "pinyin-worksheet";
+export type KidsToolSlug = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks";
+export type KidsToolPath = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks";
 export type KidsToolFormat = "printable" | "interactive" | "creative";
 export type KidsContentDomain = "math" | "pinyin" | "chinese" | "spatial" | "logic" | "science";
+export type KidsToolComponent = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks";
 
-export interface KidsToolDefinition extends ToolDefinitionBase<KidsToolSlug, KidsToolPath> {
+interface KidsToolDefinitionBase extends ToolDefinitionBase<KidsToolSlug, KidsToolPath> {
   href: `/kids/${KidsToolPath}`;
+  component: KidsToolComponent;
   summary: string;
   stage: string;
-  format: KidsToolFormat;
   domain: KidsContentDomain;
   estimatedMinutes: number;
   skillAreas: readonly string[];
   previewImage: string;
   order: number;
 }
+
+export interface KidsPrintableToolDefinition extends KidsToolDefinitionBase {
+  format: "printable";
+  activityId?: never;
+}
+
+export interface KidsStatefulToolDefinition extends KidsToolDefinitionBase {
+  format: "interactive" | "creative";
+  activityId: string;
+}
+
+export type KidsToolDefinition = KidsPrintableToolDefinition | KidsStatefulToolDefinition;
 
 export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
   {
@@ -202,6 +215,72 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
           question: "如何保存成 PDF？",
           answer: "点击打印或导出 PDF，在浏览器打印窗口选择“另存为 PDF”即可。",
         },
+      ],
+    },
+  },
+  {
+    slug: "spatial-blocks",
+    path: "spatial-blocks",
+    href: "/kids/spatial-blocks",
+    component: "spatial-blocks",
+    title: "空间积木",
+    titleEn: "Spatial Blocks",
+    shortTitle: "空间积木",
+    shortTitleEn: "Spatial Blocks",
+    summary: "沿着四座自然岛屿展开十二幕观察、预测和拼搭旅程。",
+    description: "在自然岛屿中通过三视图、旋转和单位方块探究空间关系。",
+    descriptionEn: "Explore spatial relationships by restoring four miniature block islands.",
+    category: "空间探究",
+    categoryEn: "Spatial exploration",
+    keywords: ["空间积木", "儿童空间思维", "3D 积木", "立体拼搭", "单位方块", "空间关系", "儿童互动探究"],
+    icon: "blocks",
+    accent: "clay",
+    stage: "4～7 岁",
+    format: "interactive",
+    domain: "spatial",
+    activityId: "spatial-blocks",
+    estimatedMinutes: 8,
+    skillAreas: ["上下左右", "旋转观察", "空间组合", "自由创造"],
+    previewImage: "/kids/spatial-blocks-preview.png",
+    order: 1,
+    metadata: {
+      title: "空间积木 - 儿童 3D 空间拼搭探究",
+      description: "面向 4～7 岁儿童的在线 3D 空间积木，通过观察、预测、验证和三视图比较，感受上下、左右、高低、支撑与遮挡关系。",
+    },
+    seo: {
+      heading: "空间积木与自然岛屿拼搭",
+      summary: "沿着四座自然岛屿的十二幕旅程，观察、预测、验证并比较空间关系。",
+      intro: "空间积木把观察现象、做出预测、动手验证、换角度比较和环境恢复放进一组高空微缩自然岛屿。孩子可以转动视角、查看观察手册，再从托盘拿起单位方块。模块不设置分数和倒计时，完成状态仅归入当前登录儿童的本机探索足迹。",
+      features: [
+        "四座自然岛屿、十二幕递进旅程：从石阶、小桥到灯塔和花园。",
+        "三维观察：围绕模型旋转，并在有限范围内缩放。",
+        "观察手册：同步显示正面、侧面和顶部投影，点击视图即可转向。",
+        "概念迁移工坊：完成四座岛后开放自由创造，不保存作品或标准答案。",
+      ],
+      steps: [
+        "游客可以先观看自动演示，登录橙子小朋友账号后开始操作。",
+        "从群岛地图进入一座岛，先观察和预测，再按观察手册换角度比较。",
+        "在引导幕中跟着小山雀逐块搭建，在独立幕中自由试错并对照三视图。",
+      ],
+      h1: "空间积木",
+      sections: [
+        {
+          heading: "为什么从单位方块开始？",
+          paragraphs: ["单位方块具有稳定的长、宽、高，适合把上下、左右、前后和数量关系变成可以直接观察与操作的结构。"],
+        },
+        {
+          heading: "观察、预测和验证怎样连起来？",
+          paragraphs: ["每座岛分为发现、引导拼搭和独立验证三幕。观察手册把真实方块投影成正面、侧面和顶部图，孩子可以先猜，再拖动方块验证自己的想法。"],
+        },
+        {
+          heading: "探索足迹如何保存？",
+          paragraphs: ["只有登录后的十二幕互动旅程会在当前浏览器保存开始次数和完成状态。数学与拼音打印工具、游客演示和自由创造岛都不会写入这些记录。"],
+        },
+      ],
+      faqs: [
+        { question: "不登录可以使用空间积木吗？", answer: "游客可以观看自动拼搭演示；输入橙子测试账号登录后，才能转动视角和完成关卡。" },
+        { question: "自由创造岛会保存作品吗？", answer: "当前验证版不会保存或上传作品，离开页面后自由搭建内容会清空。" },
+        { question: "空间积木会影响数学和拼音练习吗？", answer: "不会。数学和拼音仍是独立的无状态打印工具，不读取或写入空间积木探索足迹。" },
       ],
     },
   },

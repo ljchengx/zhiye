@@ -1,0 +1,45 @@
+.handbook { position: absolute; right: 20px; top: 76px; width: 270px; z-index: 4; background: #f9fcf6; border: 5px solid #a7ba9b; border-radius: 8px; color: #254637; box-shadow: 0 5px 0 #78947a, 0 12px 28px #39735a18; }
+.bookHeading { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; padding: 8px 12px; background: transparent; border: 0; font-weight: 700; font-family: KaiTi, STKaiti, serif; font-size: 18px; }
+.bookHeading svg:last-child { margin-left: auto; }
+.viewTabs { display: flex; padding: 0 6px 6px; gap: 3px; }
+.viewTabs button { position: relative; flex: 1; min-height: 44px; border: 0; border-radius: 4px; background: #e7efe4; color: #39735a; }
+.viewTabs button[aria-pressed=true] { background: #39735a; color: white; }
+.viewTabs button[data-cue=true] { box-shadow: inset 0 -4px #f2c75c; }
+.viewTabs i { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: #ee8354; }
+.projections { display: grid; grid-template-columns: 1fr; padding: 6px; gap: 8px; }
+.projections[data-paired=true] { grid-template-columns: 1fr 1fr; }
+.projections figure { min-width: 0; margin: 0; }
+.projections figcaption { text-align: center; font-size: 12px; }
+.diagram { display: block; width: 100%; max-height: 120px; aspect-ratio: 7 / 6; }
+.observation { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(450px, calc(100% - 24px)); z-index: 6; color: #254637; text-align: center; }
+.observation p { margin: 0 0 8px; padding: 7px; background: #f9fcf6ed; border-radius: 4px; font-size: 17px; }
+.choices { display: flex; justify-content: center; gap: 10px; }
+.observation[data-building] { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 100px); }
+.choices button { flex: 1; max-width: 130px; min-width: 0; min-height: 88px; padding: 8px; border-radius: 8px; border: 2px solid #93b89b; background: #f9fcf6; color: #254637; box-shadow: 0 4px 0 #72937a; }
+.choices button:hover { border-color: #ee8354; }
+.choices button:active { transform: translateY(2px); box-shadow: 0 2px 0 #72937a; }
+.choices button > span:last-child { display: block; font-size: 14px; }
+.heightPicture { height: 57px; display: flex; align-items: end; justify-content: center; gap: 14px; padding-bottom: 5px; }
+.heightPicture > span { display: flex; flex-direction: column; gap: 2px; }
+.heightPicture i { display: block; width: 21px; height: 15px; border-radius: 2px; background: #f2c75c; box-shadow: inset -3px -2px #d6af51; }
+.heightPicture > span:last-child i { background: #77847f; box-shadow: inset -3px -2px #536762; }
+.bankPicture { display: flex; height: 54px; align-items: end; justify-content: center; gap: 6px; }
+.bankPicture i { width: 24px; height: 32px; background: #72b96b; border-radius: 5px 5px 2px 2px; }
+.bankPicture i[data-lit=true] { outline: 3px solid #f2c75c; }
+.bankPicture b { font-size: 23px; color: #ee8354; }
+.primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border: 0; border-radius: 6px; background: #39735a; color: white; font-size: 16px; }
+.primary:disabled { opacity: .55; }
+.keyboard { position: absolute; z-index: 8; bottom: 100px; left: 50%; transform: translateX(-50%); display: flex; background: #f9fcf6; border-radius: 6px; border: 1px solid #39735a; }
+.keyboard button { min-width: 44px; min-height: 44px; display: grid; place-content: center; background: transparent; border: 0; color: #39735a; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.handbook button:focus-visible, .observation button:focus-visible { outline: 3px solid #ee8354; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .observation[data-building] { bottom: calc(max(7px, env(safe-area-inset-bottom)) + 140px); }
+  .handbook { right: 10px; top: 124px; width: 174px; border-width: 3px; }
+  .bookHeading { font-size: 16px; padding: 4px 8px; }
+  .diagram { max-height: 64px; }
+  .projections figcaption { font-size: 10px; }
+  .observation p { font-size: 15px; }
+  .choices { gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .choices button:active { transform: none; } }

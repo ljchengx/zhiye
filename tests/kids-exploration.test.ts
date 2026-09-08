@@ -65,7 +65,7 @@ describe("按儿童身份归属的探索足迹", () => {
     expect(parsed.traces[0]?.challengeId).toBe("level-519");
   });
 
-  it("按孩子隔离足迹、累加尝试次数且完成状态不回退", () => {
+  it("只在开始新尝试时累加次数，完成状态不回退", () => {
     const started = recordKidsExploration(createEmptyKidsExploration(), {
       childId: ORANGE_ID,
       activityId: "spatial-blocks",
@@ -96,7 +96,7 @@ describe("按儿童身份归属的探索足迹", () => {
     });
 
     expect(withOtherChild.traces).toHaveLength(2);
-    expect(withOtherChild.traces.find((trace) => trace.childId === ORANGE_ID)).toMatchObject({ status: "completed", attempts: 3 });
+    expect(withOtherChild.traces.find((trace) => trace.childId === ORANGE_ID)).toMatchObject({ status: "completed", attempts: 2 });
     expect(getKidsExplorationSummary(withOtherChild, ORANGE_ID).completed).toBe(1);
     expect(clearKidsExploration(withOtherChild, ORANGE_ID).traces).toEqual([
       expect.objectContaining({ childId: OTHER_CHILD_ID }),

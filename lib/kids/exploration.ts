@@ -109,7 +109,9 @@ export function recordKidsExploration(exploration: KidsExplorationV1, event: Kid
   const next: KidsExplorationTrace = {
     ...eventTrace,
     status: current?.status === "completed" ? "completed" : eventTrace.status,
-    attempts: (current?.attempts ?? 0) + 1,
+    attempts: eventTrace.status === "started"
+      ? (current?.attempts ?? 0) + 1
+      : (current?.attempts ?? 1),
   };
   return {
     version: 1,

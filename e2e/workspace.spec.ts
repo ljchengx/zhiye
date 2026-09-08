@@ -339,7 +339,7 @@ test("旧数学地址永久跳转到启蒙工具地址", async ({ request }) => 
   expect(response.headers().location).toBe("/kids/math-worksheet");
 });
 
-test("一程一成长主页只展示真实工具并提供独立入口", async ({ page }) => {
+test("一程一成长主页按互动与打印形式展示真实工具", async ({ page }) => {
   await page.addInitScript(() => window.localStorage.clear());
   await page.goto("/kids");
 
@@ -348,22 +348,25 @@ test("一程一成长主页只展示真实工具并提供独立入口", async ({
   await expect(page.getByRole("link", { name: "登录", exact: true }).first()).toHaveAttribute("href", "/kids/login?next=%2Fkids");
   await expect(page.getByLabel("当前登录用户：橙子小朋友")).toHaveCount(0);
   await expect(page.getByText("2 个打印练习", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 个互动探究", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "打印练习", level: 2 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "互动探究", level: 2 })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "互动探究", level: 2 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "自由创造", level: 2 })).toHaveCount(0);
   await expect(page.getByText("探索足迹", { exact: true })).toHaveCount(0);
   await expect(page.getByText("约 15 分钟", { exact: true })).toBeVisible();
   await expect(page.getByText("约 10 分钟", { exact: true })).toBeVisible();
   await expect(page.getByText("A4 打印", { exact: true })).toHaveCount(2);
   await expect(page.getByAltText("一程一成长微信公众号二维码")).toBeVisible();
-  await expect(page.getByRole("link", { name: "开始使用" }).first()).toHaveAttribute("href", "/kids/math-worksheet");
-  await expect(page.getByRole("link", { name: "开始使用" }).nth(1)).toHaveAttribute("href", "/kids/pinyin-worksheet");
+  await expect(page.getByRole("link", { name: "开始使用" }).nth(0)).toHaveAttribute("href", "/kids/spatial-blocks");
+  await expect(page.getByRole("link", { name: "开始使用" }).nth(1)).toHaveAttribute("href", "/kids/math-worksheet");
+  await expect(page.getByRole("link", { name: "开始使用" }).nth(2)).toHaveAttribute("href", "/kids/pinyin-worksheet");
   await expect(page.getByText("敬请期待", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "一程一成长首页" })).toHaveAttribute("href", "/kids");
 
   const structuredData = await page.locator('script[type="application/ld+json"]').textContent();
   expect(structuredData).toContain("https://www.yzfl.top/kids/math-worksheet");
   expect(structuredData).toContain("https://www.yzfl.top/kids/pinyin-worksheet");
+  expect(structuredData).toContain("https://www.yzfl.top/kids/spatial-blocks");
 });
 
 test("橙子测试账号需要输入正确账号密码后才登录", async ({ page }) => {

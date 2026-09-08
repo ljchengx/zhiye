@@ -10,6 +10,7 @@ import {
 } from "@/lib/tools/kids-registry";
 
 import { KidsShell } from "./kids-shell";
+import { KidsExplorationSummary } from "./kids-exploration-summary";
 import styles from "./kids-home-experience.module.css";
 
 const experiencePrinciples = [
@@ -164,6 +165,8 @@ export function KidsHomeExperience() {
             </div>
           ) : null}
         </section>
+
+        <KidsExplorationSummary />
 
         <div className={styles.toolGroups} id="tools">
           <ToolCollection
