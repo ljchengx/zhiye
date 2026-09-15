@@ -228,6 +228,30 @@
   line-height: 1.5;
 }
 
+.repeatToggle {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  margin: 12px 0 0 25px;
+  color: #4d5a60;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.repeatToggle input {
+  grid-row: span 2;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--worksheet-accent);
+}
+
+.repeatToggle small {
+  color: #778186;
+  font-size: 10px;
+}
+
 .dayNav > header {
   display: flex;
   align-items: center;

@@ -4,12 +4,14 @@ import {
   DEFAULT_REINFORCEMENT_CONFIG,
   FOUNDATION_WORKSHEET_DAYS,
   generateDailyWorksheet,
+  getApplicationQuestionSignature,
   generateWorksheetPlan,
   getExportDays,
   getMonthTwoQuestionCounts,
   getReinforcementQuestionCounts,
   getWorksheetDayPlan,
   LIFE_MATH_STORYLINES,
+  MONTH_ONE_APPLICATION_STORYLINES,
   MAX_APPLICATION_QUESTIONS,
   MAX_WORKSHEET_QUESTIONS,
   MONTH_TWO_APPLICATION_STORYLINES,
@@ -188,6 +190,38 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
         expect(answer).toBe(question.answer);
       }
     });
+  });
+
+  it("第一个月低重复模式只优化强化训练，并保持基础引导固定", () => {
+    const legacy = generateWorksheetPlan(20260902);
+    const optimized = generateWorksheetPlan(20260902, {}, {}, { monthOneMode: "low-repeat" });
+    const applications = optimized.reinforcementDays.flatMap(allQuestions).filter((question): question is ApplicationQuestion => question.type === "application");
+
+    expect(legacy.monthOneMode).toBe("legacy");
+    expect(optimized.monthOneMode).toBe("low-repeat");
+    expect(MONTH_ONE_APPLICATION_STORYLINES).toHaveLength(160);
+    expect(applications).toHaveLength(150);
+    expect(applications.every((question) => question.storylineId && question.storylineFamily)).toBe(true);
+    expect(new Set(applications.map((question) => question.storylineId)).size).toBe(applications.length);
+    expect(new Set(applications.map(getApplicationQuestionSignature)).size).toBe(applications.length);
+
+    optimized.reinforcementDays.forEach((day) => {
+      const daily = allQuestions(day).filter((question): question is ApplicationQuestion => question.type === "application");
+      expect(new Set(daily.map((question) => question.storylineFamily)).size).toBe(daily.length);
+      expect(new Set(daily.map((question) => question.icon)).size).toBe(daily.length);
+      daily.forEach((question) => {
+        const calculated = question.operators.reduce((value, operator, index) => operator === "+" ? value + question.operands[index + 1] : value - question.operands[index + 1], question.operands[0]);
+        expect(calculated).toBe(question.answer);
+        expect(question.prompt).not.toContain("undefined");
+      });
+    });
+
+    expect(optimized.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.id)))).toEqual(
+      legacy.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.id))),
+    );
+    expect(optimized.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.type === "application" ? question.prompt : "")))).toEqual(
+      legacy.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.type === "application" ? question.prompt : ""))),
+    );
   });
 
   it("第二个月按 80% 加减、10% 乘除、10% 生活数学生成 30 题", () => {

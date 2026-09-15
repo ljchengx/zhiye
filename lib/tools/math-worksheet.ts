@@ -19,6 +19,7 @@ export const WORKSHEET_THEMES = [...MENTAL_METHODS, "mixed"] as const;
 export const WORKSHEET_THEME_SEQUENCE = MENTAL_METHODS;
 
 export type WorksheetMonth = 1 | 2;
+export type MonthOneGenerationMode = "legacy" | "low-repeat";
 export type MentalLevel = "basic" | "two-digit-single" | "two-digit" | "three-number";
 export type MentalBinaryShape = "basic" | "two-digit-single" | "two-digit";
 export type WorksheetStage = "foundation" | "reinforcement";
@@ -81,6 +82,13 @@ export interface WorksheetConfig {
 
 export interface DailyWorksheetOverrides extends Partial<WorksheetConfig> {
   monthTwoQuestionCount?: number;
+  monthOneMode?: MonthOneGenerationMode;
+  monthOneUsedStorylineIds?: readonly string[];
+  monthOneUsedQuestionSignatures?: readonly string[];
+}
+
+export interface WorksheetGenerationOptions {
+  monthOneMode?: MonthOneGenerationMode;
 }
 
 export interface ReinforcementConfig {
@@ -549,6 +557,7 @@ export interface WorksheetPlan {
   monthTwoDays: readonly DailyWorksheet[];
   reinforcementConfig: ReinforcementConfig;
   monthTwoConfig: MonthTwoConfig;
+  monthOneMode: MonthOneGenerationMode;
   totalDays: number;
   totalQuestions: number;
 }
@@ -1095,6 +1104,190 @@ const APPLICATION_TEMPLATES: readonly ApplicationTemplate[] = [
   { id: "fish-two-step", scenario: "two-step", icon: "fish", unit: "条", make: (a, b, c) => twoStepStory(`池塘里有 ${a} 条鱼，游走 ${b} 条，又游来 ${c} 条。现在有多少条？`, a, "-", b, "+", c) },
 ];
 
+type MonthOneStorylineGroup = "add" | "subtract" | "more" | "less";
+type MonthOneTwoStepGroup = "plus-minus" | "minus-plus" | "plus-plus" | "minus-minus";
+
+export interface MonthOneApplicationStoryline {
+  id: string;
+  family: string;
+  scenario: ApplicationScenario;
+  level: ApplicationLevel;
+  icon: WorksheetIconKey;
+  unit: string;
+  operators: readonly ("+" | "-")[];
+  template: string;
+}
+
+interface MonthOneStorylineFamilyDefinition {
+  family: string;
+  icon: WorksheetIconKey;
+  unit: string;
+  item: string;
+  place: string;
+  actor: string;
+  otherPlace: string;
+  recipient: string;
+  oneStepGroup: MonthOneStorylineGroup;
+  oneStepScenario: Exclude<ApplicationScenario, "two-step">;
+  oneStepOperator: "+" | "-";
+  twoStepGroup: MonthOneTwoStepGroup;
+}
+
+const MONTH_ONE_PICTURE_TEMPLATES: Record<MonthOneStorylineGroup, readonly string[]> = {
+  add: [
+    "{place}里有 {a}{unit}{item}，又来 {b}{unit}{item}。一共有多少{unit}{item}？",
+    "{actor}手里有 {a}{unit}{item}，又得到 {b}{unit}{item}。现在有多少{unit}{item}？",
+  ],
+  subtract: [
+    "{place}里有 {a}{unit}{item}，拿走 {b}{unit}{item}。还剩多少{unit}{item}？",
+    "{actor}有 {a}{unit}{item}，送出 {b}{unit}{item}。还剩多少{unit}{item}？",
+  ],
+  more: [
+    "{place}有 {a}{unit}{item}，{otherPlace}比它多 {b}{unit}{item}。{otherPlace}有多少{unit}{item}？",
+    "{actor}有 {a}{unit}{item}，{recipient}比他多 {b}{unit}{item}。{recipient}有多少{unit}{item}？",
+  ],
+  less: [
+    "{place}有 {a}{unit}{item}，{otherPlace}比它少 {b}{unit}{item}。{otherPlace}有多少{unit}{item}？",
+    "{actor}有 {a}{unit}{item}，{recipient}比他少 {b}{unit}{item}。{recipient}有多少{unit}{item}？",
+  ],
+};
+
+const MONTH_ONE_ONE_STEP_TEMPLATES: Record<MonthOneStorylineGroup, readonly string[]> = {
+  add: [
+    "{place}里有 {a}{unit}{item}，又放入 {b}{unit}{item}。现在有多少{unit}{item}？",
+    "{actor}先收集了 {a}{unit}{item}，后来又得到 {b}{unit}{item}。一共有多少{unit}{item}？",
+    "{place}上午有 {a}{unit}{item}，下午又送来 {b}{unit}{item}。现在有多少{unit}{item}？",
+    "{otherPlace}里放着 {a}{unit}{item}，{recipient}又送来 {b}{unit}{item}。现在有多少{unit}{item}？",
+    "{place}原来摆着 {a}{unit}{item}，又增加 {b}{unit}{item}。一共摆着多少{unit}{item}？",
+    "{actor}做完了 {a}{unit}{item}，又完成了 {b}{unit}{item}。一共完成多少{unit}{item}？",
+    "盒子里有 {a}{unit}{item}，旁边又装入 {b}{unit}{item}。盒里共有多少{unit}{item}？",
+    "第一组有 {a}{unit}{item}，第二组又增加 {b}{unit}{item}。两组共有多少{unit}{item}？",
+  ],
+  subtract: [
+    "{place}里有 {a}{unit}{item}，拿走 {b}{unit}{item}。现在还剩多少{unit}{item}？",
+    "{actor}收集了 {a}{unit}{item}，送给朋友 {b}{unit}{item}。还剩多少{unit}{item}？",
+    "{place}原来有 {a}{unit}{item}，用掉 {b}{unit}{item}。还剩多少{unit}{item}？",
+    "{otherPlace}里有 {a}{unit}{item}，分出 {b}{unit}{item}。还剩多少{unit}{item}？",
+    "{place}摆着 {a}{unit}{item}，取下 {b}{unit}{item}。现在有多少{unit}{item}？",
+    "{actor}做了 {a}{unit}{item}，其中 {b}{unit}{item} 已经送出。还剩多少{unit}{item}？",
+    "盒子里装着 {a}{unit}{item}，拿出 {b}{unit}{item}。盒里还剩多少{unit}{item}？",
+    "第一组有 {a}{unit}{item}，借给第二组 {b}{unit}{item}。第一组还剩多少{unit}{item}？",
+  ],
+  more: [
+    "{place}有 {a}{unit}{item}，{otherPlace}比它多 {b}{unit}{item}。{otherPlace}有多少{unit}{item}？",
+    "{actor}收集了 {a}{unit}{item}，{recipient}比他多 {b}{unit}{item}。{recipient}有多少{unit}{item}？",
+    "第一组有 {a}{unit}{item}，第二组比第一组多 {b}{unit}{item}。第二组有多少{unit}{item}？",
+    "{place}摆着 {a}{unit}{item}，旁边的架子多 {b}{unit}{item}。旁边有多少{unit}{item}？",
+    "上午完成 {a}{unit}{item}，下午比上午多完成 {b}{unit}{item}。下午完成多少{unit}{item}？",
+    "{otherPlace}有 {a}{unit}{item}，{recipient}那里比它多 {b}{unit}{item}。{recipient}有多少{unit}{item}？",
+    "小队得到 {a}{unit}{item}，另一队比它多 {b}{unit}{item}。另一队得到多少{unit}{item}？",
+    "{actor}画了 {a}{unit}{item}，同伴比他多画 {b}{unit}{item}。同伴画了多少{unit}{item}？",
+  ],
+  less: [
+    "{place}有 {a}{unit}{item}，{otherPlace}比它少 {b}{unit}{item}。{otherPlace}有多少{unit}{item}？",
+    "{actor}收集了 {a}{unit}{item}，{recipient}比他少 {b}{unit}{item}。{recipient}有多少{unit}{item}？",
+    "第一组有 {a}{unit}{item}，第二组比第一组少 {b}{unit}{item}。第二组有多少{unit}{item}？",
+    "{place}摆着 {a}{unit}{item}，旁边的架子少 {b}{unit}{item}。旁边有多少{unit}{item}？",
+    "上午完成 {a}{unit}{item}，下午比上午少完成 {b}{unit}{item}。下午完成多少{unit}{item}？",
+    "{otherPlace}有 {a}{unit}{item}，{recipient}那里比它少 {b}{unit}{item}。{recipient}有多少{unit}{item}？",
+    "小队得到 {a}{unit}{item}，另一队比它少 {b}{unit}{item}。另一队得到多少{unit}{item}？",
+    "{actor}画了 {a}{unit}{item}，同伴比他少画 {b}{unit}{item}。同伴画了多少{unit}{item}？",
+  ],
+};
+
+const MONTH_ONE_TWO_STEP_TEMPLATES: Record<MonthOneTwoStepGroup, readonly string[]> = {
+  "plus-minus": [
+    "{place}里有 {a}{unit}{item}，又放入 {b}{unit}{item}，后来拿走 {c}{unit}{item}。还剩多少{unit}{item}？",
+    "{actor}收集了 {a}{unit}{item}，又得到 {b}{unit}{item}，送给{recipient} {c}{unit}{item}。还剩多少{unit}{item}？",
+    "{otherPlace}原有 {a}{unit}{item}，补充 {b}{unit}{item}，用掉 {c}{unit}{item}。还剩多少{unit}{item}？",
+    "上午有 {a}{unit}{item}，下午又送来 {b}{unit}{item}，分出 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "盒子里有 {a}{unit}{item}，再装入 {b}{unit}{item}，又拿出 {c}{unit}{item}。盒里还剩多少{unit}{item}？",
+    "{place}摆着 {a}{unit}{item}，增加 {b}{unit}{item}，后来取下 {c}{unit}{item}。现在有多少{unit}{item}？",
+  ],
+  "minus-plus": [
+    "{place}里有 {a}{unit}{item}，拿走 {b}{unit}{item}，后来又放回 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "{actor}有 {a}{unit}{item}，送出 {b}{unit}{item}，又得到 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "{otherPlace}原有 {a}{unit}{item}，用掉 {b}{unit}{item}，后来补充 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "盒子里有 {a}{unit}{item}，取出 {b}{unit}{item}，又装入 {c}{unit}{item}。盒里有多少{unit}{item}？",
+    "{place}摆着 {a}{unit}{item}，借出 {b}{unit}{item}，又收回 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "第一组有 {a}{unit}{item}，分给第二组 {b}{unit}{item}，后来又领回 {c}{unit}{item}。第一组有多少{unit}{item}？",
+  ],
+  "plus-plus": [
+    "{place}里有 {a}{unit}{item}，又放入 {b}{unit}{item}，后来再放入 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "{actor}收集了 {a}{unit}{item}，得到 {b}{unit}{item}，又找到 {c}{unit}{item}。一共有多少{unit}{item}？",
+    "{otherPlace}有 {a}{unit}{item}，上午增加 {b}{unit}{item}，下午再增加 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "盒子里有 {a}{unit}{item}，第一次装入 {b}{unit}{item}，第二次装入 {c}{unit}{item}。盒里有多少{unit}{item}？",
+    "{place}摆着 {a}{unit}{item}，第一组送来 {b}{unit}{item}，第二组送来 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "第一组有 {a}{unit}{item}，第二组增加 {b}{unit}{item}，第三组再增加 {c}{unit}{item}。一共有多少{unit}{item}？",
+  ],
+  "minus-minus": [
+    "{place}里有 {a}{unit}{item}，先拿走 {b}{unit}{item}，又拿走 {c}{unit}{item}。还剩多少{unit}{item}？",
+    "{actor}有 {a}{unit}{item}，送出 {b}{unit}{item}，又用掉 {c}{unit}{item}。还剩多少{unit}{item}？",
+    "{otherPlace}原有 {a}{unit}{item}，分出 {b}{unit}{item}，再取下 {c}{unit}{item}。还剩多少{unit}{item}？",
+    "盒子里有 {a}{unit}{item}，上午拿出 {b}{unit}{item}，下午又拿出 {c}{unit}{item}。盒里还剩多少{unit}{item}？",
+    "{place}摆着 {a}{unit}{item}，借出 {b}{unit}{item}，后来取走 {c}{unit}{item}。现在有多少{unit}{item}？",
+    "第一组有 {a}{unit}{item}，分给第二组 {b}{unit}{item}，又分给第三组 {c}{unit}{item}。第一组还剩多少{unit}{item}？",
+  ],
+};
+
+const MONTH_ONE_STORYLINE_FAMILIES: readonly MonthOneStorylineFamilyDefinition[] = [
+  { family: "fruit", icon: "apple", unit: "个", item: "苹果", place: "果园", actor: "小朋友", otherPlace: "果篮", recipient: "妈妈", oneStepGroup: "add", oneStepScenario: "combine", oneStepOperator: "+", twoStepGroup: "plus-minus" },
+  { family: "toy", icon: "ball", unit: "个", item: "小球", place: "玩具架", actor: "小朋友", otherPlace: "玩具箱", recipient: "老师", oneStepGroup: "add", oneStepScenario: "increase", oneStepOperator: "+", twoStepGroup: "minus-plus" },
+  { family: "stationery", icon: "block", unit: "支", item: "铅笔", place: "笔筒", actor: "小朋友", otherPlace: "文具盒", recipient: "老师", oneStepGroup: "subtract", oneStepScenario: "decrease", oneStepOperator: "-", twoStepGroup: "plus-minus" },
+  { family: "animal", icon: "fish", unit: "条", item: "小鱼", place: "鱼缸", actor: "小朋友", otherPlace: "池塘", recipient: "饲养员", oneStepGroup: "subtract", oneStepScenario: "remain", oneStepOperator: "-", twoStepGroup: "minus-plus" },
+  { family: "sports", icon: "star", unit: "颗", item: "星星", place: "计分板", actor: "小队", otherPlace: "运动墙", recipient: "老师", oneStepGroup: "more", oneStepScenario: "compare-more", oneStepOperator: "+", twoStepGroup: "plus-plus" },
+  { family: "garden", icon: "flower", unit: "朵", item: "花", place: "花圃", actor: "小朋友", otherPlace: "花坛", recipient: "园丁", oneStepGroup: "less", oneStepScenario: "compare-less", oneStepOperator: "-", twoStepGroup: "minus-minus" },
+  { family: "kitchen", icon: "cookie", unit: "块", item: "饼干", place: "厨房", actor: "小朋友", otherPlace: "点心盘", recipient: "妈妈", oneStepGroup: "add", oneStepScenario: "combine", oneStepOperator: "+", twoStepGroup: "plus-minus" },
+  { family: "craft", icon: "mushroom", unit: "个", item: "纽扣", place: "手工桌", actor: "小朋友", otherPlace: "材料盒", recipient: "老师", oneStepGroup: "add", oneStepScenario: "increase", oneStepOperator: "+", twoStepGroup: "minus-plus" },
+  { family: "celebration", icon: "balloon", unit: "个", item: "气球", place: "教室", actor: "小朋友", otherPlace: "气球箱", recipient: "老师", oneStepGroup: "subtract", oneStepScenario: "decrease", oneStepOperator: "-", twoStepGroup: "plus-minus" },
+  { family: "classroom", icon: "book", unit: "本", item: "故事书", place: "阅读角", actor: "小朋友", otherPlace: "书架", recipient: "老师", oneStepGroup: "more", oneStepScenario: "compare-more", oneStepOperator: "+", twoStepGroup: "minus-plus" },
+];
+
+const MONTH_ONE_TWO_STEP_OPERATORS: Record<MonthOneTwoStepGroup, readonly ["+" | "-", "+" | "-"]> = {
+  "plus-minus": ["+", "-"],
+  "minus-plus": ["-", "+"],
+  "plus-plus": ["+", "+"],
+  "minus-minus": ["-", "-"],
+};
+
+function personalizeMonthOneStorylineTemplate(template: string, family: MonthOneStorylineFamilyDefinition): string {
+  const replacements: Record<string, string> = {
+    item: family.item,
+    place: family.place,
+    actor: family.actor,
+    otherPlace: family.otherPlace,
+    recipient: family.recipient,
+    unit: family.unit,
+  };
+  return template.replace(/\{(item|place|actor|otherPlace|recipient|unit)\}/g, (_, key: string) => replacements[key] ?? "");
+}
+
+function createMonthOneApplicationStorylines(family: MonthOneStorylineFamilyDefinition): MonthOneApplicationStoryline[] {
+  const createEntries = (
+    level: MonthOneApplicationStoryline["level"],
+    templates: readonly string[],
+    scenario: ApplicationScenario,
+    operators: readonly ("+" | "-")[],
+  ) => templates.map((template, index) => ({
+    id: `month1-${family.family}-${level}-${index + 1}`,
+    family: family.family,
+    scenario,
+    level,
+    icon: family.icon,
+    unit: family.unit,
+    operators,
+    template: personalizeMonthOneStorylineTemplate(template, family),
+  }));
+
+  return [
+    ...createEntries("picture", MONTH_ONE_PICTURE_TEMPLATES[family.oneStepGroup], family.oneStepScenario, [family.oneStepOperator]),
+    ...createEntries("one-step", MONTH_ONE_ONE_STEP_TEMPLATES[family.oneStepGroup], family.oneStepScenario, [family.oneStepOperator]),
+    ...createEntries("two-step", MONTH_ONE_TWO_STEP_TEMPLATES[family.twoStepGroup], "two-step", MONTH_ONE_TWO_STEP_OPERATORS[family.twoStepGroup]),
+  ] as MonthOneApplicationStoryline[];
+}
+
+export const MONTH_ONE_APPLICATION_STORYLINES: readonly MonthOneApplicationStoryline[] = MONTH_ONE_STORYLINE_FAMILIES.flatMap(createMonthOneApplicationStorylines);
+
 export interface MonthTwoApplicationStoryline {
   id: string;
   family: string;
@@ -1311,7 +1504,7 @@ function fillApplicationStorylineTemplate(template: string, values: readonly num
   });
 }
 
-function makeMonthTwoApplicationStory(storyline: MonthTwoApplicationStoryline, operands: readonly number[]) {
+function makeApplicationStory(storyline: Pick<MonthTwoApplicationStoryline, "operators" | "template">, operands: readonly number[]) {
   if (operands.length !== storyline.operators.length + 1) return undefined;
   let current = operands[0];
   const steps: WorksheetGuidedStep[] = [];
@@ -1364,7 +1557,7 @@ function buildMonthTwoApplicationQuestion(storyline: MonthTwoApplicationStorylin
       ? randomInt(random, 1, storyline.operators[1] === "-" ? Math.max(1, Math.min(40, first + second - 1)) : Math.min(40, maxOperand))
       : undefined;
     const operands = third === undefined ? [first, second] : [first, second, third];
-    const result = makeMonthTwoApplicationStory(storyline, operands);
+    const result = makeApplicationStory(storyline, operands);
     if (!result || result.steps.some((step) => step.answer > blueprint.resultMax) || result.answer > blueprint.resultMax) continue;
     return result;
   }
@@ -1391,6 +1584,134 @@ function buildMonthTwoApplicationQuestions(count: number, blueprint: MonthTwoDay
   }
   if (questions.length !== count) throw new Error(`第二个月应用题故事线不足：${level}`);
   return questions;
+}
+
+interface MonthOneApplicationGenerationContext {
+  usedStorylineIds: Set<string>;
+  usedQuestionSignatures: Set<string>;
+}
+
+function selectMonthOneApplicationStoryline(
+  level: ApplicationLevel,
+  random: RandomSource,
+  usedStorylineIds: Set<string>,
+  usedFamilies: Set<string>,
+  usedIcons: Set<WorksheetIconKey>,
+  blockedStorylineIds: Set<string>,
+): MonthOneApplicationStoryline | undefined {
+  const available = MONTH_ONE_APPLICATION_STORYLINES.filter((storyline) => storyline.level === level
+    && !usedStorylineIds.has(storyline.id)
+    && !blockedStorylineIds.has(storyline.id)
+    && !usedFamilies.has(storyline.family)
+    && !usedIcons.has(storyline.icon));
+  if (available.length === 0) return undefined;
+
+  const familyUsage = new Map<string, number>();
+  MONTH_ONE_APPLICATION_STORYLINES.forEach((storyline) => {
+    if (storyline.level === level && usedStorylineIds.has(storyline.id)) {
+      familyUsage.set(storyline.family, (familyUsage.get(storyline.family) ?? 0) + 1);
+    }
+  });
+  const families = [...new Set(available.map((storyline) => storyline.family))].sort((left, right) =>
+    (familyUsage.get(left) ?? 0) - (familyUsage.get(right) ?? 0) || left.localeCompare(right));
+  const family = families[0];
+  const candidates = available.filter((storyline) => storyline.family === family);
+  return candidates[randomInt(random, 0, candidates.length - 1)];
+}
+
+function buildMonthOneApplicationQuestion(storyline: MonthOneApplicationStoryline, blueprint: ReinforcementDayBlueprint, random: RandomSource) {
+  const maxOperand = blueprint.resultMax <= 20
+    ? 9
+    : blueprint.resultMax <= 50
+      ? 35
+      : Math.min(99, blueprint.resultMax - 1);
+  const minOperand = storyline.level === "picture"
+    ? 2
+    : blueprint.resultMax <= 50
+      ? 3
+      : Math.max(5, Math.floor(maxOperand * 0.25));
+
+  for (let attempt = 0; attempt < 600; attempt += 1) {
+    const first = randomInt(random, minOperand, maxOperand);
+    const secondMax = storyline.operators[0] === "-"
+      ? Math.max(1, Math.min(35, first - 1))
+      : Math.min(35, maxOperand);
+    const second = randomInt(random, 1, secondMax);
+    const intermediate = storyline.operators[0] === "+" ? first + second : first - second;
+    const third = storyline.operators.length === 2
+      ? randomInt(random, 1, storyline.operators[1] === "-" ? Math.max(1, Math.min(35, intermediate - 1)) : Math.min(35, maxOperand))
+      : undefined;
+    const operands = third === undefined ? [first, second] : [first, second, third];
+    const result = makeApplicationStory(storyline, operands);
+    if (!result || result.steps.some((step) => step.answer < 0 || step.answer > blueprint.resultMax) || result.answer > blueprint.resultMax) continue;
+    return result;
+  }
+  return undefined;
+}
+
+function createApplicationQuestionSignature(level: ApplicationLevel, operators: readonly ("+" | "-")[], operands: readonly number[]): string {
+  return `${level}:${operators.join("")}:${operands.join(",")}`;
+}
+
+export function getApplicationQuestionSignature(question: Pick<ApplicationQuestion, "level" | "operators" | "operands">): string {
+  return createApplicationQuestionSignature(question.level, question.operators, question.operands);
+}
+
+function buildMonthOneApplicationQuestions(
+  count: number,
+  blueprint: ReinforcementDayBlueprint,
+  random: RandomSource,
+  idPrefix: string,
+  context: MonthOneApplicationGenerationContext,
+): ApplicationQuestion[] {
+  if (count <= 0) return [];
+  const questions: ApplicationQuestion[] = [];
+  const usedFamilies = new Set<string>();
+  const usedIcons = new Set<WorksheetIconKey>();
+  const blockedStorylineIds = new Set<string>();
+  let attempts = 0;
+
+  while (questions.length < count && attempts < count * 2400) {
+    attempts += 1;
+    const storyline = selectMonthOneApplicationStoryline(blueprint.applicationLevel, random, context.usedStorylineIds, usedFamilies, usedIcons, blockedStorylineIds);
+    if (!storyline) break;
+    blockedStorylineIds.add(storyline.id);
+    const result = buildMonthOneApplicationQuestion(storyline, blueprint, random);
+    if (!result) continue;
+    const signature = createApplicationQuestionSignature(storyline.level, storyline.operators, result.operands);
+    if (context.usedQuestionSignatures.has(signature)) continue;
+
+    context.usedStorylineIds.add(storyline.id);
+    context.usedQuestionSignatures.add(signature);
+    usedFamilies.add(storyline.family);
+    usedIcons.add(storyline.icon);
+    questions.push({
+      id: `${idPrefix}-application-${questions.length}`,
+      type: "application",
+      section: "application",
+      number: 0,
+      storylineId: storyline.id,
+      storylineFamily: storyline.family,
+      scenario: storyline.scenario,
+      prompt: result.prompt,
+      icon: storyline.icon,
+      unit: storyline.unit,
+      operands: result.operands,
+      operators: result.operators,
+      equation: result.equation,
+      steps: result.steps,
+      answer: result.answer,
+      level: storyline.level,
+      picture: storyline.level === "picture",
+    });
+  }
+
+  if (questions.length === count) return questions;
+
+  const fallback = buildApplicationQuestions(count - questions.length, blueprint, random, `${idPrefix}-fallback`);
+  const normalizedFallback = fallback.map((question, index) => ({ ...question, id: `${idPrefix}-application-${questions.length + index}` }));
+  normalizedFallback.forEach((question) => context.usedQuestionSignatures.add(getApplicationQuestionSignature(question)));
+  return [...questions, ...normalizedFallback];
 }
 
 function buildFoundationApplications(): ApplicationQuestion[] {
@@ -1625,7 +1946,7 @@ export function getReinforcementQuestionCounts(config: Partial<ReinforcementConf
   return allocateCounts(normalizeReinforcementConfig(config), stageDay);
 }
 
-function buildReinforcementDay(stageDay: number, seed: number, configInput: Partial<ReinforcementConfig>): DailyWorksheet {
+function buildReinforcementDay(stageDay: number, seed: number, configInput: Partial<ReinforcementConfig>, monthOneContext?: MonthOneApplicationGenerationContext): DailyWorksheet {
   const config = normalizeReinforcementConfig(configInput);
   const blueprint = getReinforcementDayBlueprint(stageDay);
   const phase = getPhase(stageDay);
@@ -1637,7 +1958,9 @@ function buildReinforcementDay(stageDay: number, seed: number, configInput: Part
     { type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(counts.neighbor, random, blueprint.numberMax) },
     { type: "compare", title: "比大小", questions: buildCompareQuestions(counts.compare, random, blueprint.numberMax) },
     { type: "mental", title: "计算式", questions: buildMentalQuestions(counts.mental, blueprint.methodTheme, random, { resultMax: blueprint.resultMax, binaryShape: blueprint.binaryShape, binaryTwoDigitRatio: blueprint.binaryTwoDigitRatio, threeNumberRatio: blueprint.threeNumberRatio, tripleMinTerm: blueprint.tripleMinTerm }) },
-    { type: "application", title: "应用题", questions: buildApplicationQuestions(counts.application, blueprint, random, `practice-${stageDay}`) },
+    { type: "application", title: "应用题", questions: monthOneContext
+      ? buildMonthOneApplicationQuestions(counts.application, blueprint, random, `practice-${stageDay}`, monthOneContext)
+      : buildApplicationQuestions(counts.application, blueprint, random, `practice-${stageDay}`) },
   ];
   return createDailyWorksheet({ id: `practice-${stageDay}`, day: FOUNDATION_WORKSHEET_DAYS + stageDay, stage: "reinforcement", stageDay, phase: phase.phase, phaseTitle: phase.title, phaseSummary: phase.summary, title: blueprint.title, objective: blueprint.objective, sections, theme: blueprint.methodTheme, plan });
 }
@@ -1741,20 +2064,35 @@ export function generateDailyWorksheet(day: number, seed = 1, overrides: DailyWo
   const total = hasCountOverrides ? (overrides.neighborCount ?? 0) + (overrides.compareCount ?? 0) + (overrides.mentalCount ?? 0) + (overrides.applicationCount ?? 0) : base.dailyQuestionCount;
   const safeTotal = Math.max(MIN_WORKSHEET_QUESTIONS, Math.min(MAX_WORKSHEET_QUESTIONS, total));
   const custom = hasCountOverrides ? { dailyQuestionCount: safeTotal, neighborRatio: ((overrides.neighborCount ?? 0) / safeTotal) * 100, compareRatio: ((overrides.compareCount ?? 0) / safeTotal) * 100, applicationRatio: ((overrides.applicationCount ?? 0) / safeTotal) * 100 } : { ...base, dailyQuestionCount: safeTotal };
-  return buildReinforcementDay(safeDay - FOUNDATION_WORKSHEET_DAYS, seed, custom);
+  const monthOneContext = overrides.monthOneMode === "low-repeat"
+    ? {
+      usedStorylineIds: new Set(overrides.monthOneUsedStorylineIds ?? []),
+      usedQuestionSignatures: new Set(overrides.monthOneUsedQuestionSignatures ?? []),
+    }
+    : undefined;
+  return buildReinforcementDay(safeDay - FOUNDATION_WORKSHEET_DAYS, seed, custom, monthOneContext);
 }
 
-export function generateWorksheetPlan(seed = 1, config: Partial<ReinforcementConfig> = {}, monthTwoConfigInput: Partial<MonthTwoConfig> = {}): WorksheetPlan {
+export function generateWorksheetPlan(
+  seed = 1,
+  config: Partial<ReinforcementConfig> = {},
+  monthTwoConfigInput: Partial<MonthTwoConfig> = {},
+  options: WorksheetGenerationOptions = {},
+): WorksheetPlan {
   const reinforcementConfig = normalizeReinforcementConfig({ ...DEFAULT_REINFORCEMENT_CONFIG, ...config });
   const monthTwoConfig = normalizeMonthTwoConfig({ ...DEFAULT_MONTH_TWO_CONFIG, ...monthTwoConfigInput });
+  const monthOneMode = options.monthOneMode ?? "legacy";
   const foundationDays = Array.from({ length: FOUNDATION_WORKSHEET_DAYS }, (_, index) => buildFoundationDay(index + 1));
-  const reinforcementDays = Array.from({ length: REINFORCEMENT_WORKSHEET_DAYS }, (_, index) => buildReinforcementDay(index + 1, seed + (index + 1) * 1009, reinforcementConfig));
+  const monthOneContext = monthOneMode === "low-repeat"
+    ? { usedStorylineIds: new Set<string>(), usedQuestionSignatures: new Set<string>() }
+    : undefined;
+  const reinforcementDays = Array.from({ length: REINFORCEMENT_WORKSHEET_DAYS }, (_, index) => buildReinforcementDay(index + 1, seed + (index + 1) * 1009, reinforcementConfig, monthOneContext));
   const monthOneDays = [...foundationDays, ...reinforcementDays];
   const usedLifeMathStorylineIds = new Set<string>();
   const usedApplicationStorylineIds = new Set<string>();
   const monthTwoDays = Array.from({ length: MONTH_TWO_DAYS }, (_, index) => buildMonthTwoDay(index + 1, seed + (MONTH_ONE_DAYS + index + 1) * 1009, monthTwoConfig, usedLifeMathStorylineIds, usedApplicationStorylineIds));
   const days = [...monthOneDays, ...monthTwoDays];
-  return { days, foundationDays, reinforcementDays, monthOneDays, monthTwoDays, reinforcementConfig, monthTwoConfig, totalDays: days.length, totalQuestions: days.reduce((sum, day) => sum + day.total, 0) };
+  return { days, foundationDays, reinforcementDays, monthOneDays, monthTwoDays, reinforcementConfig, monthTwoConfig, monthOneMode, totalDays: days.length, totalQuestions: days.reduce((sum, day) => sum + day.total, 0) };
 }
 
 export type WorksheetExportRange = "month-one" | "month-two" | "all";

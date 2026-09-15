@@ -3,6 +3,7 @@
 import {
   generateWorksheetPlan,
   type MonthTwoConfig,
+  type MonthOneGenerationMode,
   type ReinforcementConfig,
   type WorksheetPlan,
 } from "../lib/tools/math-worksheet";
@@ -12,6 +13,7 @@ export interface MathWorksheetPlanGenerateRequest {
   seed: number;
   config: ReinforcementConfig;
   monthTwoConfig: MonthTwoConfig;
+  monthOneMode: MonthOneGenerationMode;
 }
 
 export type MathWorksheetPlanWorkerResponse =
@@ -23,7 +25,7 @@ const workerScope = self as DedicatedWorkerGlobalScope;
 workerScope.onmessage = (event: MessageEvent<MathWorksheetPlanGenerateRequest>) => {
   if (event.data.type !== "generate") return;
   try {
-    const plan = generateWorksheetPlan(event.data.seed, event.data.config, event.data.monthTwoConfig);
+    const plan = generateWorksheetPlan(event.data.seed, event.data.config, event.data.monthTwoConfig, { monthOneMode: event.data.monthOneMode });
     workerScope.postMessage({ type: "complete", plan } satisfies MathWorksheetPlanWorkerResponse);
   } catch (error) {
     const message = error instanceof Error ? error.message : "数学练习计划生成失败";
