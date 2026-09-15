@@ -9,6 +9,30 @@
   padding-inline: 0;
 }
 
+.loadingPanel {
+  display: flex;
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 32px;
+  border: 1px solid #dfe4e6;
+  border-radius: 8px;
+  background: #fff;
+  color: #344046;
+}
+
+.loadingPanel strong {
+  font-size: 18px;
+}
+
+.loadingPanel span {
+  color: #778186;
+  font-size: 13px;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
@@ -146,6 +170,44 @@
   font-size: 13px;
   font-weight: 700;
 }
+
+.rangeTabs,
+.monthTabs {
+  display: grid;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid #d7dddf;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.rangeTabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.monthTabs { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 11px; }
+
+.rangeTabs button,
+.monthTabs button {
+  min-height: 29px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #687379;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rangeTabs button:hover:not(:disabled),
+.rangeTabs button:focus-visible,
+.monthTabs button:hover,
+.monthTabs button:focus-visible {
+  outline: none;
+  background: #f5f7f7;
+}
+
+.rangeTabs .currentRange,
+.monthTabs .currentRange { background: var(--worksheet-accent); color: #fff; }
+.rangeTabs button:disabled { cursor: not-allowed; opacity: 0.5; }
 
 .dayGroup + .dayGroup {
   margin-top: 12px;
@@ -484,7 +546,7 @@
 
 .paperHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 16mm 35mm;
+  grid-template-columns: minmax(0, 1fr) 22mm 35mm;
   align-items: center;
   gap: 4mm;
 }
@@ -523,9 +585,10 @@
 
 .character {
   display: block;
-  width: 15mm;
-  height: 15mm;
+  width: 22mm;
+  height: 22mm;
   object-fit: contain;
+  transform: translateY(-2mm);
 }
 
 .dateField {
@@ -690,14 +753,22 @@
 .compositionSection,
 .pictureEquationSection,
 .applicationSection,
-.mentalSection { width: 100%; }
+.mentalSection,
+.verticalSection,
+.missingNumberSection,
+.groupingSection,
+.lifeMathSection { width: 100%; }
 
 .guidedSection > h3,
 .numberSenseSection h3,
 .compositionSection > h3,
 .pictureEquationSection > h3,
 .applicationSection > h3,
-.mentalSection > h3 {
+.mentalSection > h3,
+.verticalSection > h3,
+.missingNumberSection > h3,
+.groupingSection > h3,
+.lifeMathSection > h3 {
   display: flex;
   height: 9mm;
   box-sizing: border-box;
@@ -785,7 +856,11 @@
 .compositionGrid,
 .pictureEquationGrid,
 .mentalGrid,
-.applicationGrid { display: grid; }
+.applicationGrid,
+.verticalGrid,
+.missingNumberGrid,
+.groupingGrid,
+.lifeMathGrid { display: grid; }
 
 .compositionGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .compositionSection[data-columns="2"] .compositionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -794,11 +869,23 @@
 .mentalGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .mentalSection[data-columns="2"] .mentalGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .applicationGrid { grid-template-columns: minmax(0, 1fr); }
+.verticalGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.verticalSection[data-columns="2"] .verticalGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.verticalSection[data-columns="3"] .verticalGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.missingNumberGrid,
+.groupingGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.missingNumberSection[data-columns="2"] .missingNumberGrid,
+.groupingSection[data-columns="2"] .groupingGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lifeMathGrid { grid-template-columns: minmax(0, 1fr); }
 
 .compositionQuestion,
 .pictureEquationQuestion,
 .mentalQuestion,
-.applicationQuestion { min-width: 0; box-sizing: border-box; }
+.applicationQuestion,
+.verticalQuestion,
+.missingNumberQuestion,
+.groupingQuestion,
+.lifeMathQuestion { min-width: 0; box-sizing: border-box; }
 
 .compositionQuestion {
   display: grid;
@@ -978,6 +1065,84 @@
 .equalsSlot { text-align: center; }
 .expression [data-empty="true"] { display: none; }
 .mentalSection[data-columns="2"] .expression [data-empty="true"] { display: block; }
+
+.verticalQuestion {
+  display: grid;
+  height: 24mm;
+  grid-template-columns: 7mm minmax(0, 1fr);
+  align-items: center;
+  gap: 1mm;
+  padding-right: 3mm;
+  font: 14pt Arial, sans-serif;
+}
+
+.verticalExpression {
+  display: grid;
+  grid-template-rows: 7mm 7mm 1mm 6mm;
+  justify-items: end;
+  align-items: center;
+  padding-right: 5mm;
+  font-weight: 700;
+}
+
+.verticalExpression i {
+  display: block;
+  width: 20mm;
+  border-top: 0.35mm solid var(--worksheet-ink);
+}
+
+.verticalExpression .answerLine { width: 20mm; flex-basis: 20mm; }
+
+.missingNumberQuestion {
+  display: grid;
+  height: 18mm;
+  grid-template-columns: 7mm minmax(0, 1fr);
+  align-items: center;
+  gap: 1mm;
+  padding-right: 2mm;
+  font: 13pt Arial, sans-serif;
+}
+
+.missingNumberQuestion strong {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5mm;
+  min-width: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.missingNumberSlot {
+  display: inline-block;
+  width: 10mm;
+  height: 10mm;
+  flex: 0 0 10mm;
+  box-sizing: border-box;
+  border: 0.4mm solid #657278;
+}
+
+.groupingQuestion {
+  display: grid;
+  height: 25mm;
+  grid-template-columns: 6mm 10mm minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5mm;
+  padding-right: 3mm;
+  font: 12.5pt Arial, sans-serif;
+}
+
+.groupingIcon { width: 8mm; height: 8mm; object-fit: contain; }
+.groupingQuestion strong { white-space: nowrap; }
+.groupingQuestion .answerLine { width: 14mm; flex-basis: 14mm; }
+
+.lifeMathQuestion {
+  display: grid;
+  height: var(--application-row-height, 42mm);
+  grid-template-rows: auto minmax(22mm, 1fr);
+  gap: 1.5mm;
+  padding: 2.5mm 6mm 3mm 0;
+}
 
 .applicationQuestion {
   display: grid;

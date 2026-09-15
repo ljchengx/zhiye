@@ -18,10 +18,15 @@ import {
 import {
   FOUNDATION_WORKSHEET_DAYS,
   MENTAL_METHOD_LABELS,
+  MONTH_TWO_DAYS,
+  REINFORCEMENT_WORKSHEET_DAYS,
   WORKSHEET_PLAN_DAYS,
   type ApplicationQuestion,
   type DailyWorksheet,
+  type GroupingQuestion,
+  type LifeMathQuestion,
   type MentalQuestion,
+  type MissingNumberQuestion,
   type NumberBondQuestion,
   type PictureEquationQuestion,
   type WorksheetIconKey,
@@ -29,9 +34,13 @@ import {
   type WorksheetPageSection,
   type WorksheetPrintPage,
   type WorksheetQuestion,
+  type VerticalCalculationQuestion,
+  type WorksheetExportRange,
 } from "./math-worksheet";
 
-export const MATH_FULL_PDF_FILENAME = "一程一成长-幼小数学练习-30天.pdf";
+export const MATH_FULL_PDF_FILENAME = "一程一成长-幼小数学练习-60天.pdf";
+export const MATH_MONTH_ONE_PDF_FILENAME = "一程一成长-幼小数学练习-第1个月-30天.pdf";
+export const MATH_MONTH_TWO_PDF_FILENAME = "一程一成长-幼小数学练习-第2个月-30天.pdf";
 export const MATH_REINFORCEMENT_PDF_FILENAME = "一程一成长-幼小数学练习-强化25天.pdf";
 
 export interface MathPdfGenerateRequest {
@@ -226,8 +235,11 @@ async function drawCountGroup(page: PDFPage, count: number, icon: WorksheetIconK
   }
 }
 
-export function getMathBulkPdfFilename(includeFoundation: boolean) {
-  return includeFoundation ? MATH_FULL_PDF_FILENAME : MATH_REINFORCEMENT_PDF_FILENAME;
+export function getMathBulkPdfFilename(selection: boolean | WorksheetExportRange) {
+  if (selection === false) return MATH_REINFORCEMENT_PDF_FILENAME;
+  if (selection === "month-one") return MATH_MONTH_ONE_PDF_FILENAME;
+  if (selection === "month-two") return MATH_MONTH_TWO_PDF_FILENAME;
+  return MATH_FULL_PDF_FILENAME;
 }
 
 export function getMathWorkbookPageEntries(worksheets: readonly DailyWorksheet[]): readonly MathWorkbookPageEntry[] {
@@ -242,13 +254,15 @@ export function getMathWorkbookPrintPageCount(worksheets: readonly DailyWorkshee
 }
 
 function drawHeader(page: PDFPage, worksheet: DailyWorksheet, context: PdfRenderContext, character: PDFImage) {
-  const stageLabel = worksheet.stage === "foundation"
-    ? `基础 ${worksheet.stageDay}/${FOUNDATION_WORKSHEET_DAYS}`
-    : `强化 ${worksheet.stageDay}/${WORKSHEET_PLAN_DAYS - FOUNDATION_WORKSHEET_DAYS}`;
+  const stageLabel = worksheet.month === 2
+    ? `第二个月 ${worksheet.monthDay}/${MONTH_TWO_DAYS}`
+    : worksheet.stage === "foundation"
+      ? `基础 ${worksheet.stageDay}/${FOUNDATION_WORKSHEET_DAYS}`
+      : `强化 ${worksheet.stageDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
   drawTextTop(page, stageLabel, CONTENT_LEFT_MM, 15, context.fonts.chinese, 10, COLORS.accent);
   drawTextTop(page, "数学练习", 35, 12.4, context.fonts.chinese, 16, COLORS.ink);
   drawTextTop(page, fitText(worksheet.title, context.fonts.chinese, 9, 62), 64, 16, context.fonts.chinese, 9, COLORS.muted);
-  drawContainedImage(page, character, 144, 11.5, 15, 15);
+  drawContainedImage(page, character, 138, 6, 22, 22);
   drawTextTop(page, "日期", 164, 17, context.fonts.chinese, 9.5, COLORS.muted);
   drawLine(page, 174, 22.5, CONTENT_RIGHT_MM, 22.5, COLORS.muted, 0.35);
 }
@@ -431,6 +445,82 @@ function drawMentalSection(page: PDFPage, section: WorksheetPageSection, topMm: 
   });
 }
 
+function drawVerticalQuestion(page: PDFPage, question: VerticalCalculationQuestion, leftMm: number, topMm: number, widthMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, leftMm, topMm + 3, context);
+  const contentLeft = leftMm + 13;
+  const contentWidth = Math.max(20, widthMm - 17);
+  drawCenteredText(page, String(question.left), contentLeft, topMm + 1, contentWidth, 8, context.fonts.numericBold, 14, COLORS.ink);
+  drawCenteredText(page, `${question.operator} ${question.right}`, contentLeft, topMm + 8, contentWidth, 8, context.fonts.numericBold, 14, COLORS.ink);
+  drawLine(page, contentLeft + 4, topMm + 16, contentLeft + contentWidth - 4, topMm + 16, COLORS.ink, 0.45);
+  drawAnswerLine(page, contentLeft + 10, topMm + 21, Math.max(16, contentWidth - 20));
+}
+
+function drawVerticalSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
+  const contentTop = topMm + (section.title ? 9 : 0);
+  if (section.title) drawSectionHeading(page, section.title, topMm, context);
+  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
+  section.questions.forEach((question, index) => {
+    if (question.type === "vertical-calculation") drawVerticalQuestion(page, question, CONTENT_LEFT_MM + index * width, contentTop, width, context);
+  });
+}
+
+function drawMissingNumberQuestion(page: PDFPage, question: MissingNumberQuestion, leftMm: number, topMm: number, widthMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, leftMm, topMm + 5, context);
+  const expression = `${question.left ?? "□"} ${question.operator} ${question.right ?? "□"} = ${question.result ?? "□"}`;
+  drawCenteredText(page, expression, leftMm + 6, topMm + 2, widthMm - 8, 11, context.fonts.numericBold, 13, COLORS.ink);
+  drawLine(page, leftMm + 2, topMm + 16, leftMm + widthMm - 2, topMm + 16, COLORS.lineSoft, 0.18);
+}
+
+function drawMissingNumberSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
+  const contentTop = topMm + (section.title ? 9 : 0);
+  if (section.title) drawSectionHeading(page, section.title, topMm, context);
+  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
+  section.questions.forEach((question, index) => {
+    if (question.type === "missing-number") drawMissingNumberQuestion(page, question, CONTENT_LEFT_MM + index * width, contentTop, width, context);
+  });
+}
+
+async function drawGroupingQuestion(page: PDFPage, question: GroupingQuestion, leftMm: number, topMm: number, widthMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, leftMm, topMm + 3, context);
+  const image = await ensureObject(context, question.icon);
+  drawContainedImage(page, image, leftMm + 7, topMm + 4, 8, 8);
+  const expression = question.mode === "repeated-addition"
+    ? Array.from({ length: question.groupCount }, () => String(question.perGroup)).join(" + ") + " ="
+    : question.mode === "multiply"
+      ? `${question.groupCount} × ${question.perGroup} =`
+      : `${question.total} ÷ ${question.groupCount} =`;
+  drawCenteredText(page, expression, leftMm + 17, topMm + 4, Math.max(18, widthMm - 20), 10, context.fonts.numericBold, 12.5, COLORS.ink);
+  drawAnswerLine(page, leftMm + (widthMm - 24) / 2, topMm + 19, 24);
+}
+
+async function drawGroupingSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
+  const contentTop = topMm + (section.title ? 9 : 0);
+  if (section.title) drawSectionHeading(page, section.title, topMm, context);
+  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
+  for (let index = 0; index < section.questions.length; index += 1) {
+    const question = section.questions[index];
+    if (question.type === "grouping") await drawGroupingQuestion(page, question, CONTENT_LEFT_MM + index * width, contentTop, width, context);
+  }
+}
+
+async function drawLifeMathQuestion(page: PDFPage, question: LifeMathQuestion, topMm: number, heightMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 3, context);
+  const image = await ensureObject(context, question.icon);
+  drawContainedImage(page, image, CONTENT_LEFT_MM + 7, topMm + 2, 9, 9);
+  const lines = wrapText(question.prompt, context.fonts.chinese, 12, 160, 2);
+  lines.forEach((line, index) => drawTextTop(page, line, CONTENT_LEFT_MM + 19, topMm + 2 + index * 6.8, context.fonts.chinese, 12, COLORS.ink));
+  drawLine(page, CONTENT_LEFT_MM + 19, topMm + heightMm - 4, CONTENT_RIGHT_MM - 6, topMm + heightMm - 4, COLORS.lineSoft, 0.18);
+}
+
+async function drawLifeMathSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
+  const contentTop = topMm + (section.title ? 9 : 0);
+  if (section.title) drawSectionHeading(page, section.title, topMm, context);
+  for (let index = 0; index < section.questions.length; index += 1) {
+    const question = section.questions[index];
+    if (question.type === "life-math") await drawLifeMathQuestion(page, question, contentTop + index * section.rowHeightMm, section.rowHeightMm, context);
+  }
+}
+
 async function drawApplicationSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
   const contentTop = topMm + (section.title ? 9 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
@@ -454,6 +544,10 @@ async function drawPageSection(page: PDFPage, section: WorksheetPageSection, top
   if (section.type === "picture-equation") await drawPictureEquationSection(page, section, topMm, context);
   if (section.type === "guided") await drawGuidedSection(page, section, topMm, context);
   if (section.type === "mental") drawMentalSection(page, section, topMm, context);
+  if (section.type === "vertical") drawVerticalSection(page, section, topMm, context);
+  if (section.type === "missing-number") drawMissingNumberSection(page, section, topMm, context);
+  if (section.type === "grouping") await drawGroupingSection(page, section, topMm, context);
+  if (section.type === "life-math") await drawLifeMathSection(page, section, topMm, context);
   if (section.type === "application") await drawApplicationSection(page, section, topMm, context);
 }
 
@@ -498,7 +592,7 @@ async function createRenderContext(baseUrl: string) {
   ]);
   document.setTitle("一程一成长 · 幼小数学练习");
   document.setAuthor("一程一成长");
-  document.setSubject("5 天基础引导与 25 天强化训练练习纸");
+  document.setSubject("5 天基础引导、25 天强化训练与第二个月进阶练习纸");
   document.setKeywords(["数学练习", "幼小启蒙", "家庭自用"]);
   document.setCreator("一程一成长");
   return { document, fonts: { chinese, numeric, numericBold }, objects: new Map(), characters: new Map(), baseUrl } satisfies PdfRenderContext;

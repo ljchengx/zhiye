@@ -156,8 +156,8 @@ describe("启蒙工具注册表", () => {
   it("区分无状态打印工具与空间积木互动模块", () => {
     expect(kidsToolDefinitions.map((tool) => tool.slug)).toEqual(["math-worksheet", "pinyin-worksheet", "spatial-blocks"]);
     expect(new Set(kidsToolDefinitions.map((tool) => tool.href)).size).toBe(kidsToolDefinitions.length);
-    expect(kidsToolDefinitions[0]?.summary).toContain("5 天基础");
-    expect(kidsToolDefinitions[0]?.summary).toContain("25 天强化");
+    expect(kidsToolDefinitions[0]?.summary).toContain("两个 30 天");
+    expect(kidsToolDefinitions[0]?.summary).toContain("生活数学");
     expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
     expect(getKidsToolByPath("pinyin-worksheet")?.href).toBe("/kids/pinyin-worksheet");
     expect(getKidsToolByPath("spatial-blocks")?.href).toBe("/kids/spatial-blocks");

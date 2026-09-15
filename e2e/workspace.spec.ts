@@ -686,12 +686,12 @@ test("幼小数学练习只挂载当前日打印节点，全量导出交给后�
   await page.goto("/kids/math-worksheet");
 
   const paper = page.getByTestId("math-worksheet-paper");
-  await expect(page.getByTestId("worksheet-print-summary")).toHaveText(/^\d+ 页内容 \/ 60 页双面打印包$/);
+  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("116 页内容 / 120 页双面打印包");
   const printPack = page.getByTestId("worksheet-print-pack");
   await expect(printPack).toHaveAttribute("data-render-scope", "selected-day");
   await expect(printPack.locator("[data-print-copy=true]")).toHaveCount(2);
   await expect(printPack.locator('[data-print-copy=true][data-day="1"]')).toHaveCount(2);
-  await expect(page.getByRole("button", { name: "导出 30 天 PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "导出 60 天 PDF" })).toBeVisible();
   await expect(page.getByRole("button", { name: "打印当前一天" })).toBeVisible();
 
   await expect(paper).toHaveAttribute("data-day", "1");
@@ -750,6 +750,45 @@ test("幼小数学练习只挂载当前日打印节点，全量导出交给后�
     { day: 30, page: "2", side: "back", blank: false },
   ]);
   expect(consoleErrors).toEqual([]);
+});
+
+test("幼小数学练习第二个月展示 31 天和 30 题固定题型比例", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/kids/math-worksheet");
+
+  const monthNav = page.locator('nav[aria-label="练习计划日期"]');
+  await monthNav.getByRole("tab", { name: "第二个月", exact: true }).click();
+  await expect(monthNav.getByTestId("worksheet-day-1")).toHaveCount(0);
+  await expect(monthNav.getByTestId("worksheet-day-31")).toBeVisible();
+  await expect(monthNav.getByTestId("worksheet-day-60")).toBeVisible();
+
+  await monthNav.getByTestId("worksheet-day-31").click();
+  const paper = page.getByTestId("math-worksheet-paper");
+  await expect(paper).toHaveAttribute("data-day", "31");
+  await expect(paper).toHaveAttribute("data-stage-day", "1");
+  await expect(paper).toHaveAttribute("data-page-count", "2");
+  await expect(page.getByText("第 1 天", { exact: true })).toBeVisible();
+
+  const printPack = page.getByTestId("worksheet-print-pack");
+  const questions = printPack.locator('[data-print-copy=true][data-day="31"] [data-testid="math-worksheet-question"]');
+  await expect(questions).toHaveCount(30);
+  const typeCounts = await questions.evaluateAll((items) => items.reduce<Record<string, number>>((counts, item) => {
+    const type = item.getAttribute("data-type") ?? "unknown";
+    counts[type] = (counts[type] ?? 0) + 1;
+    return counts;
+  }, {}));
+  expect(typeCounts).toEqual({
+    neighbor: 2,
+    compare: 2,
+    mental: 6,
+    "vertical-calculation": 7,
+    "missing-number": 3,
+    application: 4,
+    grouping: 3,
+    "life-math": 3,
+  });
+  const monthTwoConfig = page.locator('[aria-labelledby="month-two-config-title"]');
+  await expect(monthTwoConfig.getByText("加减进阶", { exact: true })).toBeVisible();
 });
 
 test("基础五天的数量图、原式和拆分步骤保持同一数学语义", async ({ page }) => {
@@ -1010,15 +1049,15 @@ test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async (
   expect(metrics.bodyBottom).toBeLessThanOrEqual(metrics.footerTop + 1);
 });
 
-test("强化训练配置支持应用题 0% 到 25%，并可只导出强化阶段", async ({ page }) => {
+test("第一个月强化训练配置支持应用题 0% 到 25%", async ({ page }) => {
   await page.goto("/kids/math-worksheet");
 
-  const includeFoundation = page.getByRole("checkbox", { name: "包含 5 天基础引导" });
-  await includeFoundation.uncheck();
-  await expect(page.getByRole("button", { name: "导出 25 天 PDF" })).toBeVisible();
+  const exportRange = page.locator('section[aria-labelledby="export-range-title"]');
+  await exportRange.getByRole("tab", { name: "第一个月", exact: true }).click();
+  await expect(page.getByRole("button", { name: "导出 30 天 PDF" })).toBeVisible();
   const printPack = page.getByTestId("worksheet-print-pack");
   await expect(printPack.locator("[data-print-copy=true]")).toHaveCount(2);
-  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("50 页内容 / 50 页双面打印包");
+  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("56 页内容 / 60 页双面打印包");
 
   const applicationRatio = page.getByRole("spinbutton", { name: "应用题占比" });
   await applicationRatio.fill("0");
@@ -1066,7 +1105,7 @@ test("强化训练配置支持应用题 0% 到 25%，并可只导出强化阶段
 
 test("数学全量 PDF 在后台生成时可随时取消", async ({ page }) => {
   await page.goto("/kids/math-worksheet");
-  const exportButton = page.getByRole("button", { name: "导出 30 天 PDF" });
+  const exportButton = page.getByRole("button", { name: "导出 60 天 PDF" });
   await exportButton.click();
   const cancelButton = page.getByRole("button", { name: /取消导出/ });
   await expect(cancelButton).toBeVisible();
@@ -1082,14 +1121,14 @@ test("数学全量 PDF 可由后台直接生成并下载", async ({ page }) => {
   await page.getByTestId("worksheet-day-2").click();
   await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "2");
   const downloadPromise = page.waitForEvent("download", { timeout: 110_000 });
-  await page.getByRole("button", { name: "导出 30 天 PDF" }).click();
+  await page.getByRole("button", { name: "导出 60 天 PDF" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("一程一成长-幼小数学练习-30天.pdf");
+  expect(download.suggestedFilename()).toBe("一程一成长-幼小数学练习-60天.pdf");
   const stream = await download.createReadStream();
   let size = 0;
   for await (const chunk of stream) size += chunk.length;
   expect(size).toBeGreaterThan(100_000);
-  await expect(page.getByRole("status")).toContainText("30 天数学练习已导出，共 60 页");
+  await expect(page.getByRole("status")).toContainText("60 天数学练习已导出，共 120 页");
   await expect(page.getByTestId("worksheet-print-pack").locator("[data-print-copy=true]")).toHaveCount(2);
 });
 
@@ -1117,7 +1156,7 @@ test("幼小数学练习在移动端可完整缩放预览", async ({ page }) => 
   const expandedBox = await page.getByTestId("math-worksheet-paper").boundingBox();
   expect(expandedBox?.width ?? 0).toBeGreaterThan(390);
   await page.getByRole("button", { name: "退出放大预览" }).click();
-  await expect(page.getByRole("button", { name: "导出 30 天 PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "导出 60 天 PDF" })).toBeVisible();
 });
 
 test("幼小数学练习的桌面 A4 预览不产生滚动条", async ({ page }) => {
