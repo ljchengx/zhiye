@@ -791,6 +791,25 @@ test("幼小数学练习第二个月展示 31 天和 30 题固定题型比例", 
   await expect(monthTwoConfig.getByText("加减进阶", { exact: true })).toBeVisible();
 });
 
+test("幼小数学练习支持从本地文件夹覆盖角色素材", async ({ page }) => {
+  await page.goto("/kids/math-worksheet");
+  const folderInput = page.getByLabel("选择角色素材文件夹");
+  const onePixelPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+
+  await folderInput.setInputFiles({
+    name: "number-block-1.png",
+    mimeType: "image/png",
+    buffer: onePixelPng,
+  });
+  await expect(page.getByRole("status")).toContainText("已在浏览器本地读取 1/24 个角色素材");
+
+  await page.getByTestId("worksheet-day-5").click();
+  await expect(page.getByTestId("math-worksheet-paper").locator('img[data-character="number-block-1"]')).toHaveAttribute("src", /^blob:/);
+
+  await page.getByRole("button", { name: "清除本地角色素材" }).click();
+  await expect(page.getByTestId("math-worksheet-paper").locator('img[data-character="number-block-1"]')).toHaveAttribute("src", /\/math-worksheet\/characters\/number-block-1\.png$/);
+});
+
 test("基础五天的数量图、原式和拆分步骤保持同一数学语义", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/kids/math-worksheet");
@@ -1120,6 +1139,12 @@ test("数学全量 PDF 可由后台直接生成并下载", async ({ page }) => {
   // 先完成一次客户端交互，避免开发服务器并发编译时在水合前点击导出。
   await page.getByTestId("worksheet-day-2").click();
   await expect(page.getByTestId("math-worksheet-paper")).toHaveAttribute("data-day", "2");
+  await page.getByLabel("选择角色素材文件夹").setInputFiles({
+    name: "number-block-1.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+  });
+  await expect(page.getByRole("status")).toContainText("已在浏览器本地读取 1/24 个角色素材");
   const downloadPromise = page.waitForEvent("download", { timeout: 110_000 });
   await page.getByRole("button", { name: "导出 60 天 PDF" }).click();
   const download = await downloadPromise;
@@ -1180,7 +1205,10 @@ test("幼小数学练习的桌面 A4 预览不产生滚动条", async ({ page })
 test("幼小数学练习打印包保持 A4 边界且素材全部加载", async ({ page }) => {
   await page.goto("/kids/math-worksheet");
 
-  await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLImageElement>("img[src*='/math-worksheet/objects/']")).every((image) => image.complete && image.naturalWidth > 0));
+  await page.waitForFunction(() => {
+    const images = Array.from(document.querySelectorAll<HTMLImageElement>("img[src*='/math-worksheet/objects/']"));
+    return images.length >= 16 && images.every((image) => image.complete && image.naturalWidth > 0);
+  });
   const assets = await page.locator("img[src*='/math-worksheet/objects/']").evaluateAll((images) => (
     Array.from(new Map(images.map((image) => {
       const item = image as HTMLImageElement;

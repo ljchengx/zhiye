@@ -5,6 +5,7 @@ import { formatJson, getJsonStructureStats, getJsonSummary, JsonTransformError, 
 import { stripMarkdown } from "../lib/tools/markdown";
 import { getKidsToolByPath, getKidsToolsByFormat, kidsToolDefinitions } from "../lib/tools/kids-registry";
 import { searchTools } from "../lib/tools/registry";
+import { matchWorksheetCharacterAsset } from "../lib/tools/math-local-assets";
 import {
   dateTimeToTimestamp,
   detectTimestampUnit,
@@ -115,6 +116,16 @@ describe("Markdown 清理", () => {
       .toBe("文本标题\n正文");
     expect(stripMarkdown("```ts\n# 这是一行代码\n```"))
       .toBe("# 这是一行代码");
+  });
+});
+
+describe("数学练习本地角色素材", () => {
+  it("只识别约定的角色文件名，并支持递归文件夹路径", () => {
+    expect(matchWorksheetCharacterAsset("characters/number-block-11.png")).toBe("number-block-11");
+    expect(matchWorksheetCharacterAsset("number-blocks/11Better.png")).toBe("number-block-11");
+    expect(matchWorksheetCharacterAsset("characters/bowser_jr.jpg")).toBe("bowser-jr");
+    expect(matchWorksheetCharacterAsset("characters/number-block-21.png")).toBeNull();
+    expect(matchWorksheetCharacterAsset("notes/holiday-photo.png")).toBeNull();
   });
 });
 

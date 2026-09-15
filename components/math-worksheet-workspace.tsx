@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Dices,
   Files,
+  FolderOpen,
   Maximize2,
   Minimize2,
   Printer,
@@ -17,14 +18,20 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type ChangeEvent } from "react";
 
 import {
   getMathBulkPdfFilename,
   getMathWorkbookPrintPageCount,
   type MathPdfGenerateRequest,
+  type MathPdfExternalCharacterAssets,
   type MathPdfWorkerResponse,
 } from "@/lib/tools/math-pdf";
+import {
+  readWorksheetCharacterFolder,
+  releaseWorksheetCharacterFolder,
+  type LocalWorksheetCharacterMap,
+} from "@/lib/tools/math-local-assets";
 import { MATH_WORKSHEET_CHARACTER_ASSETS } from "@/lib/tools/math-picture-assets";
 
 import {
@@ -109,8 +116,17 @@ const RATIO_FIELDS: readonly { key: RatioKey; label: string; inputLabel: string 
   { key: "applicationRatio", label: "应用题", inputLabel: "应用题占比" },
 ];
 
-function getWorksheetCharacter(day: number) {
-  return WORKSHEET_CHARACTERS[(Math.max(1, day) - 1) % WORKSHEET_CHARACTERS.length];
+function getWorksheetCharacter(day: number, characterOverrides?: LocalWorksheetCharacterMap) {
+  const character = WORKSHEET_CHARACTERS[(Math.max(1, day) - 1) % WORKSHEET_CHARACTERS.length];
+  const override = characterOverrides?.[character.name];
+  return override ? { ...character, src: override.url } : character;
+}
+
+async function createPdfCharacterAssets(characters: LocalWorksheetCharacterMap): Promise<MathPdfExternalCharacterAssets> {
+  const entries = await Promise.all(Object.values(characters).flatMap((character) => character ? [
+    character.file.arrayBuffer().then((bytes) => [character.name, { bytes, mimeType: character.mimeType }] as const),
+  ] : []));
+  return Object.fromEntries(entries) as MathPdfExternalCharacterAssets;
 }
 
 function getSectionQuestions(worksheet: DailyWorksheet, type: WorksheetQuestion["section"]): readonly WorksheetQuestion[] {
@@ -397,8 +413,8 @@ function WorksheetPageSectionView({ section }: { section: WorksheetPageSection }
   return <section className={styles.mentalSection} data-columns={section.columns} data-testid="worksheet-mental-section">{section.title ? <h3>{section.title}</h3> : null}<div className={styles.mentalGrid}>{section.questions.map((question) => <MentalQuestionView question={question} key={question.id} />)}</div></section>;
 }
 
-function WorksheetPaper({ worksheet, page, printCopy = false }: { worksheet: DailyWorksheet; page: WorksheetPrintPage; printCopy?: boolean }) {
-  const character = getWorksheetCharacter(worksheet.day);
+function WorksheetPaper({ worksheet, page, printCopy = false, characterOverrides }: { worksheet: DailyWorksheet; page: WorksheetPrintPage; printCopy?: boolean; characterOverrides?: LocalWorksheetCharacterMap }) {
+  const character = getWorksheetCharacter(worksheet.day, characterOverrides);
   const stageLabel = worksheet.month === 2
     ? `第二个月 ${worksheet.monthDay}/${MONTH_TWO_DAYS}`
     : worksheet.stage === "foundation" ? `基础 ${worksheet.stageDay}/${FOUNDATION_WORKSHEET_DAYS}` : `强化 ${worksheet.stageDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
@@ -422,9 +438,11 @@ function WorksheetBlankBack({ day }: { day: number }) {
 function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDefinition }) {
   const seedRef = useRef(INITIAL_SEED);
   const printPackRef = useRef<HTMLDivElement>(null);
+  const characterFolderInputRef = useRef<HTMLInputElement>(null);
   const bulkWorkerRef = useRef<Worker | null>(null);
   const planWorkerRef = useRef<Worker | null>(null);
   const planRequestRef = useRef(0);
+  const localCharactersRef = useRef<LocalWorksheetCharacterMap>({});
   const [selectedDay, setSelectedDay] = useState(1);
   const [activeMonth, setActiveMonth] = useState<1 | 2>(1);
   const [previewPageIndex, setPreviewPageIndex] = useState(0);
@@ -434,6 +452,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
   const [exportRange, setExportRange] = useState<WorksheetExportRange>("all");
   const [config, setConfig] = useState<ReinforcementConfig>(DEFAULT_REINFORCEMENT_CONFIG);
   const [monthTwoQuestionCount, setMonthTwoQuestionCount] = useState(DEFAULT_MONTH_TWO_CONFIG.dailyQuestionCount);
+  const [localCharacters, setLocalCharacters] = useState<LocalWorksheetCharacterMap>({});
   const [plan, setPlan] = useState<WorksheetPlan | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
   const [status, setStatus] = useState<StatusMessage>({ tone: "idle", text: "正在准备 60 天数学练习" });
@@ -458,6 +477,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
   const expectedMonthTwoCounts = selectedWorksheet?.month === 2
     ? getMonthTwoQuestionCounts({ dailyQuestionCount: monthTwoQuestionCount })
     : undefined;
+  const localCharacterCount = Object.keys(localCharacters).length;
 
   const nextSeed = () => { seedRef.current += 7919; return seedRef.current; };
   const requestPlan = (seed: number, nextConfig: ReinforcementConfig, nextMonthTwoQuestionCount: number, successText: string) => {
@@ -498,9 +518,12 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
 
   useEffect(() => {
     requestPlan(INITIAL_SEED, DEFAULT_REINFORCEMENT_CONFIG, DEFAULT_MONTH_TWO_CONFIG.dailyQuestionCount, "两个 30 天数学练习计划已准备好");
+    characterFolderInputRef.current?.setAttribute("webkitdirectory", "");
+    characterFolderInputRef.current?.setAttribute("directory", "");
     return () => {
       bulkWorkerRef.current?.terminate();
       planWorkerRef.current?.terminate();
+      releaseWorksheetCharacterFolder(localCharactersRef.current);
     };
   }, []);
 
@@ -544,6 +567,29 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
     setMonthTwoQuestionCount(next);
     regeneratePlan(config, next, "第二个月每日题量已更新");
   };
+  const replaceLocalCharacters = (next: LocalWorksheetCharacterMap) => {
+    releaseWorksheetCharacterFolder(localCharactersRef.current);
+    localCharactersRef.current = next;
+    setLocalCharacters(next);
+  };
+  const handleCharacterFolderChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value = "";
+    if (files.length === 0) return;
+    const result = readWorksheetCharacterFolder(files);
+    replaceLocalCharacters(result.assets);
+    if (result.matchedFiles === 0) {
+      setStatus({ tone: "error", text: "没有识别到角色图片，请使用角色名或 number-block-1～20 命名" });
+      return;
+    }
+    const duplicateText = result.duplicateFiles > 0 ? `，已跳过 ${result.duplicateFiles} 个重复文件` : "";
+    setStatus({ tone: "success", text: `已在浏览器本地读取 ${result.matchedFiles}/${MATH_WORKSHEET_CHARACTER_ASSETS.length} 个角色素材${duplicateText}` });
+  };
+  const clearLocalCharacters = () => {
+    if (localCharacterCount === 0) return;
+    replaceLocalCharacters({});
+    setStatus({ tone: "success", text: "已恢复内置角色素材" });
+  };
   const regenerateDay = () => {
     if (!selectedWorksheet || selectedWorksheet.stage === "foundation") { setStatus({ tone: "idle", text: "基础引导是固定精选内容" }); return; }
     const currentWorksheet = selectedWorksheet;
@@ -581,12 +627,15 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
       cancelBulkExport();
       return;
     }
+    void prepareBulkExport();
+  };
+  const prepareBulkExport = async () => {
     const worker = new Worker(new URL("../workers/math-pdf.worker.ts", import.meta.url), { type: "module" });
     const totalDays = exportDays.length;
     const filename = getMathBulkPdfFilename(exportRange);
     bulkWorkerRef.current = worker;
     setBulkProgress(0);
-    setStatus({ tone: "idle", text: `正在生成 0 / ${totalDays} 天` });
+    setStatus({ tone: "idle", text: localCharacterCount > 0 ? "正在准备本地角色素材" : `正在生成 0 / ${totalDays} 天` });
 
     const finish = () => {
       worker.terminate();
@@ -622,7 +671,18 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
       finish();
       setStatus({ tone: "error", text: "数学练习导出失败，请刷新页面后重试" });
     };
-    worker.postMessage({ type: "generate", worksheets: exportDays, baseUrl: window.location.origin } satisfies MathPdfGenerateRequest);
+    try {
+      const externalCharacters = await createPdfCharacterAssets(localCharacters);
+      if (bulkWorkerRef.current !== worker) return;
+      const request = { type: "generate", worksheets: exportDays, baseUrl: window.location.origin, externalCharacters } satisfies MathPdfGenerateRequest;
+      const transferables = Object.values(externalCharacters).flatMap((asset) => asset ? [asset.bytes] : []);
+      worker.postMessage(request, transferables);
+    } catch (error) {
+      if (bulkWorkerRef.current !== worker) return;
+      finish();
+      const message = error instanceof Error ? error.message : "本地素材读取失败";
+      setStatus({ tone: "error", text: `数学练习导出失败：${message}` });
+    }
   };
 
   if (!plan || !selectedWorksheet || !selectedPage) {
@@ -640,6 +700,16 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
         <aside className={styles.settings} aria-label="数学练习设置">
           <header className={styles.settingsHeader}><div><span>{selectedWorksheet.month === 1 ? "第一个月练习计划" : "第二个月进阶计划"}</span><h2>{selectedWorksheet.month === 2 ? `第 ${selectedWorksheet.monthDay} 天` : selectedWorksheet.stage === "foundation" ? `基础 ${selectedWorksheet.stageDay}` : `强化 ${selectedWorksheet.stageDay}`}</h2></div><strong>{selectedWorksheet.total}<small>题</small></strong></header>
           <div className={styles.overview}><span><b>30</b> 天第一个月</span><span><b>30</b> 天第二个月</span><span><b>{contentPages}</b> 内容页</span></div>
+          <section className={styles.assetSource} aria-labelledby="character-asset-title">
+            <div className={styles.settingLabel}><span id="character-asset-title">角色素材</span><small>{localCharacterCount > 0 ? "本地覆盖" : "内置兜底"}</small></div>
+            <div className={styles.assetActions}>
+              <button type="button" className={styles.assetButton} disabled={printPending || bulkProgress !== null} onClick={() => characterFolderInputRef.current?.click()}><FolderOpen size={15} />选择素材文件夹</button>
+              <button type="button" className={styles.assetClearButton} disabled={localCharacterCount === 0 || printPending || bulkProgress !== null} onClick={clearLocalCharacters} aria-label="清除本地角色素材" title="清除本地角色素材"><X size={15} />清除</button>
+            </div>
+            <input ref={characterFolderInputRef} className={styles.hiddenAssetInput} type="file" multiple accept="image/png,image/jpeg" onChange={handleCharacterFolderChange} aria-label="选择角色素材文件夹" />
+            <p className={styles.assetStatus}><ShieldCheck size={14} />{localCharacterCount > 0 ? `已读取 ${localCharacterCount}/${MATH_WORKSHEET_CHARACTER_ASSETS.length} 个角色图片` : "尚未选择文件夹，当前使用内置角色素材"}</p>
+            <p className={styles.assetHint}>图片只在当前浏览器本地读取，用于预览、打印和 PDF 合成。</p>
+          </section>
           <section className={styles.exportRange} aria-labelledby="export-range-title"><div className={styles.settingLabel}><span id="export-range-title">导出内容</span><small>{printPages} 页双面打印</small></div><div className={styles.rangeTabs} role="tablist" aria-label="选择导出范围">{(["month-one", "month-two", "all"] as const).map((range) => <button type="button" role="tab" aria-selected={exportRange === range} className={exportRange === range ? styles.currentRange : ""} disabled={printPending || bulkProgress !== null} onClick={() => setExportRange(range)} key={range}>{range === "month-one" ? "第一个月" : range === "month-two" ? "第二个月" : "全部 60 天"}</button>)}</div><p>{exportRange === "month-one" ? "5 天基础引导 + 25 天强化训练" : exportRange === "month-two" ? "30 天加减进阶与综合练习" : "两个 30 天练习计划"}</p></section>
           <nav className={styles.dayNav} aria-label="练习计划日期"><header><CalendarDays aria-hidden="true" size={16} /><span>预览每天内容</span></header><div className={styles.monthTabs} role="tablist" aria-label="选择练习月份"><button type="button" role="tab" aria-selected={activeMonth === 1} className={activeMonth === 1 ? styles.currentRange : ""} onClick={() => selectMonth(1)}>第一个月</button><button type="button" role="tab" aria-selected={activeMonth === 2} className={activeMonth === 2 ? styles.currentRange : ""} onClick={() => selectMonth(2)}>第二个月</button></div>{activeMonth === 1 ? <><div className={styles.dayGroup}><small>基础引导</small><div className={styles.dayGrid}>{plan.foundationDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`基础第 ${day.stageDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.stageDay}</button>)}</div></div><div className={styles.dayGroup}><small>强化训练</small><div className={styles.dayGrid}>{plan.reinforcementDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`强化第 ${day.stageDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.stageDay + FOUNDATION_WORKSHEET_DAYS}</button>)}</div></div></> : <div className={styles.dayGroup}><small>第二个月进阶训练</small><div className={styles.dayGrid}>{visibleDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`第二个月第 ${day.monthDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.monthDay}</button>)}</div></div>}</nav>
           {selectedWorksheet.month === 2 ? <section className={styles.settingGroup} aria-labelledby="month-two-config-title"><div className={styles.settingLabel}><span id="month-two-config-title">第二个月配置</span><small>30 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="第二个月每天题量" onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}><div className={styles.ratioField}><span>加减进阶</span><strong>80</strong><em>%</em></div><div className={styles.ratioField}><span>乘除启蒙</span><strong>10</strong><em>%</em></div><div className={styles.ratioField}><span>生活数学</span><strong>10</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label="题型比例：加减进阶 80%，乘除启蒙 10%，生活数学 10%"><span style={{ width: "80%" }} /><span style={{ width: "10%" }} /><span style={{ width: "10%" }} /></div><p className={styles.ratioHint}>默认每天 24 道加减、3 道乘除启蒙、3 道生活数学</p></section> : <section className={styles.settingGroup} aria-labelledby="reinforcement-config-title"><div className={styles.settingLabel}><span id="reinforcement-config-title">强化训练配置</span><small>第一个月 25 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="强化训练每天题量" onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}>{RATIO_FIELDS.map((field) => <label className={styles.ratioField} key={field.key}><span>{field.label}</span><input type="number" min="0" max={field.key === "applicationRatio" ? MAX_APPLICATION_RATIO : 100} step="5" value={config[field.key]} disabled={printPending || bulkProgress !== null} aria-label={field.inputLabel} onChange={(event) => updateRatio(field.key, event.currentTarget.valueAsNumber)} /><em>%</em></label>)}<div className={`${styles.ratioField} ${styles.readonlyRatio}`}><span>计算式</span><strong>{config.mentalRatio}%</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label={`题型比例：相邻数 ${config.neighborRatio}%，比大小 ${config.compareRatio}%，计算式 ${config.mentalRatio}%，应用题 ${config.applicationRatio}%`}><span style={{ width: `${config.neighborRatio}%` }} /><span style={{ width: `${config.compareRatio}%` }} /><span style={{ width: `${config.mentalRatio}%` }} /><span style={{ width: `${config.applicationRatio}%` }} /></div><p className={styles.ratioHint}>应用题最多 25%，保证每天最多两页</p></section>}
@@ -647,9 +717,9 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
           <div className={styles.actions} aria-busy={printPending || bulkProgress !== null}><button type="button" className={styles.primaryButton} disabled={printPending || bulkProgress !== null} onClick={() => regeneratePlan()}><Dices size={17} />重新生成强化题</button><button type="button" className={styles.bulkPrintButton} disabled={printPending} onClick={startBulkExport}>{bulkProgress === null ? <Files size={17} /> : <X size={17} />}{bulkProgress === null ? `导出 ${exportRange === "all" ? 60 : 30} 天 PDF` : `取消导出（${bulkProgress} / ${exportDays.length}）`}</button><button type="button" className={styles.printButton} disabled={printPending || bulkProgress !== null} onClick={queueCurrentDayPrint}><Printer size={17} />打印当前一天</button><button type="button" onClick={regenerateDay} disabled={selectedWorksheet.stage === "foundation" || printPending || bulkProgress !== null}><ClipboardList size={16} />本日换一套</button><button type="button" disabled={printPending || bulkProgress !== null} onClick={reset}><RotateCcw size={16} />恢复默认</button></div>
           <div className={styles.status} data-tone={status.tone} role="status" aria-live="polite">{status.tone === "success" ? <Check size={15} /> : null}{status.tone === "error" ? <TriangleAlert size={15} /> : null}<span>{status.text}</span></div><p className={styles.local}><ShieldCheck size={15} />题目在浏览器本地生成</p><p className={styles.printSummary} data-testid="worksheet-print-summary">{contentPages} 页内容 / {printPages} 页双面打印包</p>
         </aside>
-        <section className={`${styles.preview} ${previewExpanded ? styles.previewExpanded : ""}`} aria-label="当天 A4 版面预览"><header className={styles.previewToolbar}><div><Calculator size={17} /><span>{selectedWorksheet.month === 2 ? "第二个月" : selectedWorksheet.stage === "foundation" ? "基础" : "强化"} {selectedWorksheet.month === 2 ? selectedWorksheet.monthDay : selectedWorksheet.stageDay} · A4 预览</span></div><div className={styles.previewControls}>{selectedWorksheet.pages.length > 1 ? <div className={styles.pageTabs} role="tablist" aria-label="选择预览页">{selectedWorksheet.pages.map((page, index) => <button type="button" role="tab" aria-selected={previewPageIndex === index} className={previewPageIndex === index ? styles.currentTab : ""} onClick={() => setPreviewPageIndex(index)} key={page.pageNumber}>第 {page.pageNumber} 页</button>)}</div> : <span className={styles.singlePage}>共 1 页</span>}<button type="button" className={styles.expandButton} aria-label={previewExpanded ? "退出放大预览" : "放大预览"} title={previewExpanded ? "退出放大预览" : "放大预览"} onClick={() => setPreviewExpanded((value) => !value)}>{previewExpanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button></div></header><div className={styles.daySummary} data-testid="worksheet-day-summary"><span><Target size={14} />今日目标</span><strong>{selectedWorksheet.title}</strong><p>{selectedWorksheet.objective}</p></div><div className={styles.previewCanvas}><WorksheetPaper worksheet={selectedWorksheet} page={selectedPage} /></div></section>
+        <section className={`${styles.preview} ${previewExpanded ? styles.previewExpanded : ""}`} aria-label="当天 A4 版面预览"><header className={styles.previewToolbar}><div><Calculator size={17} /><span>{selectedWorksheet.month === 2 ? "第二个月" : selectedWorksheet.stage === "foundation" ? "基础" : "强化"} {selectedWorksheet.month === 2 ? selectedWorksheet.monthDay : selectedWorksheet.stageDay} · A4 预览</span></div><div className={styles.previewControls}>{selectedWorksheet.pages.length > 1 ? <div className={styles.pageTabs} role="tablist" aria-label="选择预览页">{selectedWorksheet.pages.map((page, index) => <button type="button" role="tab" aria-selected={previewPageIndex === index} className={previewPageIndex === index ? styles.currentTab : ""} onClick={() => setPreviewPageIndex(index)} key={page.pageNumber}>第 {page.pageNumber} 页</button>)}</div> : <span className={styles.singlePage}>共 1 页</span>}<button type="button" className={styles.expandButton} aria-label={previewExpanded ? "退出放大预览" : "放大预览"} title={previewExpanded ? "退出放大预览" : "放大预览"} onClick={() => setPreviewExpanded((value) => !value)}>{previewExpanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button></div></header><div className={styles.daySummary} data-testid="worksheet-day-summary"><span><Target size={14} />今日目标</span><strong>{selectedWorksheet.title}</strong><p>{selectedWorksheet.objective}</p></div><div className={styles.previewCanvas}><WorksheetPaper worksheet={selectedWorksheet} page={selectedPage} characterOverrides={localCharacters} /></div></section>
       </section>
-      <div className={styles.printPack} data-testid="worksheet-print-pack" data-render-scope="selected-day" ref={printPackRef} aria-label="当前数学练习双面打印内容">{selectedWorksheet.pages.map((page) => <WorksheetPaper worksheet={selectedWorksheet} page={page} printCopy key={`${selectedWorksheet.id}-${page.pageNumber}`} />)}{selectedWorksheet.pages.length % 2 === 1 ? <WorksheetBlankBack day={selectedWorksheet.day} /> : null}</div>
+      <div className={styles.printPack} data-testid="worksheet-print-pack" data-render-scope="selected-day" ref={printPackRef} aria-label="当前数学练习双面打印内容">{selectedWorksheet.pages.map((page) => <WorksheetPaper worksheet={selectedWorksheet} page={page} printCopy characterOverrides={localCharacters} key={`${selectedWorksheet.id}-${page.pageNumber}`} />)}{selectedWorksheet.pages.length % 2 === 1 ? <WorksheetBlankBack day={selectedWorksheet.day} /> : null}</div>
       <div className={styles.assetPreload} aria-hidden="true">{ALL_OBJECT_ASSETS.map((src) => <img src={src} alt="" key={src} />)}</div>
     </section>
   );

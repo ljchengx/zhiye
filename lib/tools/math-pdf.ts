@@ -43,10 +43,20 @@ export const MATH_MONTH_ONE_PDF_FILENAME = "一程一成长-幼小数学练习-�
 export const MATH_MONTH_TWO_PDF_FILENAME = "一程一成长-幼小数学练习-第2个月-30天.pdf";
 export const MATH_REINFORCEMENT_PDF_FILENAME = "一程一成长-幼小数学练习-强化25天.pdf";
 
+export type MathPdfExternalCharacterMimeType = "image/png" | "image/jpeg";
+
+export interface MathPdfExternalCharacterAsset {
+  bytes: ArrayBuffer;
+  mimeType: MathPdfExternalCharacterMimeType;
+}
+
+export type MathPdfExternalCharacterAssets = Partial<Record<MathPdfCharacterAsset, MathPdfExternalCharacterAsset>>;
+
 export interface MathPdfGenerateRequest {
   type: "generate";
   worksheets: readonly DailyWorksheet[];
   baseUrl: string;
+  externalCharacters?: MathPdfExternalCharacterAssets;
 }
 
 export type MathPdfWorkerResponse =
@@ -72,6 +82,7 @@ interface PdfRenderContext {
   objects: Map<MathPdfObjectAsset, PDFImage>;
   characters: Map<MathPdfCharacterAsset, PDFImage>;
   baseUrl: string;
+  externalCharacters: MathPdfExternalCharacterAssets;
 }
 
 const POINTS_PER_MM = 72 / 25.4;
@@ -79,7 +90,7 @@ const PAGE_WIDTH = 210 * POINTS_PER_MM;
 const PAGE_HEIGHT = 297 * POINTS_PER_MM;
 const CONTENT_LEFT_MM = 12;
 const CONTENT_RIGHT_MM = 198;
-const BODY_TOP_MM = 28;
+const BODY_TOP_MM = 21;
 const FOOTER_TOP_MM = 280;
 
 const COLORS = {
@@ -179,7 +190,12 @@ async function ensureObject(context: PdfRenderContext, asset: MathPdfObjectAsset
 async function ensureCharacter(context: PdfRenderContext, asset: MathPdfCharacterAsset) {
   const cached = context.characters.get(asset);
   if (cached) return cached;
-  const image = await context.document.embedPng(await fetchBytes(context.baseUrl, MATH_PDF_CHARACTER_SOURCES[asset]));
+  const external = context.externalCharacters[asset];
+  const image = external
+    ? external.mimeType === "image/jpeg"
+      ? await context.document.embedJpg(new Uint8Array(external.bytes))
+      : await context.document.embedPng(new Uint8Array(external.bytes))
+    : await context.document.embedPng(await fetchBytes(context.baseUrl, MATH_PDF_CHARACTER_SOURCES[asset]));
   context.characters.set(asset, image);
   return image;
 }
@@ -259,12 +275,12 @@ function drawHeader(page: PDFPage, worksheet: DailyWorksheet, context: PdfRender
     : worksheet.stage === "foundation"
       ? `基础 ${worksheet.stageDay}/${FOUNDATION_WORKSHEET_DAYS}`
       : `强化 ${worksheet.stageDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
-  drawTextTop(page, stageLabel, CONTENT_LEFT_MM, 15, context.fonts.chinese, 10, COLORS.accent);
-  drawTextTop(page, "数学练习", 35, 12.4, context.fonts.chinese, 16, COLORS.ink);
-  drawTextTop(page, fitText(worksheet.title, context.fonts.chinese, 9, 62), 64, 16, context.fonts.chinese, 9, COLORS.muted);
-  drawContainedImage(page, character, 138, 6, 22, 22);
-  drawTextTop(page, "日期", 164, 17, context.fonts.chinese, 9.5, COLORS.muted);
-  drawLine(page, 174, 22.5, CONTENT_RIGHT_MM, 22.5, COLORS.muted, 0.35);
+  drawTextTop(page, stageLabel, CONTENT_LEFT_MM, 11.2, context.fonts.chinese, 9.5, COLORS.accent);
+  drawTextTop(page, "数学练习", 35, 9.2, context.fonts.chinese, 15, COLORS.ink);
+  drawTextTop(page, fitText(worksheet.title, context.fonts.chinese, 8.5, 62), 64, 12.8, context.fonts.chinese, 8.5, COLORS.muted);
+  drawContainedImage(page, character, 140, 4, 17, 17);
+  drawTextTop(page, "日期", 164, 13.8, context.fonts.chinese, 9, COLORS.muted);
+  drawLine(page, 174, 19.5, CONTENT_RIGHT_MM, 19.5, COLORS.muted, 0.35);
 }
 
 async function drawMethodExample(page: PDFPage, lesson: WorksheetMethodExample, topMm: number, context: PdfRenderContext) {
@@ -577,7 +593,7 @@ async function drawWorksheetPage(context: PdfRenderContext, worksheet: DailyWork
   drawFooter(page, worksheet, printPage, context);
 }
 
-async function createRenderContext(baseUrl: string) {
+async function createRenderContext(baseUrl: string, externalCharacters: MathPdfExternalCharacterAssets = {}) {
   const document = await PDFDocument.create();
   document.registerFontkit(fontkit);
   const [chineseBytes, numericBytes, numericBoldBytes] = await Promise.all([
@@ -595,16 +611,17 @@ async function createRenderContext(baseUrl: string) {
   document.setSubject("5 天基础引导、25 天强化训练与第二个月进阶练习纸");
   document.setKeywords(["数学练习", "幼小启蒙", "家庭自用"]);
   document.setCreator("一程一成长");
-  return { document, fonts: { chinese, numeric, numericBold }, objects: new Map(), characters: new Map(), baseUrl } satisfies PdfRenderContext;
+  return { document, fonts: { chinese, numeric, numericBold }, objects: new Map(), characters: new Map(), baseUrl, externalCharacters } satisfies PdfRenderContext;
 }
 
 export async function generateMathWorkbookPdf(
   worksheets: readonly DailyWorksheet[],
   baseUrl: string,
   onProgress: (completed: number, total: number) => void,
+  externalCharacters: MathPdfExternalCharacterAssets = {},
 ) {
   if (worksheets.length === 0) throw new Error("没有可导出的数学练习");
-  const context = await createRenderContext(baseUrl);
+  const context = await createRenderContext(baseUrl, externalCharacters);
   for (let index = 0; index < worksheets.length; index += 1) {
     const worksheet = worksheets[index] as DailyWorksheet;
     for (const printPage of worksheet.pages) await drawWorksheetPage(context, worksheet, printPage);

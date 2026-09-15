@@ -121,6 +121,73 @@
   font-size: 17px;
 }
 
+.assetSource {
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid #e3e7e9;
+}
+
+.assetActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.assetButton,
+.assetClearButton {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid #d5dcdf;
+  border-radius: 4px;
+  background: #fff;
+  color: #344046;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.assetButton:hover:not(:disabled),
+.assetButton:focus-visible:not(:disabled),
+.assetClearButton:hover:not(:disabled),
+.assetClearButton:focus-visible:not(:disabled) {
+  border-color: var(--worksheet-accent);
+  outline: none;
+}
+
+.assetButton:disabled,
+.assetClearButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.assetClearButton {
+  color: #68747a;
+}
+
+.hiddenAssetInput {
+  display: none;
+}
+
+.assetStatus,
+.assetHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 8px 0 0;
+  color: #26734d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.assetHint {
+  display: block;
+  color: #778186;
+}
+
 .exportRange,
 .settingGroup {
   margin-top: 16px;
@@ -531,8 +598,8 @@
   min-width: 210mm;
   min-height: 297mm;
   box-sizing: border-box;
-  grid-template-rows: 18mm 252mm 7mm;
-  padding: 10mm 12mm;
+  grid-template-rows: 15mm 259mm 7mm;
+  padding: 6mm 12mm 10mm;
   overflow: hidden;
   border: 0;
   border-radius: 0;
@@ -546,7 +613,7 @@
 
 .paperHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22mm 35mm;
+  grid-template-columns: minmax(0, 1fr) 18mm 35mm;
   align-items: center;
   gap: 4mm;
 }
@@ -585,10 +652,10 @@
 
 .character {
   display: block;
-  width: 22mm;
-  height: 22mm;
+  width: 17mm;
+  height: 17mm;
   object-fit: contain;
-  transform: translateY(-2mm);
+  transform: translateY(-1mm);
 }
 
 .dateField {
@@ -607,7 +674,7 @@
 }
 
 .paperBody {
-  height: 252mm;
+  height: 259mm;
   overflow: hidden;
 }
 
