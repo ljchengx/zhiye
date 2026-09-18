@@ -130,6 +130,17 @@ function drawTextTop(page: PDFPage, text: string, xMm: number, topMm: number, fo
   return font.widthOfTextAtSize(text, size) / POINTS_PER_MM;
 }
 
+function drawRightText(page: PDFPage, text: string, leftMm: number, topMm: number, widthMm: number, heightMm: number, font: PDFFont, size: number, color: RGB) {
+  const textWidth = font.widthOfTextAtSize(text, size) / POINTS_PER_MM;
+  const textHeight = font.heightAtSize(size, { descender: false }) / POINTS_PER_MM;
+  drawTextTop(page, text, leftMm + widthMm - textWidth, topMm + Math.max(0, (heightMm - textHeight) / 2), font, size, color);
+}
+
+function drawLeftText(page: PDFPage, text: string, leftMm: number, topMm: number, heightMm: number, font: PDFFont, size: number, color: RGB) {
+  const textHeight = font.heightAtSize(size, { descender: false }) / POINTS_PER_MM;
+  drawTextTop(page, text, leftMm, topMm + Math.max(0, (heightMm - textHeight) / 2), font, size, color);
+}
+
 function drawCenteredText(page: PDFPage, text: string, leftMm: number, topMm: number, widthMm: number, heightMm: number, font: PDFFont, size: number, color: RGB) {
   const textWidth = font.widthOfTextAtSize(text, size);
   const textHeight = font.heightAtSize(size, { descender: false });
@@ -335,12 +346,12 @@ async function drawMethodExample(page: PDFPage, lesson: WorksheetMethodExample, 
 }
 
 function drawSectionHeading(page: PDFPage, title: string, topMm: number, context: PdfRenderContext) {
-  drawTextTop(page, title, CONTENT_LEFT_MM, topMm + 2.2, context.fonts.chinese, 12, COLORS.ink);
-  drawLine(page, CONTENT_LEFT_MM, topMm + 9, CONTENT_RIGHT_MM, topMm + 9, COLORS.line, 0.35);
+  drawTextTop(page, title, CONTENT_LEFT_MM, topMm + 1.6, context.fonts.chinese, 15, COLORS.ink);
+  drawLine(page, CONTENT_LEFT_MM, topMm + 11, CONTENT_RIGHT_MM, topMm + 11, COLORS.line, 0.4);
 }
 
 function drawQuestionNumber(page: PDFPage, number: number, leftMm: number, topMm: number, context: PdfRenderContext) {
-  drawTextTop(page, `${number}.`, leftMm, topMm, context.fonts.numeric, 8.5, COLORS.muted);
+  drawTextTop(page, `${number}.`, leftMm, topMm, context.fonts.numeric, 11, COLORS.muted);
 }
 
 function drawAnswerLine(page: PDFPage, leftMm: number, topMm: number, widthMm: number) {
@@ -353,12 +364,19 @@ function drawEmptyBox(page: PDFPage, leftMm: number, topMm: number, sizeMm: numb
 
 function drawBondDiagram(page: PDFPage, centerMm: number, topMm: number, whole: number, left: number | null, context: PdfRenderContext, right: number | null = null, radius = 4.8) {
   const wholeX = centerMm;
-  const wholeY = topMm + radius + 0.5;
-  const partY = topMm + radius * 2 + 6.2;
-  const leftX = centerMm - radius - 4.2;
-  const rightX = centerMm + radius + 4.2;
-  drawLine(page, wholeX, wholeY + radius * 0.55, leftX, partY - radius * 0.55, COLORS.ink, 0.4);
-  drawLine(page, wholeX, wholeY + radius * 0.55, rightX, partY - radius * 0.55, COLORS.ink, 0.4);
+  const wholeY = topMm + radius + 0.4;
+  const partY = wholeY + radius * 2 + 7.2;
+  const leftX = centerMm - radius - 4.6;
+  const rightX = centerMm + radius + 4.6;
+  const clear = radius + 1.4;
+  const connect = (partX: number) => {
+    const dx = partX - wholeX;
+    const dy = partY - wholeY;
+    const length = Math.hypot(dx, dy) || 1;
+    drawLine(page, wholeX + (dx / length) * clear, wholeY + (dy / length) * clear, partX - (dx / length) * clear, partY - (dy / length) * clear, COLORS.ink, 0.4);
+  };
+  connect(leftX);
+  connect(rightX);
   const circles = [
     { x: wholeX, y: wholeY, label: whole == null ? "" : String(whole) },
     { x: leftX, y: partY, label: left == null ? "" : String(left) },
@@ -391,7 +409,7 @@ function drawRoundedBox(page: PDFPage, leftMm: number, topMm: number, widthMm: n
 }
 
 async function drawSharingPlates(page: PDFPage, question: GroupingQuestion, leftMm: number, topMm: number, widthMm: number, context: PdfRenderContext) {
-  const iconSize = 5.2;
+  const iconSize = 6.4;
   const iconGap = 0.7;
   const padX = 2.2;
   const plateHeight = 10.2;
@@ -424,38 +442,43 @@ async function drawSharingPlates(page: PDFPage, question: GroupingQuestion, left
 }
 
 async function drawNeighborSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
   for (let index = 0; index < section.questions.length; index += 1) {
     const question = section.questions[index];
     if (question?.type !== "neighbor") continue;
     const left = CONTENT_LEFT_MM + index * width;
-    drawQuestionNumber(page, question.number, left, contentTop + 3.5, context);
-    const blankWidth = 12;
-    const gap = 2;
-    const numberWidth = 8;
-    const cluster = numberWidth + gap + blankWidth + gap + numberWidth;
-    const start = left + 5.5 + Math.max(0, (width - 7 - cluster) / 2);
-    const boxTop = contentTop + 3.5;
-    const boxHeight = 7.5;
-    drawCenteredText(page, String(question.left), start, boxTop, numberWidth, boxHeight, context.fonts.numericBold, 12, COLORS.ink);
-    drawRoundedBox(page, start + numberWidth + gap, boxTop, blankWidth, boxHeight);
-    drawAnswerLine(page, start + numberWidth + gap + 2, boxTop + boxHeight - 1.8, blankWidth - 4);
-    drawCenteredText(page, String(question.right), start + numberWidth + gap + blankWidth + gap, boxTop, numberWidth, boxHeight, context.fonts.numericBold, 12, COLORS.ink);
+    const slot = 15;
+    const blankWidth = 14;
+    const gap = 2.2;
+    const start = left + 12;
+    const boxTop = contentTop + 1.6;
+    const boxHeight = 10;
+    const digitSize = 18;
+    const font = context.fonts.numericBold;
+    drawQuestionNumber(page, question.number, left, contentTop + 3.2, context);
+    drawRightText(page, String(question.left), start, boxTop, slot, boxHeight, font, digitSize, COLORS.ink);
+    drawRoundedBox(page, start + slot + gap, boxTop, blankWidth, boxHeight);
+    drawAnswerLine(page, start + slot + gap + 2, boxTop + boxHeight - 2.2, blankWidth - 4);
+    drawLeftText(page, String(question.right), start + slot + gap + blankWidth + gap, boxTop, boxHeight, font, digitSize, COLORS.ink);
   }
 }
 
 async function drawTensSplitSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
-  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
+  const gutter = section.columns >= 4 ? 5 : 4;
+  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM - gutter * (section.columns - 1)) / section.columns;
   for (let index = 0; index < section.questions.length; index += 1) {
     const question = section.questions[index];
     if (question?.type !== "tens-split") continue;
-    const left = CONTENT_LEFT_MM + index * width;
-    drawQuestionNumber(page, question.number, left, contentTop + 3, context);
-    drawBondDiagram(page, left + width / 2, contentTop + 0.5, question.whole, question.left, context, question.right, 4.2);
+    const left = CONTENT_LEFT_MM + index * (width + gutter);
+    const diagramWidth = Math.max(22, width - 14);
+    const radius = Math.max(3.2, Math.min(4.2, (diagramWidth / 2 - 4.4) / 2));
+    const diagramTop = contentTop + 0.8;
+    drawQuestionNumber(page, question.number, left, diagramTop + radius + 0.5 - 1.9, context);
+    drawBondDiagram(page, left + 12 + diagramWidth / 2, diagramTop, question.whole, question.left, context, question.right, radius);
   }
 }
 
@@ -469,18 +492,22 @@ async function drawPictureBond(page: PDFPage, question: NumberBondQuestion, left
 }
 
 function drawSimpleBond(page: PDFPage, question: NumberBondQuestion, leftMm: number, topMm: number, widthMm: number, context: PdfRenderContext) {
-  drawQuestionNumber(page, question.number, leftMm, topMm + 2, context);
-  drawBondDiagram(page, leftMm + 6 + (widthMm - 8) / 2, topMm + 1.5, question.whole, question.knownPart, context);
+  const diagramWidth = Math.max(20, widthMm - 16);
+  const radius = Math.max(3.2, Math.min(4.2, (diagramWidth / 2 - 4.4) / 2));
+  const diagramTop = topMm + 1.2;
+  drawQuestionNumber(page, question.number, leftMm, diagramTop + radius + 0.5 - 1.9, context);
+  drawBondDiagram(page, leftMm + 13 + diagramWidth / 2, diagramTop, question.whole, question.knownPart, context, null, radius);
 }
 
 async function drawCompositionSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
-  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
+  const gutter = section.columns >= 4 ? 5 : 4;
+  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM - gutter * (section.columns - 1)) / section.columns;
   for (let index = 0; index < section.questions.length; index += 1) {
     const question = section.questions[index];
     if (question?.type !== "number-bond") continue;
-    const left = CONTENT_LEFT_MM + index * width;
+    const left = CONTENT_LEFT_MM + index * (width + gutter);
     if (question.mode === "picture-split") await drawPictureBond(page, question, left, contentTop, width, section.rowHeightMm, context);
     else drawSimpleBond(page, question, left, contentTop, width, context);
   }
@@ -509,7 +536,7 @@ async function drawPictureEquation(page: PDFPage, question: PictureEquationQuest
 }
 
 async function drawPictureEquationSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
   for (let index = 0; index < section.questions.length; index += 1) {
@@ -537,7 +564,7 @@ async function drawGuidedQuestion(page: PDFPage, question: MentalQuestion, leftM
 }
 
 async function drawGuidedSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM - 6) / section.columns;
   for (let index = 0; index < section.questions.length; index += 1) {
@@ -556,40 +583,43 @@ function mentalExpression(question: MentalQuestion) {
 }
 
 async function drawMentalSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
-  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
+  const columnGap = section.columns === 2 ? 12 : 8;
+  const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM - columnGap * (section.columns - 1)) / section.columns;
   section.questions.forEach((question, index) => {
     if (question.type !== "mental") return;
-    const left = CONTENT_LEFT_MM + index * width;
+    const left = CONTENT_LEFT_MM + index * (width + columnGap);
     drawQuestionNumber(page, question.number, left, contentTop + 5.5, context);
     const expression = mentalExpression(question);
-    const expressionSize = section.columns === 2 ? 14.5 : 15;
+    const expressionSize = section.columns === 2 ? 16 : 18;
     const expressionWidth = context.fonts.numeric.widthOfTextAtSize(expression, expressionSize) / POINTS_PER_MM;
-    drawTextTop(page, expression, left + 7, contentTop + 4.2, context.fonts.numeric, expressionSize, COLORS.ink);
-    drawAnswerLine(page, left + 9 + expressionWidth, contentTop + 13, 18);
+    const answerWidth = 14;
+    const answerLeft = left + 14 + expressionWidth;
+    drawTextTop(page, expression, left + 12, contentTop + 4.2, context.fonts.numeric, expressionSize, COLORS.ink);
+    drawAnswerLine(page, answerLeft, contentTop + 11.5, answerWidth);
     drawLine(page, left, contentTop + section.rowHeightMm, left + width - 2, contentTop + section.rowHeightMm, COLORS.lineSoft, 0.18);
   });
 }
 
 function drawVerticalQuestion(page: PDFPage, question: VerticalCalculationQuestion, leftMm: number, topMm: number, widthMm: number, rowHeightMm: number, context: PdfRenderContext) {
   drawQuestionNumber(page, question.number, leftMm, topMm + 2.2, context);
-  const stackWidth = 14;
+  const stackWidth = 18;
   const stackLeft = leftMm + Math.max(6, (widthMm - stackWidth) / 2);
   const digitRight = stackLeft + stackWidth;
   const digitFont = context.fonts.numericBold;
-  const size = 12.5;
-  drawTextTop(page, String(question.left), digitRight - digitFont.widthOfTextAtSize(String(question.left), size) / POINTS_PER_MM, topMm + 1.5, digitFont, size, COLORS.ink);
-  drawTextTop(page, question.operator, stackLeft, topMm + 7.2, digitFont, size, COLORS.ink);
-  drawTextTop(page, String(question.right), digitRight - digitFont.widthOfTextAtSize(String(question.right), size) / POINTS_PER_MM, topMm + 7.2, digitFont, size, COLORS.ink);
-  const ruleTop = topMm + 13.6;
+  const size = 18;
+  drawTextTop(page, String(question.left), digitRight - digitFont.widthOfTextAtSize(String(question.left), size) / POINTS_PER_MM, topMm + 1.2, digitFont, size, COLORS.ink);
+  drawTextTop(page, question.operator, stackLeft, topMm + 9.2, digitFont, size, COLORS.ink);
+  drawTextTop(page, String(question.right), digitRight - digitFont.widthOfTextAtSize(String(question.right), size) / POINTS_PER_MM, topMm + 9.2, digitFont, size, COLORS.ink);
+  const ruleTop = topMm + 17.4;
   drawLine(page, stackLeft, ruleTop, digitRight, ruleTop, COLORS.ink, 0.45);
   const answerBottom = topMm + Math.max(ruleTop + 10, rowHeightMm - 1.5);
   drawLine(page, stackLeft, answerBottom, digitRight, answerBottom, COLORS.ink, 0.35);
 }
 
 async function drawVerticalSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
   section.questions.forEach((question, index) => {
@@ -600,12 +630,12 @@ async function drawVerticalSection(page: PDFPage, section: WorksheetPageSection,
 function drawMissingNumberQuestion(page: PDFPage, question: MissingNumberQuestion, leftMm: number, topMm: number, widthMm: number, context: PdfRenderContext) {
   drawQuestionNumber(page, question.number, leftMm, topMm + 5, context);
   const expression = `${question.left ?? "□"} ${question.operator} ${question.right ?? "□"} = ${question.result ?? "□"}`;
-  drawCenteredText(page, expression, leftMm + 6, topMm + 2, widthMm - 8, 11, context.fonts.numericBold, 13, COLORS.ink);
+  drawCenteredText(page, expression, leftMm + 12, topMm + 2, Math.max(20, widthMm - 14), 14, context.fonts.numericBold, 18, COLORS.ink);
   drawLine(page, leftMm + 2, topMm + 16, leftMm + widthMm - 2, topMm + 16, COLORS.lineSoft, 0.18);
 }
 
 async function drawMissingNumberSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
   section.questions.forEach((question, index) => {
@@ -619,8 +649,8 @@ async function drawGroupingQuestion(page: PDFPage, question: GroupingQuestion, l
   const contentWidth = Math.max(40, widthMm - 10);
   if (question.mode === "sharing") {
     await drawSharingPlates(page, question, contentLeft, topMm + 0.6, contentWidth, context);
-    drawTextTop(page, `${question.total} 个平均分成 ${question.groupCount} 组`, contentLeft, topMm + 12.5, context.fonts.chinese, 9.5, COLORS.muted);
-    drawTextTop(page, `${question.total} ÷ ${question.groupCount} =`, contentLeft, topMm + 19, context.fonts.numericBold, 12, COLORS.ink);
+    drawTextTop(page, `${question.total} 个平均分成 ${question.groupCount} 组`, contentLeft, topMm + 14, context.fonts.chinese, 12, COLORS.muted);
+    drawTextTop(page, `${question.total} ÷ ${question.groupCount} =`, contentLeft, topMm + 22, context.fonts.numericBold, 16, COLORS.ink);
     const expressionWidth = context.fonts.numericBold.widthOfTextAtSize(`${question.total} ÷ ${question.groupCount} =`, 12) / POINTS_PER_MM;
     drawAnswerLine(page, contentLeft + expressionWidth + 2, topMm + 26, 14);
     return;
@@ -649,7 +679,7 @@ async function drawGroupingQuestion(page: PDFPage, question: GroupingQuestion, l
 }
 
 async function drawGroupingSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   const width = (CONTENT_RIGHT_MM - CONTENT_LEFT_MM) / section.columns;
   for (let index = 0; index < section.questions.length; index += 1) {
@@ -662,13 +692,13 @@ async function drawLifeMathQuestion(page: PDFPage, question: LifeMathQuestion, t
   drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 3, context);
   const image = await ensureObject(context, question.icon);
   drawContainedImage(page, image, CONTENT_LEFT_MM + 7, topMm + 2, 9, 9);
-  const lines = wrapText(question.prompt, context.fonts.chinese, 12, 160, 2);
-  lines.forEach((line, index) => drawTextTop(page, line, CONTENT_LEFT_MM + 19, topMm + 2 + index * 6.8, context.fonts.chinese, 12, COLORS.ink));
+  const lines = wrapText(question.prompt, context.fonts.chinese, 15.5, 155, 2);
+  lines.forEach((line, index) => drawTextTop(page, line, CONTENT_LEFT_MM + 19, topMm + 2 + index * 8.2, context.fonts.chinese, 15.5, COLORS.ink));
   drawLine(page, CONTENT_LEFT_MM + 19, topMm + heightMm - 4, CONTENT_RIGHT_MM - 6, topMm + heightMm - 4, COLORS.lineSoft, 0.18);
 }
 
 async function drawLifeMathSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   for (let index = 0; index < section.questions.length; index += 1) {
     const question = section.questions[index];
@@ -677,7 +707,7 @@ async function drawLifeMathSection(page: PDFPage, section: WorksheetPageSection,
 }
 
 async function drawApplicationSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
-  const contentTop = topMm + (section.title ? 9 : 0);
+  const contentTop = topMm + (section.title ? 12 : 0);
   if (section.title) drawSectionHeading(page, section.title, topMm, context);
   const question = section.questions[0];
   if (!question || question.type !== "application") return;
@@ -688,8 +718,8 @@ async function drawApplicationQuestion(page: PDFPage, question: ApplicationQuest
   drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 3, context);
   const image = await ensureObject(context, question.icon);
   drawContainedImage(page, image, CONTENT_LEFT_MM + 7, topMm + 2, 9, 9);
-  const lines = wrapText(question.prompt, context.fonts.chinese, 12, 160, 2);
-  lines.forEach((line, index) => drawTextTop(page, line, CONTENT_LEFT_MM + 19, topMm + 2 + index * 6.8, context.fonts.chinese, 12, COLORS.ink));
+  const lines = wrapText(question.prompt, context.fonts.chinese, 15.5, 155, 2);
+  lines.forEach((line, index) => drawTextTop(page, line, CONTENT_LEFT_MM + 19, topMm + 2 + index * 8.2, context.fonts.chinese, 15.5, COLORS.ink));
   drawLine(page, CONTENT_LEFT_MM + 19, topMm + heightMm - 4, CONTENT_RIGHT_MM - 6, topMm + heightMm - 4, COLORS.lineSoft, 0.18);
 }
 
@@ -728,7 +758,7 @@ async function drawWorksheetPage(context: PdfRenderContext, worksheet: DailyWork
   }
   for (const section of printPage.sections) {
     await drawPageSection(page, section, topMm, context);
-    topMm += section.rowHeightMm + (section.title ? 9 : 0);
+    topMm += section.rowHeightMm + (section.title ? 12 : 0);
   }
   drawFooter(page, worksheet, printPage, context);
 }

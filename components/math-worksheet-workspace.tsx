@@ -191,10 +191,10 @@ function EquationSlot() {
 function NumberBondDiagram({ whole, left, right }: { whole?: number | null; left?: number | null; right?: number | null }) {
   return (
     <span className={styles.numberBond} aria-hidden="true">
-      <svg className={styles.bondLines} viewBox="0 0 80 54" aria-hidden="true">
-        <line x1="40" y1="14" x2="18" y2="40" />
-        <line x1="40" y1="14" x2="62" y2="40" />
-      </svg>
+        <svg className={styles.bondLines} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="50" y1="46" x2="25" y2="55" />
+          <line x1="50" y1="46" x2="75" y2="55" />
+        </svg>
       <span className={styles.bondWhole}>{whole == null ? "" : whole}</span>
       <span className={styles.bondPart}>{left == null ? "" : left}</span>
       <span className={styles.bondPart}>{right == null ? "" : right}</span>
@@ -280,9 +280,9 @@ function TensSplitView({ question }: { question: WorksheetQuestion }) {
     <div className={styles.tensSplitQuestion} data-testid="math-worksheet-question" data-type="tens-split" data-missing={question.missing} data-display="part-whole">
       <span className={styles.questionNumber}>{question.number}.</span>
       <span className={styles.tensBond} aria-hidden="true">
-        <svg className={styles.tensBondLines} viewBox="0 0 100 62" aria-hidden="true">
-          <line x1="50" y1="18" x2="26" y2="46" />
-          <line x1="50" y1="18" x2="74" y2="46" />
+        <svg className={styles.tensBondLines} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="50" y1="48" x2="25" y2="55" />
+          <line x1="50" y1="48" x2="75" y2="55" />
         </svg>
         <span className={styles.tensBondWhole}>{question.whole}</span>
         <span className={styles.tensBondPart} data-empty={question.left == null ? "true" : undefined}>{question.left == null ? "" : question.left}</span>

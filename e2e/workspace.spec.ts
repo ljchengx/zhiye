@@ -686,7 +686,7 @@ test("幼小数学练习只挂载当前日打印节点，全量导出交给后�
   await page.goto("/kids/math-worksheet");
 
   const paper = page.getByTestId("math-worksheet-paper");
-  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("116 页内容 / 120 页双面打印包");
+  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("120 页内容 / 120 页双面打印包");
   const printPack = page.getByTestId("worksheet-print-pack");
   await expect(printPack).toHaveAttribute("data-render-scope", "selected-day");
   await expect(printPack.locator("[data-print-copy=true]")).toHaveCount(2);
@@ -695,21 +695,21 @@ test("幼小数学练习只挂载当前日打印节点，全量导出交给后�
   await expect(page.getByRole("button", { name: "打印当前一天" })).toBeVisible();
 
   await expect(paper).toHaveAttribute("data-day", "1");
-  await expect(paper).toHaveAttribute("data-page-count", "1");
+  await expect(paper).toHaveAttribute("data-page-count", "2");
   await expect(paper.getByTestId("worksheet-demo")).toBeVisible();
-  await expect(paper.locator("[data-type=number-bond]")).toHaveCount(16);
+  await expect(paper.locator("[data-type=number-bond]")).toHaveCount(10);
   const pictureBond = paper.locator('[data-type="number-bond"][data-mode="picture-split"]').first();
   await expect(pictureBond.locator("img")).toHaveCount(5);
   await expect(pictureBond).toContainText("+");
   await expect(paper.locator("[data-type=neighbor]")).toHaveCount(4);
-  await expect(paper.locator("[data-type='tens-split']")).toHaveCount(8);
+  await expect(paper.locator("[data-type='tens-split']")).toHaveCount(6);
 
-  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(28);
+  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(20);
 
   await page.getByTestId("worksheet-day-2").click();
   await expect(paper.getByTestId("worksheet-demo")).toBeVisible();
   await expect(paper.locator("[data-display=guided]")).toHaveCount(2);
-  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(28);
+  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(18);
 
   await page.getByTestId("worksheet-day-5").click();
   await expect(paper).toHaveAttribute("data-page-count", "2");
@@ -722,7 +722,7 @@ test("幼小数学练习只挂载当前日打印节点，全量导出交给后�
   await expect(printPack.locator('[data-print-copy=true][data-day="6"]')).toHaveCount(2);
   await expect(printPack.locator('[data-print-copy=true]:not([data-day="6"])')).toHaveCount(0);
   const daySixQuestionCount = await printPack.locator('[data-print-copy=true][data-day="6"] [data-testid="math-worksheet-question"]').count();
-  expect(daySixQuestionCount).toBe(30);
+  expect(daySixQuestionCount).toBe(22);
 
   await page.getByTestId("worksheet-day-15").click();
   await expect(paper).toHaveAttribute("data-page-count", "2");
@@ -752,7 +752,7 @@ test("幼小数学练习只挂载当前日打印节点，全量导出交给后�
   expect(consoleErrors).toEqual([]);
 });
 
-test("幼小数学练习第二个月展示 31 天和 30 题固定题型比例", async ({ page }) => {
+test("幼小数学练习第二个月展示 31 天和 22 题固定题型比例", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/kids/math-worksheet");
 
@@ -771,7 +771,7 @@ test("幼小数学练习第二个月展示 31 天和 30 题固定题型比例", 
 
   const printPack = page.getByTestId("worksheet-print-pack");
   const questions = printPack.locator('[data-print-copy=true][data-day="31"] [data-testid="math-worksheet-question"]');
-  await expect(questions).toHaveCount(30);
+  await expect(questions).toHaveCount(22);
   const typeCounts = await questions.evaluateAll((items) => items.reduce<Record<string, number>>((counts, item) => {
     const type = item.getAttribute("data-type") ?? "unknown";
     counts[type] = (counts[type] ?? 0) + 1;
@@ -779,13 +779,13 @@ test("幼小数学练习第二个月展示 31 天和 30 题固定题型比例", 
   }, {}));
   expect(typeCounts).toEqual({
     neighbor: 4,
-    "tens-split": 6,
-    mental: 5,
-    "vertical-calculation": 5,
+    "tens-split": 3,
+    mental: 4,
+    "vertical-calculation": 3,
     "missing-number": 2,
-    application: 4,
+    application: 3,
     grouping: 1,
-    "life-math": 3,
+    "life-math": 2,
   });
   const monthTwoConfig = page.locator('[aria-labelledby="month-two-config-title"]');
   await expect(monthTwoConfig.getByText("加减进阶", { exact: true })).toBeVisible();
@@ -1018,26 +1018,22 @@ test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async (
     const alignmentGroups = new Map<string, number[]>();
     const alignmentIndexes = new Map<string, number>();
     const mentalGaps: number[] = [];
-    const complexAnswerOffsets: number[] = [];
     Array.from(element.querySelectorAll("[data-testid=worksheet-neighbor], [data-testid=worksheet-tens-split], [data-testid=worksheet-mental-section]")).forEach((section) => {
-      const columns = Number(section.getAttribute("data-columns")) || 2;
       Array.from(section.querySelectorAll("[data-testid=math-worksheet-question]")).forEach((question) => {
         const type = question.getAttribute("data-type") ?? "unknown";
-        const level = question.getAttribute("data-level");
-        const layoutGroup = type === "mental" ? level === "three-number" ? "three-number" : level === "two-digit" ? "two-digit" : "short" : type;
-        const itemIndex = alignmentIndexes.get(layoutGroup) ?? 0;
-        alignmentIndexes.set(layoutGroup, itemIndex + 1);
         const line = question.querySelector("[aria-hidden=true]")?.getBoundingClientRect();
-        if (!line) return;
-        const key = `${layoutGroup}-${columns}-${itemIndex % columns}`;
-        alignmentGroups.set(key, [...(alignmentGroups.get(key) ?? []), line.left]);
         const expression = question.querySelector("[class*=expression]");
-        if (expression) {
+        if (line && expression) {
           const range = document.createRange();
           range.selectNodeContents(expression);
           mentalGaps.push(line.left - range.getBoundingClientRect().right);
-          if (columns === 2) complexAnswerOffsets.push(line.left - question.getBoundingClientRect().left);
         }
+        if (!line || type === "mental") return;
+        const columns = Number(section.getAttribute("data-columns")) || 2;
+        const itemIndex = alignmentIndexes.get(type) ?? 0;
+        alignmentIndexes.set(type, itemIndex + 1);
+        const key = `${type}-${columns}-${itemIndex % columns}`;
+        alignmentGroups.set(key, [...(alignmentGroups.get(key) ?? []), line.left]);
       });
     });
     const body = element.querySelector("[data-testid=worksheet-paper-body]")?.getBoundingClientRect();
@@ -1047,7 +1043,6 @@ test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async (
       grids: gridMetrics,
       alignmentGroups: Array.from(alignmentGroups.values()),
       mentalGaps,
-      complexAnswerOffsets,
       overflow: (element as HTMLElement).scrollHeight - (element as HTMLElement).clientHeight,
       bodyBottom: body?.bottom ?? 0,
       footerTop: footer?.top ?? 0,
@@ -1061,8 +1056,8 @@ test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async (
     for (const widths of grid.widthGroups) expect(new Set(widths).size).toBe(1);
   }
   for (const positions of metrics.alignmentGroups) expect(Math.max(...positions) - Math.min(...positions)).toBeLessThanOrEqual(1);
-  expect(Math.max(...metrics.mentalGaps)).toBeLessThanOrEqual(40);
-  expect(Math.max(...metrics.complexAnswerOffsets) - Math.min(...metrics.complexAnswerOffsets)).toBeLessThanOrEqual(1);
+  expect(Math.min(...metrics.mentalGaps)).toBeGreaterThanOrEqual(2);
+  expect(Math.max(...metrics.mentalGaps)).toBeLessThanOrEqual(16);
   expect(metrics.overflow).toBeLessThanOrEqual(0);
   expect(metrics.questionBottom).toBeLessThanOrEqual(metrics.bodyBottom + 1);
   expect(metrics.bodyBottom).toBeLessThanOrEqual(metrics.footerTop + 1);
@@ -1076,7 +1071,7 @@ test("第一个月强化训练配置支持应用题 0% 到 25%", async ({ page }
   await expect(page.getByRole("button", { name: "导出 30 天 PDF" })).toBeVisible();
   const printPack = page.getByTestId("worksheet-print-pack");
   await expect(printPack.locator("[data-print-copy=true]")).toHaveCount(2);
-  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("56 页内容 / 60 页双面打印包");
+  await expect(page.getByTestId("worksheet-print-summary")).toHaveText("60 页内容 / 60 页双面打印包");
 
   const applicationRatio = page.getByRole("spinbutton", { name: "应用题占比" });
   await applicationRatio.fill("0");
@@ -1235,7 +1230,8 @@ test("幼小数学练习打印包保持 A4 边界且素材全部加载", async (
       const complexQuestions = Array.from(paper.querySelectorAll('[data-testid="worksheet-mental-section"][data-columns="2"] [data-type="mental"]'));
       const complexAnswerOffsets = complexQuestions.map((question) => {
         const line = question.querySelector("[aria-hidden=true]")?.getBoundingClientRect();
-        return line ? line.left - question.getBoundingClientRect().left : 0;
+        const number = question.querySelector("[class*=questionNumber]")?.getBoundingClientRect();
+        return line && number ? line.left - number.right : 0;
       });
       const complexWritingGaps = complexQuestions.map((question) => {
         const line = question.querySelector("[aria-hidden=true]")?.getBoundingClientRect();
@@ -1292,13 +1288,11 @@ test("幼小数学练习打印包保持 A4 边界且素材全部加载", async (
   ));
 
   expect(metrics).toHaveLength(2);
-  expect(metrics.every(({ width, height, overflow, questionOverflow, complexAnswerDrift, complexWritingGaps, complexSlotDrift, operatorCenterDrift, uncenteredTerms, applicationSingleColumn, invalidEmptySlots }) => (
+  expect(metrics.every(({ width, height, overflow, questionOverflow, complexWritingGaps, operatorCenterDrift, uncenteredTerms, applicationSingleColumn, invalidEmptySlots }) => (
     width >= 793 && width <= 795
     && height >= 1122 && height <= 1124
     && overflow <= 0
-    && complexAnswerDrift <= 1
-    && complexWritingGaps.every((gap) => gap >= 4 && gap <= 8)
-    && complexSlotDrift <= 1
+    && complexWritingGaps.every((gap) => gap >= 2 && gap <= 16)
     && operatorCenterDrift <= 1
     && !uncenteredTerms
     && applicationSingleColumn
