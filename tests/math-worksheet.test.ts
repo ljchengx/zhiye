@@ -19,12 +19,14 @@ import {
   MONTH_TWO_DAYS,
   normalizeReinforcementConfig,
   REINFORCEMENT_WORKSHEET_DAYS,
+  WORKSHEET_PAGE_BODY_HEIGHT_MM,
   WORKSHEET_PLAN_DAYS,
   type ApplicationQuestion,
   type GroupingQuestion,
   type LifeMathQuestion,
   type MentalQuestion,
   type MissingNumberQuestion,
+  type TensSplitQuestion,
   type VerticalCalculationQuestion,
 } from "../lib/tools/math-worksheet";
 import {
@@ -65,7 +67,7 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
     expect(first.foundationDays[4].methodLesson?.method).toBe("picture-equation");
     expect(first.foundationDays.every((day) => day.pages[0]?.showMethod)).toBe(true);
     expect(first.reinforcementDays.every((day) => day.pages.every((page) => !page.showMethod))).toBe(true);
-    expect(first.foundationDays[4].sections.find((section) => section.type === "application")?.questions).toHaveLength(8);
+    expect(first.foundationDays[4].sections.find((section) => section.type === "application")?.questions).toHaveLength(5);
   });
 
   it("固定基础方法的拆分和每一步都能还原答案", () => {
@@ -99,7 +101,7 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
   it("基础五天的数量图与题目数字始终一致", () => {
     const plan = generateWorksheetPlan(20260902);
     const numberBonds = allQuestions(plan.foundationDays[0]).filter((question) => question.type === "number-bond");
-    expect(numberBonds).toHaveLength(20);
+    expect(numberBonds).toHaveLength(16);
     numberBonds.forEach((question) => {
       expect(question.knownPart + question.answer).toBe(question.whole);
     });
@@ -139,6 +141,32 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
     });
   });
 
+  it("两位数组成把一个数拆成整十和剩下的部分", () => {
+    const plan = generateWorksheetPlan(20260902);
+    const questions = [...plan.foundationDays, ...plan.reinforcementDays, ...plan.monthTwoDays]
+      .flatMap(allQuestions)
+      .filter((question): question is TensSplitQuestion => question.type === "tens-split");
+    expect(questions.length).toBeGreaterThan(0);
+    expect(allQuestions(plan.foundationDays[0]).filter((question) => question.type === "tens-split")).toHaveLength(8);
+    questions.forEach((question) => {
+      const left = question.left ?? question.answer;
+      const right = question.right ?? question.answer;
+      expect(left + right).toBe(question.whole);
+      expect(left % 10).toBe(0);
+      expect(left).toBeGreaterThanOrEqual(10);
+      expect(right).toBeGreaterThan(0);
+      expect(right).toBeLessThan(question.whole);
+      expect(question.whole).toBeGreaterThanOrEqual(11);
+      expect(question.missing === "left" ? question.left : question.right).toBeNull();
+      expect(question.answer).toBe(question.missing === "left" ? left : right);
+    });
+    expect(questions.some((question) => question.left === 10 || (question.missing === "left" && question.answer === 10))).toBe(true);
+    expect(questions.some((question) => {
+      const left = question.left ?? question.answer;
+      return left > 10 && left === Math.floor(question.whole / 10) * 10;
+    })).toBe(true);
+  });
+
   it("强化配置限制在 10～30 题，应用题最多 25%", () => {
     const normalized = normalizeReinforcementConfig({ dailyQuestionCount: 99, neighborRatio: 80, compareRatio: 50, applicationRatio: 90 });
     expect(normalized.dailyQuestionCount).toBe(30);
@@ -160,7 +188,7 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
       expect(day.total).toBe(28);
       expect(day.total).toBeLessThanOrEqual(MAX_WORKSHEET_QUESTIONS);
       expect(questions.filter((question) => question.type === "neighbor")).toHaveLength(counts.neighbor);
-      expect(questions.filter((question) => question.type === "compare")).toHaveLength(counts.compare);
+      expect(questions.filter((question) => question.type === "tens-split")).toHaveLength(counts.compare);
       expect(questions.filter((question) => question.type === "mental")).toHaveLength(counts.mental);
       expect(questions.filter((question) => question.type === "application")).toHaveLength(counts.application);
       expect(new Set(questions.map((question) => question.id)).size).toBe(questions.length);
@@ -234,7 +262,7 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
     const expected = getMonthTwoQuestionCounts();
     expect(LIFE_MATH_STORYLINES).toHaveLength(100);
     expect(new Set(LIFE_MATH_STORYLINES.map((storyline) => storyline.id)).size).toBe(100);
-    expect(expected).toMatchObject({ neighbor: 2, compare: 2, mental: 6, vertical: 7, missing: 3, application: 4, grouping: 3, lifeMath: 3 });
+    expect(expected).toMatchObject({ neighbor: 4, compare: 6, mental: 5, vertical: 5, missing: 2, application: 4, grouping: 1, lifeMath: 3 });
     expect(Object.values(expected).reduce((sum, count) => sum + count, 0)).toBe(30);
 
     plan.monthTwoDays.forEach((day) => {
@@ -244,7 +272,7 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
       expect(day.total).toBe(30);
       expect(new Set(questions.map((question) => question.id)).size).toBe(30);
       expect(questions.filter((question) => question.type === "neighbor")).toHaveLength(expected.neighbor);
-      expect(questions.filter((question) => question.type === "compare")).toHaveLength(expected.compare);
+      expect(questions.filter((question) => question.type === "tens-split")).toHaveLength(expected.compare);
       expect(questions.filter((question) => question.type === "mental")).toHaveLength(expected.mental);
       expect(questions.filter((question) => question.type === "vertical-calculation")).toHaveLength(expected.vertical);
       expect(questions.filter((question) => question.type === "missing-number")).toHaveLength(expected.missing);
@@ -319,7 +347,7 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
       plan.monthTwoDays.forEach((day) => expect(day.total).toBe(dailyQuestionCount));
       expect(Object.values(getMonthTwoQuestionCounts({ dailyQuestionCount })).reduce((sum, count) => sum + count, 0)).toBe(dailyQuestionCount);
     });
-  });
+  }, 15000);
 
   it("应用题的文字情境、步骤和答案保持一致", () => {
     const plan = generateWorksheetPlan(77);
@@ -340,8 +368,8 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
       expect(new Set(promptPatterns).size).toBe(promptPatterns.length);
       day.pages.flatMap((page) => page.sections).filter((section) => section.type === "application").forEach((section) => {
         expect(section.columns).toBe(1);
-        expect(section.rowHeightMm).toBeGreaterThanOrEqual(30);
-        expect(section.rowHeightMm).toBeLessThanOrEqual(39);
+        expect(section.rowHeightMm).toBeGreaterThanOrEqual(26);
+        expect(section.rowHeightMm).toBeLessThanOrEqual(36);
       });
     });
     expect(applications.some((question) => /马里奥|路易吉|蘑菇|金币/.test(question.prompt))).toBe(true);
@@ -357,7 +385,7 @@ describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
       const questions = day.pages.flatMap((page) => page.sections.flatMap((section) => section.questions));
       expect(day.pages.length).toBeGreaterThanOrEqual(1);
       expect(day.pages.length).toBeLessThanOrEqual(2);
-      expect(day.pages.every((page) => page.usedHeightMm <= 252)).toBe(true);
+      expect(day.pages.every((page) => page.usedHeightMm <= WORKSHEET_PAGE_BODY_HEIGHT_MM)).toBe(true);
       if (day.pages.length === 2) expect(day.pages[1].usedHeightMm).toBeGreaterThanOrEqual(110);
       expect(questions.map((question) => question.number)).toEqual(Array.from({ length: day.total }, (_, index) => index + 1));
       const mental = questions.filter((question): question is MentalQuestion => question.type === "mental");

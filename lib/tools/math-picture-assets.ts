@@ -58,3 +58,30 @@ const CHARACTER_SEQUENCE = MATH_WORKSHEET_CHARACTER_ASSETS.map(({ name }) => nam
 export function getMathPdfCharacter(day: number): MathPdfCharacterAsset {
   return CHARACTER_SEQUENCE[(Math.max(1, Math.trunc(day)) - 1) % CHARACTER_SEQUENCE.length];
 }
+
+export function getWorksheetCompanionActivity(title: string): string {
+  if (/组成|分解/.test(title)) return "把一个数拆开";
+  if (/凑十/.test(title)) return "先凑成 10";
+  if (/破十/.test(title)) return "把十几拆开再减";
+  if (/平十/.test(title)) return "先减到整十";
+  if (/看图/.test(title)) return "看图列式";
+  if (/竖式加法/.test(title)) return "对齐数位再加";
+  if (/竖式减法/.test(title)) return "对齐数位再减";
+  if (/未知数/.test(title)) return "找出藏起来的数";
+  if (/乘除|分组/.test(title)) return "几个几";
+  if (/生活/.test(title)) return "生活里的数学";
+  if (/衔接|复习/.test(title)) return "复习加减";
+  if (/测评|总结/.test(title)) return "检验本领";
+  if (/进位/.test(title)) return "练习进位加法";
+  if (/退位/.test(title)) return "练习退位减法";
+  if (/应用/.test(title)) return "看懂题目再列式";
+  if (/三个数|连续/.test(title)) return "连续加减";
+  return "算一算";
+}
+
+export function getWorksheetCompanionGreeting(characterName: string, title: string): string {
+  const activity = getWorksheetCompanionActivity(title);
+  const numberMatch = characterName.match(/^number-block-(\d+)$/);
+  if (numberMatch) return `今天我是 ${numberMatch[1]}，我们来${activity}`;
+  return `今天和我一起${activity}`;
+}

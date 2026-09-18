@@ -32,7 +32,7 @@ import {
   releaseWorksheetCharacterFolder,
   type LocalWorksheetCharacterMap,
 } from "@/lib/tools/math-local-assets";
-import { MATH_WORKSHEET_CHARACTER_ASSETS } from "@/lib/tools/math-picture-assets";
+import { getWorksheetCompanionGreeting, MATH_WORKSHEET_CHARACTER_ASSETS } from "@/lib/tools/math-picture-assets";
 
 import {
   createWorksheetGuidance,
@@ -52,6 +52,7 @@ import {
   normalizeMonthTwoConfig,
   normalizeReinforcementConfig,
   REINFORCEMENT_WORKSHEET_DAYS,
+  WORKSHEET_PAPER_HEADER_HEIGHT_MM,
   WORKSHEET_PLAN_DAYS,
   type ApplicationQuestion,
   type DailyWorksheet,
@@ -114,7 +115,7 @@ const ALL_OBJECT_ASSETS = [
 
 const RATIO_FIELDS: readonly { key: RatioKey; label: string; inputLabel: string }[] = [
   { key: "neighborRatio", label: "相邻数", inputLabel: "相邻数占比" },
-  { key: "compareRatio", label: "比大小", inputLabel: "比大小占比" },
+  { key: "compareRatio", label: "数的组成", inputLabel: "数的组成占比" },
   { key: "applicationRatio", label: "应用题", inputLabel: "应用题占比" },
 ];
 
@@ -135,8 +136,17 @@ function getSectionQuestions(worksheet: DailyWorksheet, type: WorksheetQuestion[
   return worksheet.sections.find((section) => section.type === type)?.questions ?? [];
 }
 
-function ObjectSprite({ asset, className }: { asset: WorksheetIconKey; className?: string }) {
-  return <img className={className ?? styles.objectSprite} src={OBJECT_SOURCES[asset]} alt="" draggable="false" />;
+function ObjectSprite({ asset, className, crossed = false }: { asset: WorksheetIconKey; className?: string; crossed?: boolean }) {
+  return (
+    <span className={`${styles.objectWrap} ${crossed ? styles.objectCrossed : ""}`}>
+      <img className={className ?? styles.objectSprite} src={OBJECT_SOURCES[asset]} alt="" draggable="false" />
+    </span>
+  );
+}
+
+function SectionHeading({ title }: { title?: string }) {
+  if (!title) return null;
+  return <h3 className={styles.sectionHeading}>{title}</h3>;
 }
 
 function waitForImage(image: HTMLImageElement) {
@@ -147,12 +157,14 @@ function waitForImage(image: HTMLImageElement) {
   });
 }
 
-function CountGroup({ count, icon, compact = false, role }: { count: number; icon: WorksheetIconKey; compact?: boolean; role?: string }) {
+function CountGroup({ count, icon, compact = false, crossedCount = 0, role }: { count: number; icon: WorksheetIconKey; compact?: boolean; crossedCount?: number; role?: string }) {
   const safeCount = Math.max(0, Math.trunc(count));
+  const crossed = Math.max(0, Math.min(safeCount, Math.trunc(crossedCount)));
+  const groupClass = `${styles.countGroup} ${compact ? styles.compactCountGroup : ""}`;
   if (safeCount <= 10) {
     return (
-      <span className={`${styles.countGroup} ${compact ? styles.compactCountGroup : ""}`} aria-label={`${safeCount} 个`} data-count={safeCount} data-count-role={role}>
-        {Array.from({ length: safeCount }, (_, index) => <ObjectSprite asset={icon} key={index} />)}
+      <span className={groupClass} aria-label={`${safeCount} 个`} data-count={safeCount} data-count-role={role}>
+        {Array.from({ length: safeCount }, (_, index) => <ObjectSprite asset={icon} crossed={index >= safeCount - crossed} key={index} />)}
       </span>
     );
   }
@@ -170,6 +182,24 @@ function CountGroup({ count, icon, compact = false, role }: { count: number; ico
 
 function AnswerLine({ symbol = false, wide = false }: { symbol?: boolean; wide?: boolean }) {
   return <span className={`${symbol ? styles.symbolBox : styles.answerLine} ${wide ? styles.wideAnswerLine : ""}`} aria-hidden="true" />;
+}
+
+function EquationSlot() {
+  return <span className={styles.equationSlot} aria-hidden="true" />;
+}
+
+function NumberBondDiagram({ whole, left, right }: { whole?: number | null; left?: number | null; right?: number | null }) {
+  return (
+    <span className={styles.numberBond} aria-hidden="true">
+      <svg className={styles.bondLines} viewBox="0 0 80 54" aria-hidden="true">
+        <line x1="40" y1="14" x2="18" y2="40" />
+        <line x1="40" y1="14" x2="62" y2="40" />
+      </svg>
+      <span className={styles.bondWhole}>{whole == null ? "" : whole}</span>
+      <span className={styles.bondPart}>{left == null ? "" : left}</span>
+      <span className={styles.bondPart}>{right == null ? "" : right}</span>
+    </span>
+  );
 }
 
 function MethodExample({ worksheet }: { worksheet: DailyWorksheet }) {
@@ -232,22 +262,56 @@ function GuidedQuestion({ question }: { question: MentalQuestion }) {
 
 function NeighborQuestionView({ question }: { question: WorksheetQuestion }) {
   if (question.type !== "neighbor") return null;
-  return <div className={styles.senseQuestion} data-testid="math-worksheet-question" data-type="neighbor"><span className={styles.questionNumber}>{question.number}.</span><strong>{question.left}</strong><AnswerLine /><strong>{question.right}</strong></div>;
-}
-
-function CompareQuestionView({ question }: { question: WorksheetQuestion }) {
-  if (question.type !== "compare") return null;
-  return <div className={styles.senseQuestion} data-testid="math-worksheet-question" data-type="compare"><span className={styles.questionNumber}>{question.number}.</span><strong>{question.left}</strong><AnswerLine symbol /><strong>{question.right}</strong></div>;
-}
-
-function NumberSenseSection({ section }: { section: WorksheetPageSection }) {
-  const neighbors = section.questions.filter((question) => question.type === "neighbor");
-  const compares = section.questions.filter((question) => question.type === "compare");
-  const showHeading = section.title.length > 0;
   return (
-    <section className={styles.numberSenseSection} data-columns={section.columns} data-testid="worksheet-number-sense">
-      {neighbors.length > 0 ? <div className={styles.senseColumn}>{showHeading ? <h3>{section.title}</h3> : null}<div className={styles.senseGrid}>{neighbors.map((question) => <NeighborQuestionView question={question} key={question.id} />)}</div></div> : null}
-      {compares.length > 0 ? <div className={styles.senseColumn}>{showHeading ? <h3>比大小</h3> : null}<div className={styles.senseGrid}>{compares.map((question) => <CompareQuestionView question={question} key={question.id} />)}</div></div> : null}
+    <div className={styles.neighborQuestion} data-testid="math-worksheet-question" data-type="neighbor" data-display="fill-middle">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <span className={styles.neighborBridge}>
+        <strong className={styles.neighborGiven}>{question.left}</strong>
+        <span className={styles.neighborBlank} aria-hidden="true"><AnswerLine /></span>
+        <strong className={styles.neighborGiven}>{question.right}</strong>
+      </span>
+    </div>
+  );
+}
+
+function TensSplitView({ question }: { question: WorksheetQuestion }) {
+  if (question.type !== "tens-split") return null;
+  return (
+    <div className={styles.tensSplitQuestion} data-testid="math-worksheet-question" data-type="tens-split" data-missing={question.missing} data-display="part-whole">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <span className={styles.tensBond} aria-hidden="true">
+        <svg className={styles.tensBondLines} viewBox="0 0 100 62" aria-hidden="true">
+          <line x1="50" y1="18" x2="26" y2="46" />
+          <line x1="50" y1="18" x2="74" y2="46" />
+        </svg>
+        <span className={styles.tensBondWhole}>{question.whole}</span>
+        <span className={styles.tensBondPart} data-empty={question.left == null ? "true" : undefined}>{question.left == null ? "" : question.left}</span>
+        <span className={styles.tensBondPart} data-empty={question.right == null ? "true" : undefined}>{question.right == null ? "" : question.right}</span>
+      </span>
+    </div>
+  );
+}
+
+function NeighborSection({ section }: { section: WorksheetPageSection }) {
+  const style = { "--section-row-height": `${section.rowHeightMm}mm` } as CSSProperties;
+  return (
+    <section className={styles.neighborSection} data-columns={section.columns} data-testid="worksheet-neighbor" style={style}>
+      {section.title ? <SectionHeading title={section.title} /> : null}
+      <div className={styles.neighborGrid} style={{ gridTemplateColumns: `repeat(${section.columns}, minmax(0, 1fr))` }}>
+        {section.questions.map((question) => <NeighborQuestionView question={question} key={question.id} />)}
+      </div>
+    </section>
+  );
+}
+
+function TensSplitSection({ section }: { section: WorksheetPageSection }) {
+  const style = { "--section-row-height": `${section.rowHeightMm}mm` } as CSSProperties;
+  return (
+    <section className={styles.tensSplitSection} data-columns={section.columns} data-testid="worksheet-tens-split" style={style}>
+      {section.title ? <SectionHeading title={section.title} /> : null}
+      <div className={styles.tensSplitGrid} style={{ gridTemplateColumns: `repeat(${section.columns}, minmax(0, 1fr))` }}>
+        {section.questions.map((question) => <TensSplitView question={question} key={question.id} />)}
+      </div>
     </section>
   );
 }
@@ -275,11 +339,13 @@ function VerticalCalculationView({ question }: { question: VerticalCalculationQu
   return (
     <div className={styles.verticalQuestion} data-testid="math-worksheet-question" data-type="vertical-calculation" data-operator={question.operator} data-left={question.left} data-right={question.right} data-answer={question.answer}>
       <span className={styles.questionNumber}>{question.number}.</span>
-      <div className={styles.verticalExpression}>
-        <span>{question.left}</span>
-        <span>{question.operator} {question.right}</span>
-        <i aria-hidden="true" />
-        <AnswerLine />
+      <div className={styles.verticalExpression} aria-hidden="true">
+        <span className={styles.verticalSpacer} />
+        <span className={styles.verticalDigit}>{question.left}</span>
+        <b className={styles.verticalOperator}>{question.operator}</b>
+        <span className={styles.verticalDigit}>{question.right}</span>
+        <i className={styles.verticalRule} />
+        <span className={styles.verticalAnswer} />
       </div>
     </div>
   );
@@ -305,17 +371,54 @@ function MissingNumberView({ question }: { question: MissingNumberQuestion }) {
 }
 
 function GroupingView({ question }: { question: GroupingQuestion }) {
-  const expression = question.mode === "repeated-addition"
-    ? `${Array.from({ length: question.groupCount }, () => question.perGroup).join(" + ")} =`
-    : question.mode === "multiply"
-      ? `${question.groupCount} × ${question.perGroup} =`
-      : `${question.total} ÷ ${question.groupCount} =`;
+  const groups = Array.from({ length: question.groupCount }, (_, index) => (
+    <CountGroup count={question.perGroup} icon={question.icon} compact role={`group-${index}`} key={index} />
+  ));
+  if (question.mode === "repeated-addition") {
+    const addends = Array.from({ length: question.groupCount }, () => question.perGroup).join(" + ");
+    return (
+      <div className={styles.groupingQuestion} data-testid="math-worksheet-question" data-type="grouping" data-mode={question.mode} data-answer={question.answer}>
+        <span className={styles.questionNumber}>{question.number}.</span>
+        <div className={styles.groupingBody}>
+          <div className={styles.groupingVisual} aria-hidden="true">{groups}</div>
+          <p className={styles.groupingHint}>{question.groupCount} 组，每组 {question.perGroup} 个</p>
+          <div className={styles.groupingEquations}>
+            <span><strong>{addends} =</strong><AnswerLine /></span>
+            <span><strong>{question.groupCount} × {question.perGroup} =</strong><AnswerLine /></span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (question.mode === "multiply") {
+    return (
+      <div className={styles.groupingQuestion} data-testid="math-worksheet-question" data-type="grouping" data-mode={question.mode} data-answer={question.answer}>
+        <span className={styles.questionNumber}>{question.number}.</span>
+        <div className={styles.groupingBody}>
+          <div className={styles.groupingVisual} aria-hidden="true">{groups}</div>
+          <p className={styles.groupingHint}>{question.groupCount} 组，每组 {question.perGroup} 个</p>
+          <div className={styles.groupingEquations}>
+            <span><strong>{question.groupCount} × {question.perGroup} =</strong><AnswerLine /></span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const plates = Array.from({ length: question.groupCount }, (_, index) => (
+    <span className={styles.sharePlate} key={index}>
+      <CountGroup count={question.perGroup} icon={question.icon} compact role={`group-${index}`} />
+    </span>
+  ));
   return (
     <div className={styles.groupingQuestion} data-testid="math-worksheet-question" data-type="grouping" data-mode={question.mode} data-answer={question.answer}>
       <span className={styles.questionNumber}>{question.number}.</span>
-      <ObjectSprite asset={question.icon} className={styles.groupingIcon} />
-      <strong>{expression}</strong>
-      <AnswerLine />
+      <div className={styles.groupingBody}>
+        <div className={styles.groupingVisual} data-sharing="true" data-groups={question.groupCount} aria-hidden="true">{plates}</div>
+        <p className={styles.groupingHint}>{question.total} 个平均分成 {question.groupCount} 组</p>
+        <div className={styles.groupingEquations}>
+          <span><strong>{question.total} ÷ {question.groupCount} =</strong><AnswerLine /></span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -330,42 +433,50 @@ function LifeMathView({ question }: { question: LifeMathQuestion }) {
 }
 
 function NumberBondView({ question }: { question: NumberBondQuestion }) {
+  const bond = <NumberBondDiagram whole={question.whole} left={question.knownPart} right={null} />;
   if (question.mode === "picture-split") {
     return (
-      <div className={styles.compositionQuestion} data-testid="math-worksheet-question" data-type="number-bond" data-mode={question.mode} data-whole={question.whole} data-known-part={question.knownPart} data-answer={question.answer}>
+      <div className={styles.compositionQuestion} data-testid="math-worksheet-question" data-type="number-bond" data-mode={question.mode} data-display="part-whole" data-whole={question.whole} data-known-part={question.knownPart} data-answer={question.answer}>
         <span className={styles.questionNumber}>{question.number}.</span>
         <div className={styles.bondPictureContent}>
           <span className={styles.bondPictureGroups} aria-label={`${question.knownPart} 和 ${question.answer}`}>
             <CountGroup count={question.knownPart} icon={question.icon} compact role="known-part" />
-            <b>+</b>
             <CountGroup count={question.answer} icon={question.icon} compact role="missing-part" />
           </span>
-          <span className={styles.bondAnswerRow}><span className={styles.bondFormula}>{question.whole} = {question.knownPart} +</span><AnswerLine /></span>
+          {bond}
         </div>
       </div>
     );
   }
   return (
-    <div className={styles.compositionQuestion} data-testid="math-worksheet-question" data-type="number-bond" data-mode={question.mode} data-whole={question.whole} data-known-part={question.knownPart} data-answer={question.answer}>
+    <div className={styles.compositionQuestion} data-testid="math-worksheet-question" data-type="number-bond" data-mode={question.mode} data-display="part-whole" data-whole={question.whole} data-known-part={question.knownPart} data-answer={question.answer}>
       <span className={styles.questionNumber}>{question.number}.</span>
-      <span className={styles.bondFormula}>{question.mode === "compose" ? `${question.knownPart} +` : `${question.whole} = ${question.knownPart} +`}</span>
-      <AnswerLine />
-      {question.mode === "compose" ? <span className={styles.bondTarget}>= {question.whole}</span> : null}
+      {bond}
     </div>
   );
 }
 
 function PictureEquationView({ question }: { question: PictureEquationQuestion }) {
+  const isSubtract = question.operator === "-";
   return (
-    <div className={styles.pictureEquationQuestion} data-testid="math-worksheet-question" data-type="picture-equation" data-left-count={question.leftCount} data-operator={question.operator} data-right-count={question.rightCount} data-answer={question.answer}>
+    <div className={styles.pictureEquationQuestion} data-testid="math-worksheet-question" data-type="picture-equation" data-display="scene-then-equation" data-left-count={question.leftCount} data-operator={question.operator} data-right-count={question.rightCount} data-answer={question.answer}>
       <span className={styles.questionNumber}>{question.number}.</span>
       <div className={styles.pictureEquationContent}>
-        <div className={styles.pictureEquationVisual}>
-          <CountGroup count={question.leftCount} icon={question.icon} compact role="left-operand" />
-          <b>{question.operator}</b>
-          <CountGroup count={question.rightCount} icon={question.icon} compact role="right-operand" />
+        <div className={styles.pictureEquationVisual} data-operator={question.operator}>
+          {isSubtract
+            ? <CountGroup count={question.leftCount} icon={question.icon} compact crossedCount={question.rightCount} role="minuend" />
+            : <>
+              <CountGroup count={question.leftCount} icon={question.icon} compact role="left-operand" />
+              <CountGroup count={question.rightCount} icon={question.icon} compact role="right-operand" />
+            </>}
         </div>
-        <AnswerLine wide />
+        <span className={styles.pictureEquationSentence}>
+          <EquationSlot />
+          <b>{question.operator}</b>
+          <EquationSlot />
+          <b>=</b>
+          <EquationSlot />
+        </span>
       </div>
     </div>
   );
@@ -382,50 +493,65 @@ function ApplicationQuestionView({ question }: { question: ApplicationQuestion }
 
 function ApplicationSectionView({ section }: { section: WorksheetPageSection }) {
   const style = { "--application-row-height": `${section.rowHeightMm}mm` } as CSSProperties;
-  return <section className={styles.applicationSection} data-columns={section.columns} style={style}>{section.title ? <h3>{section.title}</h3> : null}<div className={styles.applicationGrid}>{section.questions.map((question) => question.type === "application" ? <ApplicationQuestionView question={question} key={question.id} /> : null)}</div></section>;
+  return <section className={styles.applicationSection} data-columns={section.columns} style={style}><SectionHeading title={section.title} /><div className={styles.applicationGrid}>{section.questions.map((question) => question.type === "application" ? <ApplicationQuestionView question={question} key={question.id} /> : null)}</div></section>;
 }
 
 function VerticalSectionView({ section }: { section: WorksheetPageSection }) {
-  return <section className={styles.verticalSection} data-columns={section.columns} data-testid="worksheet-vertical-section">{section.title ? <h3>{section.title}</h3> : null}<div className={styles.verticalGrid}>{section.questions.map((question) => question.type === "vertical-calculation" ? <VerticalCalculationView question={question} key={question.id} /> : null)}</div></section>;
+  const style = { "--section-row-height": `${section.rowHeightMm}mm` } as CSSProperties;
+  return (
+    <section className={styles.verticalSection} data-columns={section.columns} data-testid="worksheet-vertical-section" style={style}>
+      <SectionHeading title={section.title} />
+      <div className={styles.verticalGrid} style={{ gridAutoRows: `${section.rowHeightMm}mm` }}>
+        {section.questions.map((question) => question.type === "vertical-calculation" ? <VerticalCalculationView question={question} key={question.id} /> : null)}
+      </div>
+    </section>
+  );
 }
 
 function MissingNumberSectionView({ section }: { section: WorksheetPageSection }) {
-  return <section className={styles.missingNumberSection} data-columns={section.columns} data-testid="worksheet-missing-number-section">{section.title ? <h3>{section.title}</h3> : null}<div className={styles.missingNumberGrid}>{section.questions.map((question) => question.type === "missing-number" ? <MissingNumberView question={question} key={question.id} /> : null)}</div></section>;
+  const style = { "--section-row-height": `${section.rowHeightMm}mm` } as CSSProperties;
+  return <section className={styles.missingNumberSection} data-columns={section.columns} data-testid="worksheet-missing-number-section" style={style}><SectionHeading title={section.title} /><div className={styles.missingNumberGrid}>{section.questions.map((question) => question.type === "missing-number" ? <MissingNumberView question={question} key={question.id} /> : null)}</div></section>;
 }
 
 function GroupingSectionView({ section }: { section: WorksheetPageSection }) {
-  return <section className={styles.groupingSection} data-columns={section.columns} data-testid="worksheet-grouping-section">{section.title ? <h3>{section.title}</h3> : null}<div className={styles.groupingGrid}>{section.questions.map((question) => question.type === "grouping" ? <GroupingView question={question} key={question.id} /> : null)}</div></section>;
+  const style = { "--section-row-height": `${section.rowHeightMm}mm` } as CSSProperties;
+  return <section className={styles.groupingSection} data-columns={section.columns} data-testid="worksheet-grouping-section" style={style}><SectionHeading title={section.title} /><div className={styles.groupingGrid}>{section.questions.map((question) => question.type === "grouping" ? <GroupingView question={question} key={question.id} /> : null)}</div></section>;
 }
 
 function LifeMathSectionView({ section }: { section: WorksheetPageSection }) {
   const style = { "--application-row-height": `${section.rowHeightMm}mm` } as CSSProperties;
-  return <section className={styles.lifeMathSection} data-columns={section.columns} style={style} data-testid="worksheet-life-math-section">{section.title ? <h3>{section.title}</h3> : null}<div className={styles.lifeMathGrid}>{section.questions.map((question) => question.type === "life-math" ? <LifeMathView question={question} key={question.id} /> : null)}</div></section>;
+  return <section className={styles.lifeMathSection} data-columns={section.columns} style={style} data-testid="worksheet-life-math-section"><SectionHeading title={section.title} /><div className={styles.lifeMathGrid}>{section.questions.map((question) => question.type === "life-math" ? <LifeMathView question={question} key={question.id} /> : null)}</div></section>;
 }
 
 function WorksheetPageSectionView({ section }: { section: WorksheetPageSection }) {
-  if (section.type === "guided") return <section className={styles.guidedSection} data-testid="worksheet-guided-section"><h3>{section.title}</h3><div className={styles.guidedGrid}>{section.questions.map((question) => question.type === "mental" ? <GuidedQuestion question={question} key={question.id} /> : null)}</div></section>;
-  if (section.type === "number-sense") return <NumberSenseSection section={section} />;
-  if (section.type === "composition") return <section className={styles.compositionSection} data-columns={section.columns}>{section.title ? <h3>{section.title}</h3> : null}<div className={styles.compositionGrid}>{section.questions.map((question) => question.type === "number-bond" ? <NumberBondView question={question} key={question.id} /> : null)}</div></section>;
-  if (section.type === "picture-equation") return <section className={styles.pictureEquationSection} data-columns={section.columns}>{section.title ? <h3>{section.title}</h3> : null}<div className={styles.pictureEquationGrid}>{section.questions.map((question) => question.type === "picture-equation" ? <PictureEquationView question={question} key={question.id} /> : null)}</div></section>;
+  if (section.type === "guided") return <section className={styles.guidedSection} data-testid="worksheet-guided-section"><SectionHeading title={section.title} /><div className={styles.guidedGrid}>{section.questions.map((question) => question.type === "mental" ? <GuidedQuestion question={question} key={question.id} /> : null)}</div></section>;
+  if (section.type === "neighbor") return <NeighborSection section={section} />;
+  if (section.type === "tens-split") return <TensSplitSection section={section} />;
+  if (section.type === "composition") return <section className={styles.compositionSection} data-columns={section.columns}><SectionHeading title={section.title} /><div className={styles.compositionGrid}>{section.questions.map((question) => question.type === "number-bond" ? <NumberBondView question={question} key={question.id} /> : null)}</div></section>;
+  if (section.type === "picture-equation") return <section className={styles.pictureEquationSection} data-columns={section.columns}><SectionHeading title={section.title} /><div className={styles.pictureEquationGrid}>{section.questions.map((question) => question.type === "picture-equation" ? <PictureEquationView question={question} key={question.id} /> : null)}</div></section>;
   if (section.type === "application") return <ApplicationSectionView section={section} />;
   if (section.type === "vertical") return <VerticalSectionView section={section} />;
   if (section.type === "missing-number") return <MissingNumberSectionView section={section} />;
   if (section.type === "grouping") return <GroupingSectionView section={section} />;
   if (section.type === "life-math") return <LifeMathSectionView section={section} />;
-  return <section className={styles.mentalSection} data-columns={section.columns} data-testid="worksheet-mental-section">{section.title ? <h3>{section.title}</h3> : null}<div className={styles.mentalGrid}>{section.questions.map((question) => <MentalQuestionView question={question} key={question.id} />)}</div></section>;
+  return <section className={styles.mentalSection} data-columns={section.columns} data-testid="worksheet-mental-section" style={{ "--section-row-height": `${section.rowHeightMm}mm` } as CSSProperties}><SectionHeading title={section.title} /><div className={styles.mentalGrid}>{section.questions.map((question) => <MentalQuestionView question={question} key={question.id} />)}</div></section>;
 }
 
 function WorksheetPaper({ worksheet, page, printCopy = false, characterOverrides }: { worksheet: DailyWorksheet; page: WorksheetPrintPage; printCopy?: boolean; characterOverrides?: LocalWorksheetCharacterMap }) {
   const character = getWorksheetCharacter(worksheet.day, characterOverrides);
+  const greeting = getWorksheetCompanionGreeting(character.name, worksheet.title);
   const stageLabel = worksheet.month === 2
     ? `第二个月 ${worksheet.monthDay}/${MONTH_TWO_DAYS}`
     : worksheet.stage === "foundation" ? `基础 ${worksheet.stageDay}/${FOUNDATION_WORKSHEET_DAYS}` : `强化 ${worksheet.stageDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
+  const paperStyle = { "--paper-header-height": `${WORKSHEET_PAPER_HEADER_HEIGHT_MM}mm` } as CSSProperties;
   return (
-    <article className={styles.paper} data-testid={printCopy ? undefined : "math-worksheet-paper"} data-day={worksheet.day} data-stage={worksheet.stage} data-stage-day={worksheet.stageDay} data-page={page.pageNumber} data-page-count={page.pageCount} data-used-height={page.usedHeightMm} data-print-copy={printCopy || undefined} data-print-side={printCopy ? (page.pageNumber === 1 ? "front" : "back") : undefined} data-blank={printCopy ? "false" : undefined} aria-label={`第 ${worksheet.day} 天数学练习第 ${page.pageNumber} 页`}>
+    <article className={styles.paper} style={paperStyle} data-testid={printCopy ? undefined : "math-worksheet-paper"} data-day={worksheet.day} data-stage={worksheet.stage} data-stage-day={worksheet.stageDay} data-page={page.pageNumber} data-page-count={page.pageCount} data-used-height={page.usedHeightMm} data-print-copy={printCopy || undefined} data-print-side={printCopy ? (page.pageNumber === 1 ? "front" : "back") : undefined} data-blank={printCopy ? "false" : undefined} aria-label={`第 ${worksheet.day} 天数学练习第 ${page.pageNumber} 页`}>
       <header className={styles.paperHeader}>
-        <div className={styles.paperTitle}><span>{stageLabel}</span><h2>数学练习</h2><strong>{worksheet.title}</strong></div>
+        <div className={styles.paperIntro}>
+          <div className={styles.paperTitle}><span>{stageLabel}</span><strong>{worksheet.title}</strong><div className={styles.dateField}>日期 <span aria-hidden="true" /></div></div>
+          <p className={styles.paperGreeting} data-testid={printCopy ? undefined : "worksheet-companion-greeting"}>{greeting}</p>
+        </div>
         <img className={styles.character} src={character.src} alt="" data-character={character.name} draggable="false" />
-        <div className={styles.dateField}>日期 <span aria-hidden="true" /></div>
       </header>
       <div className={styles.paperBody} data-testid={printCopy ? undefined : "worksheet-paper-body"}>{page.showMethod ? <MethodExample worksheet={worksheet} /> : null}{page.sections.map((section, index) => <WorksheetPageSectionView section={section} key={`${section.type}-${index}`} />)}</div>
       <footer className={styles.paperFooter} data-testid={printCopy ? undefined : "worksheet-paper-footer"}><span>第 {worksheet.day} / {WORKSHEET_PLAN_DAYS} 天</span><span>第 {page.pageNumber} / {page.pageCount} 页 · 本页 {page.questionCount} 题</span></footer>
@@ -470,7 +596,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
     : 0;
   const selectedCounts = selectedWorksheet ? {
     neighbor: getSectionQuestions(selectedWorksheet, "neighbor").length,
-    compare: getSectionQuestions(selectedWorksheet, "compare").length,
+    compare: getSectionQuestions(selectedWorksheet, "tens-split").length,
     mental: getSectionQuestions(selectedWorksheet, "mental").length,
     application: getSectionQuestions(selectedWorksheet, "application").length,
   } : { neighbor: 0, compare: 0, mental: 0, application: 0 };
@@ -732,8 +858,8 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
           </section>
           <section className={styles.exportRange} aria-labelledby="export-range-title"><div className={styles.settingLabel}><span id="export-range-title">导出内容</span><small>{printPages} 页双面打印</small></div><div className={styles.rangeTabs} role="tablist" aria-label="选择导出范围">{(["month-one", "month-two", "all"] as const).map((range) => <button type="button" role="tab" aria-selected={exportRange === range} className={exportRange === range ? styles.currentRange : ""} disabled={printPending || bulkProgress !== null} onClick={() => setExportRange(range)} key={range}>{range === "month-one" ? "第一个月" : range === "month-two" ? "第二个月" : "全部 60 天"}</button>)}</div><p>{exportRange === "month-one" ? "5 天基础引导 + 25 天强化训练" : exportRange === "month-two" ? "30 天加减进阶与综合练习" : "两个 30 天练习计划"}</p></section>
           <nav className={styles.dayNav} aria-label="练习计划日期"><header><CalendarDays aria-hidden="true" size={16} /><span>预览每天内容</span></header><div className={styles.monthTabs} role="tablist" aria-label="选择练习月份"><button type="button" role="tab" aria-selected={activeMonth === 1} className={activeMonth === 1 ? styles.currentRange : ""} onClick={() => selectMonth(1)}>第一个月</button><button type="button" role="tab" aria-selected={activeMonth === 2} className={activeMonth === 2 ? styles.currentRange : ""} onClick={() => selectMonth(2)}>第二个月</button></div>{activeMonth === 1 ? <><div className={styles.dayGroup}><small>基础引导</small><div className={styles.dayGrid}>{plan.foundationDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`基础第 ${day.stageDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.stageDay}</button>)}</div></div><div className={styles.dayGroup}><small>强化训练</small><div className={styles.dayGrid}>{plan.reinforcementDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`强化第 ${day.stageDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.stageDay + FOUNDATION_WORKSHEET_DAYS}</button>)}</div></div></> : <div className={styles.dayGroup}><small>第二个月进阶训练</small><div className={styles.dayGrid}>{visibleDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`第二个月第 ${day.monthDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.monthDay}</button>)}</div></div>}</nav>
-          {selectedWorksheet.month === 2 ? <section className={styles.settingGroup} aria-labelledby="month-two-config-title"><div className={styles.settingLabel}><span id="month-two-config-title">第二个月配置</span><small>30 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="第二个月每天题量" onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}><div className={styles.ratioField}><span>加减进阶</span><strong>80</strong><em>%</em></div><div className={styles.ratioField}><span>乘除启蒙</span><strong>10</strong><em>%</em></div><div className={styles.ratioField}><span>生活数学</span><strong>10</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label="题型比例：加减进阶 80%，乘除启蒙 10%，生活数学 10%"><span style={{ width: "80%" }} /><span style={{ width: "10%" }} /><span style={{ width: "10%" }} /></div><p className={styles.ratioHint}>默认每天 24 道加减、3 道乘除启蒙、3 道生活数学</p></section> : <section className={styles.settingGroup} aria-labelledby="reinforcement-config-title"><div className={styles.settingLabel}><span id="reinforcement-config-title">强化训练配置</span><small>第一个月 25 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="强化训练每天题量" onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}>{RATIO_FIELDS.map((field) => <label className={styles.ratioField} key={field.key}><span>{field.label}</span><input type="number" min="0" max={field.key === "applicationRatio" ? MAX_APPLICATION_RATIO : 100} step="5" value={config[field.key]} disabled={printPending || bulkProgress !== null} aria-label={field.inputLabel} onChange={(event) => updateRatio(field.key, event.currentTarget.valueAsNumber)} /><em>%</em></label>)}<div className={`${styles.ratioField} ${styles.readonlyRatio}`}><span>计算式</span><strong>{config.mentalRatio}%</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label={`题型比例：相邻数 ${config.neighborRatio}%，比大小 ${config.compareRatio}%，计算式 ${config.mentalRatio}%，应用题 ${config.applicationRatio}%`}><span style={{ width: `${config.neighborRatio}%` }} /><span style={{ width: `${config.compareRatio}%` }} /><span style={{ width: `${config.mentalRatio}%` }} /><span style={{ width: `${config.applicationRatio}%` }} /></div><p className={styles.ratioHint}>应用题最多 25%，保证每天最多两页</p><label className={styles.repeatToggle}><input type="checkbox" checked={monthOneMode === "low-repeat"} disabled={printPending || bulkProgress !== null} onChange={(event) => updateMonthOneMode(event.currentTarget.checked)} /><span>低重复故事线</span><small>跨强化训练日期平衡故事和图案，前 5 天保持固定内容</small></label></section>}
-          {selectedWorksheet.month === 2 ? <div className={styles.expectedCounts}><span>本日预计</span><strong>{expectedMonthTwoCounts?.neighbor ?? 0}</strong><small>相邻</small><strong>{expectedMonthTwoCounts?.compare ?? 0}</strong><small>比较</small><strong>{expectedMonthTwoCounts?.mental ?? 0}</strong><small>横式</small><strong>{expectedMonthTwoCounts?.vertical ?? 0}</strong><small>竖式</small><strong>{expectedMonthTwoCounts?.missing ?? 0}</strong><small>未知数</small><strong>{expectedMonthTwoCounts?.grouping ?? 0}</strong><small>乘除</small><strong>{expectedMonthTwoCounts?.lifeMath ?? 0}</strong><small>生活</small></div> : selectedWorksheet.stage === "reinforcement" ? <div className={styles.expectedCounts}><span>本日预计</span><strong>{expectedReinforcementCounts?.neighbor ?? 0}</strong><small>相邻</small><strong>{expectedReinforcementCounts?.compare ?? 0}</strong><small>比较</small><strong>{expectedReinforcementCounts?.mental ?? 0}</strong><small>计算</small><strong>{expectedReinforcementCounts?.application ?? 0}</strong><small>应用</small></div> : <div className={styles.fixedNotice}><Check size={15} />前 5 天为固定精选内容</div>}
+          {selectedWorksheet.month === 2 ? <section className={styles.settingGroup} aria-labelledby="month-two-config-title"><div className={styles.settingLabel}><span id="month-two-config-title">第二个月配置</span><small>30 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="第二个月每天题量" onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}><div className={styles.ratioField}><span>加减进阶</span><strong>80</strong><em>%</em></div><div className={styles.ratioField}><span>乘除启蒙</span><strong>10</strong><em>%</em></div><div className={styles.ratioField}><span>生活数学</span><strong>10</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label="题型比例：加减进阶 80%，乘除启蒙 10%，生活数学 10%"><span style={{ width: "80%" }} /><span style={{ width: "10%" }} /><span style={{ width: "10%" }} /></div><p className={styles.ratioHint}>默认每天 26 道加减进阶、1 道乘除启蒙、3 道生活数学；相邻数与数的组成加厚排版</p></section> : <section className={styles.settingGroup} aria-labelledby="reinforcement-config-title"><div className={styles.settingLabel}><span id="reinforcement-config-title">强化训练配置</span><small>第一个月 25 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="强化训练每天题量" onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}>{RATIO_FIELDS.map((field) => <label className={styles.ratioField} key={field.key}><span>{field.label}</span><input type="number" min="0" max={field.key === "applicationRatio" ? MAX_APPLICATION_RATIO : 100} step="5" value={config[field.key]} disabled={printPending || bulkProgress !== null} aria-label={field.inputLabel} onChange={(event) => updateRatio(field.key, event.currentTarget.valueAsNumber)} /><em>%</em></label>)}<div className={`${styles.ratioField} ${styles.readonlyRatio}`}><span>计算式</span><strong>{config.mentalRatio}%</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label={`题型比例：相邻数 ${config.neighborRatio}%，数的组成 ${config.compareRatio}%，计算式 ${config.mentalRatio}%，应用题 ${config.applicationRatio}%`}><span style={{ width: `${config.neighborRatio}%` }} /><span style={{ width: `${config.compareRatio}%` }} /><span style={{ width: `${config.mentalRatio}%` }} /><span style={{ width: `${config.applicationRatio}%` }} /></div><p className={styles.ratioHint}>应用题最多 25%，保证每天最多两页</p><label className={styles.repeatToggle}><input type="checkbox" checked={monthOneMode === "low-repeat"} disabled={printPending || bulkProgress !== null} onChange={(event) => updateMonthOneMode(event.currentTarget.checked)} /><span>低重复故事线</span><small>跨强化训练日期平衡故事和图案，前 5 天保持固定内容</small></label></section>}
+          {selectedWorksheet.month === 2 ? <div className={styles.expectedCounts}><span>本日预计</span><strong>{expectedMonthTwoCounts?.neighbor ?? 0}</strong><small>相邻</small><strong>{expectedMonthTwoCounts?.compare ?? 0}</strong><small>组成</small><strong>{expectedMonthTwoCounts?.mental ?? 0}</strong><small>横式</small><strong>{expectedMonthTwoCounts?.vertical ?? 0}</strong><small>竖式</small><strong>{expectedMonthTwoCounts?.missing ?? 0}</strong><small>未知数</small><strong>{expectedMonthTwoCounts?.grouping ?? 0}</strong><small>乘除</small><strong>{expectedMonthTwoCounts?.lifeMath ?? 0}</strong><small>生活</small></div> : selectedWorksheet.stage === "reinforcement" ? <div className={styles.expectedCounts}><span>本日预计</span><strong>{expectedReinforcementCounts?.neighbor ?? 0}</strong><small>相邻</small><strong>{expectedReinforcementCounts?.compare ?? 0}</strong><small>组成</small><strong>{expectedReinforcementCounts?.mental ?? 0}</strong><small>计算</small><strong>{expectedReinforcementCounts?.application ?? 0}</strong><small>应用</small></div> : <div className={styles.fixedNotice}><Check size={15} />前 5 天为固定精选内容</div>}
           <div className={styles.actions} aria-busy={printPending || bulkProgress !== null}><button type="button" className={styles.primaryButton} disabled={printPending || bulkProgress !== null} onClick={() => regeneratePlan()}><Dices size={17} />重新生成强化题</button><button type="button" className={styles.bulkPrintButton} disabled={printPending} onClick={startBulkExport}>{bulkProgress === null ? <Files size={17} /> : <X size={17} />}{bulkProgress === null ? `导出 ${exportRange === "all" ? 60 : 30} 天 PDF` : `取消导出（${bulkProgress} / ${exportDays.length}）`}</button><button type="button" className={styles.printButton} disabled={printPending || bulkProgress !== null} onClick={queueCurrentDayPrint}><Printer size={17} />打印当前一天</button><button type="button" onClick={regenerateDay} disabled={selectedWorksheet.stage === "foundation" || printPending || bulkProgress !== null}><ClipboardList size={16} />本日换一套</button><button type="button" disabled={printPending || bulkProgress !== null} onClick={reset}><RotateCcw size={16} />恢复默认</button></div>
           <div className={styles.status} data-tone={status.tone} role="status" aria-live="polite">{status.tone === "success" ? <Check size={15} /> : null}{status.tone === "error" ? <TriangleAlert size={15} /> : null}<span>{status.text}</span></div><p className={styles.local}><ShieldCheck size={15} />题目在浏览器本地生成</p><p className={styles.printSummary} data-testid="worksheet-print-summary">{contentPages} 页内容 / {printPages} 页双面打印包</p>
         </aside>

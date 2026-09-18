@@ -6,6 +6,7 @@ import { stripMarkdown } from "../lib/tools/markdown";
 import { getKidsToolByPath, getKidsToolsByFormat, kidsToolDefinitions } from "../lib/tools/kids-registry";
 import { searchTools } from "../lib/tools/registry";
 import { matchWorksheetCharacterAsset } from "../lib/tools/math-local-assets";
+import { getWorksheetCompanionGreeting } from "../lib/tools/math-picture-assets";
 import {
   dateTimeToTimestamp,
   detectTimestampUnit,
@@ -127,6 +128,13 @@ describe("数学练习本地角色素材", () => {
     expect(matchWorksheetCharacterAsset("characters/number-block-21.png")).toBeNull();
     expect(matchWorksheetCharacterAsset("notes/holiday-photo.png")).toBeNull();
   });
+
+  it("页眉开场白按角色和当天任务生成", () => {
+    expect(getWorksheetCompanionGreeting("number-block-7", "看图列式与一步应用题")).toBe("今天我是 7，我们来看图列式");
+    expect(getWorksheetCompanionGreeting("mario", "数的组成与分解")).toBe("今天和我一起把一个数拆开");
+    expect(getWorksheetCompanionGreeting("number-block-1", "竖式加法·个位进位")).toBe("今天我是 1，我们来对齐数位再加");
+  });
+
 });
 
 describe("时间戳转换", () => {

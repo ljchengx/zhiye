@@ -697,12 +697,12 @@ test("幼小数学练习只挂载当前日打印节点，全量导出交给后�
   await expect(paper).toHaveAttribute("data-day", "1");
   await expect(paper).toHaveAttribute("data-page-count", "1");
   await expect(paper.getByTestId("worksheet-demo")).toBeVisible();
-  await expect(paper.locator("[data-type=number-bond]")).toHaveCount(20);
+  await expect(paper.locator("[data-type=number-bond]")).toHaveCount(16);
   const pictureBond = paper.locator('[data-type="number-bond"][data-mode="picture-split"]').first();
   await expect(pictureBond.locator("img")).toHaveCount(5);
   await expect(pictureBond).toContainText("+");
   await expect(paper.locator("[data-type=neighbor]")).toHaveCount(4);
-  await expect(paper.locator("[data-type=compare]")).toHaveCount(4);
+  await expect(paper.locator("[data-type='tens-split']")).toHaveCount(8);
 
   await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(28);
 
@@ -778,13 +778,13 @@ test("幼小数学练习第二个月展示 31 天和 30 题固定题型比例", 
     return counts;
   }, {}));
   expect(typeCounts).toEqual({
-    neighbor: 2,
-    compare: 2,
-    mental: 6,
-    "vertical-calculation": 7,
-    "missing-number": 3,
+    neighbor: 4,
+    "tens-split": 6,
+    mental: 5,
+    "vertical-calculation": 5,
+    "missing-number": 2,
     application: 4,
-    grouping: 3,
+    grouping: 1,
     "life-math": 3,
   });
   const monthTwoConfig = page.locator('[aria-labelledby="month-two-config-title"]');
@@ -1003,7 +1003,7 @@ test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async (
 
   const paper = page.getByTestId("math-worksheet-paper");
   const metrics = await paper.evaluate((element) => {
-    const gridMetrics = Array.from(element.querySelectorAll("[data-testid=worksheet-mental-section], [data-testid=worksheet-number-sense], section:has([data-type=application])")).map((section) => {
+    const gridMetrics = Array.from(element.querySelectorAll("[data-testid=worksheet-mental-section], [data-testid=worksheet-neighbor], [data-testid=worksheet-tens-split], section:has([data-type=application])")).map((section) => {
       const questions = Array.from(section.querySelectorAll("[data-testid=math-worksheet-question]"));
       const lines = questions.map((question) => question.querySelector("[aria-hidden=true]")?.getBoundingClientRect()).filter((rect): rect is DOMRect => Boolean(rect));
       const widthsByType = new Map<string, number[]>();
@@ -1019,7 +1019,7 @@ test("幼小数学练习的题目网格和 A4 内容边界保持稳定", async (
     const alignmentIndexes = new Map<string, number>();
     const mentalGaps: number[] = [];
     const complexAnswerOffsets: number[] = [];
-    Array.from(element.querySelectorAll("[data-testid=worksheet-number-sense], [data-testid=worksheet-mental-section]")).forEach((section) => {
+    Array.from(element.querySelectorAll("[data-testid=worksheet-neighbor], [data-testid=worksheet-tens-split], [data-testid=worksheet-mental-section]")).forEach((section) => {
       const columns = Number(section.getAttribute("data-columns")) || 2;
       Array.from(section.querySelectorAll("[data-testid=math-worksheet-question]")).forEach((question) => {
         const type = question.getAttribute("data-type") ?? "unknown";

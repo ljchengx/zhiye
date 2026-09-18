@@ -53,7 +53,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
       "破十法",
       "平十法",
       "相邻数练习",
-      "比大小练习",
+      "数的组成练习",
       "A4 数学练习",
       "数学题打印",
       "竖式加减练习",
@@ -66,7 +66,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     format: "printable",
     domain: "math",
     estimatedMinutes: 15,
-    skillAreas: ["相邻数", "比大小", "加减进阶", "乘除启蒙", "生活数学"],
+    skillAreas: ["相邻数", "数的组成", "加减进阶", "乘除启蒙", "生活数学"],
     previewImage: "/kids/math-worksheet-preview.webp",
     order: 1,
     metadata: {
@@ -79,7 +79,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
       intro: "一程一成长启蒙数学练习适合 4～7 岁孩子的日常练习。第一个月包含 5 天基础引导和 25 天强化训练，第二个月继续练习加减进阶，并加入竖式、未知数、乘除启蒙和生活数学；每天 10～30 题，按实际内容自动排成 1 到 2 页。",
       features: [
         "相邻数：生成如“26 __ 28”的填中间数题目。",
-        "比大小：生成数字比较题，练习小于、大于和等于。",
+        "数的组成：把两位数拆成整十和剩下的部分，例如 43 = 10 + 33。",
         "基础引导：用 5 天依次认识数的组成、凑十法、破十法、平十法和看图列式。",
         "第一个月：统一配置每天题量和题型比例，练习两位数、三个数加减和应用题。",
         "第二个月：按 80% 加减进阶、10% 乘除启蒙、10% 生活数学生成 30 天内容。",
@@ -94,9 +94,9 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
       h1: "幼小数学练习",
       sections: [
         {
-          heading: "相邻数和比大小练什么？",
+          heading: "相邻数和数的组成练什么？",
           paragraphs: [
-            "相邻数练习帮助孩子建立数序，例如在 26 和 28 之间填入 27。比大小练习通过小于、大于和等于的判断，巩固数字之间的数量关系。",
+            "相邻数练习帮助孩子建立数序，例如在 26 和 28 之间填入 27。数的组成练习把一个两位数拆成整十和剩下的部分，例如 43 = 10 + 33，或 43 = 40 + 3。",
           ],
         },
         {

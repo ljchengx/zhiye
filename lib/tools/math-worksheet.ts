@@ -11,6 +11,9 @@ export const MAX_APPLICATION_RATIO = 25;
 export const MONTH_TWO_CORE_QUESTION_COUNT = 24;
 export const MONTH_TWO_GROUPING_QUESTION_COUNT = 3;
 export const MONTH_TWO_LIFE_MATH_QUESTION_COUNT = 3;
+export const WORKSHEET_PAPER_PADDING_TOP_MM = 4;
+export const WORKSHEET_PAPER_HEADER_HEIGHT_MM = 28;
+export const WORKSHEET_PAGE_BODY_HEIGHT_MM = 252;
 
 export const MENTAL_METHODS = ["make-ten", "break-ten", "flat-ten"] as const;
 export type MentalMethod = (typeof MENTAL_METHODS)[number];
@@ -25,8 +28,8 @@ export type MentalBinaryShape = "basic" | "two-digit-single" | "two-digit";
 export type WorksheetStage = "foundation" | "reinforcement";
 export type WorksheetQuestionPresentation = "direct" | "guided";
 export type WorksheetIconKey = "apple" | "pineapple" | "heart" | "star" | "fish" | "mushroom" | "coin" | "flower" | "block" | "ball" | "book" | "cookie" | "balloon";
-export type WorksheetSectionType = "composition" | "neighbor" | "compare" | "mental" | "vertical" | "missing-number" | "grouping" | "life-math" | "picture-equation" | "application";
-export type WorksheetPageSectionType = "composition" | "number-sense" | "guided" | "mental" | "vertical" | "missing-number" | "grouping" | "life-math" | "picture-equation" | "application";
+export type WorksheetSectionType = "composition" | "neighbor" | "tens-split" | "mental" | "vertical" | "missing-number" | "grouping" | "life-math" | "picture-equation" | "application";
+export type WorksheetPageSectionType = "composition" | "neighbor" | "tens-split" | "guided" | "mental" | "vertical" | "missing-number" | "grouping" | "life-math" | "picture-equation" | "application";
 
 export const WORKSHEET_ICON_KEYS: readonly WorksheetIconKey[] = ["apple", "pineapple", "heart", "star", "fish", "mushroom", "coin", "flower", "block", "ball", "book", "cookie", "balloon"];
 
@@ -102,9 +105,9 @@ export interface ReinforcementConfig {
 export const DEFAULT_REINFORCEMENT_CONFIG: ReinforcementConfig = {
   dailyQuestionCount: 30,
   neighborRatio: 15,
-  compareRatio: 15,
+  compareRatio: 25,
   applicationRatio: 20,
-  mentalRatio: 50,
+  mentalRatio: 40,
 };
 
 export interface MonthTwoConfig {
@@ -123,8 +126,8 @@ export const DEFAULT_MONTH_TWO_CONFIG: MonthTwoConfig = {
 
 export const DEFAULT_WORKSHEET_CONFIG: WorksheetConfig = {
   neighborCount: 5,
-  compareCount: 5,
-  mentalCount: 14,
+  compareCount: 8,
+  mentalCount: 11,
   applicationCount: 6,
   theme: "mixed",
 };
@@ -383,12 +386,16 @@ export interface NeighborQuestion extends BaseQuestion {
   answer: number;
 }
 
-export interface CompareQuestion extends BaseQuestion {
-  type: "compare";
-  section: "compare";
-  left: number;
-  right: number;
-  answer: "<" | ">" | "=";
+export type TensSplitMissing = "left" | "right";
+
+export interface TensSplitQuestion extends BaseQuestion {
+  type: "tens-split";
+  section: "tens-split";
+  whole: number;
+  left: number | null;
+  right: number | null;
+  answer: number;
+  missing: TensSplitMissing;
 }
 
 export interface NumberBondQuestion extends BaseQuestion {
@@ -503,7 +510,7 @@ export interface ApplicationQuestion extends BaseQuestion {
   picture: boolean;
 }
 
-export type WorksheetQuestion = NeighborQuestion | CompareQuestion | NumberBondQuestion | PictureEquationQuestion | MentalQuestion | VerticalCalculationQuestion | MissingNumberQuestion | GroupingQuestion | LifeMathQuestion | ApplicationQuestion;
+export type WorksheetQuestion = NeighborQuestion | TensSplitQuestion | NumberBondQuestion | PictureEquationQuestion | MentalQuestion | VerticalCalculationQuestion | MissingNumberQuestion | GroupingQuestion | LifeMathQuestion | ApplicationQuestion;
 
 export interface WorksheetSection {
   type: WorksheetSectionType;
@@ -515,7 +522,7 @@ export interface WorksheetPageSection {
   type: WorksheetPageSectionType;
   title: string;
   questions: readonly WorksheetQuestion[];
-  columns: 1 | 2 | 3 | 4;
+  columns: 1 | 2 | 3 | 4 | 5;
   continued: boolean;
   rowHeightMm: number;
 }
@@ -573,22 +580,23 @@ interface MentalCandidate {
   level: MentalLevel;
 }
 
-const PAGE_BODY_HEIGHT_MM = 252;
+const PAGE_BODY_HEIGHT_MM = WORKSHEET_PAGE_BODY_HEIGHT_MM;
 const METHOD_HEIGHT_MM = 34;
 const SECTION_TITLE_HEIGHT_MM = 9;
-const COMPOSITION_ROW_HEIGHT_MM = 22;
-const COMPOSITION_PICTURE_ROW_HEIGHT_MM = 28;
-const PICTURE_EQUATION_ROW_HEIGHT_MM = 32;
-const NUMBER_SENSE_ROW_HEIGHT_MM = 16;
+const COMPOSITION_ROW_HEIGHT_MM = 26;
+const COMPOSITION_PICTURE_ROW_HEIGHT_MM = 32;
+const PICTURE_EQUATION_ROW_HEIGHT_MM = 34;
+const NEIGHBOR_ROW_HEIGHT_MM = 16;
+const TENS_SPLIT_ROW_HEIGHT_MM = 20;
 const MENTAL_BASIC_ROW_HEIGHT_MM = 17;
 const MENTAL_COMPLEX_ROW_HEIGHT_MM = 20;
-const VERTICAL_ROW_HEIGHT_MM = 21;
-const MISSING_NUMBER_ROW_HEIGHT_MM = 18;
-const GROUPING_ROW_HEIGHT_MM = 22;
-const LIFE_MATH_MIN_ROW_HEIGHT_MM = 32;
-const LIFE_MATH_MAX_ROW_HEIGHT_MM = 42;
-const APPLICATION_MIN_ROW_HEIGHT_MM = 30;
-const APPLICATION_MAX_ROW_HEIGHT_MM = 39;
+const VERTICAL_ROW_HEIGHT_MM = 28;
+const MISSING_NUMBER_ROW_HEIGHT_MM = 15;
+const GROUPING_ROW_HEIGHT_MM = 31;
+const LIFE_MATH_MIN_ROW_HEIGHT_MM = 26;
+const LIFE_MATH_MAX_ROW_HEIGHT_MM = 30;
+const APPLICATION_MIN_ROW_HEIGHT_MM = 26;
+const APPLICATION_MAX_ROW_HEIGHT_MM = 36;
 
 function createSeededRandom(seed: number): RandomSource {
   let state = Number.isFinite(seed) ? Math.abs(Math.trunc(seed)) % 2147483647 : 1;
@@ -656,25 +664,56 @@ function buildNeighborQuestions(count: number, random: RandomSource, numberMax: 
   return centers.map((center, index) => ({ id: "neighbor-" + index, type: "neighbor", section: "neighbor", number: 0, left: center - 1, right: center + 1, answer: center }));
 }
 
-function buildCompareQuestions(count: number, random: RandomSource, numberMax: number): CompareQuestion[] {
-  const safeMax = Math.max(1, Math.min(NUMBER_SENSE_MAX, Math.trunc(numberMax)));
-  if (count <= 0) return [];
-  const equal = randomInt(random, 1, safeMax);
-  const selected: Array<{ left: number; right: number }> = [{ left: equal, right: equal }];
-  const used = new Set([`${equal}:${equal}`]);
+function tensSplitPairs(whole: number): Array<[number, number]> {
+  const pairs: Array<[number, number]> = [];
+  for (let tens = 10; tens < whole; tens += 10) pairs.push([tens, whole - tens]);
+  const takeTen = pairs.find(([left]) => left === 10);
+  const tensOnes = pairs.find(([left]) => left === Math.floor(whole / 10) * 10);
+  const rest = pairs.filter((pair) => pair !== takeTen && pair !== tensOnes);
+  return [...(takeTen ? [takeTen] : []), ...(tensOnes && tensOnes !== takeTen ? [tensOnes] : []), ...rest];
+}
 
-  // 每天只需要少量题目，直接抽取不重复数字对，避免构造并打乱完整笛卡尔积。
+function pickTensSplitPair(whole: number, random: RandomSource): [number, number] | undefined {
+  const pairs = tensSplitPairs(whole);
+  if (pairs.length === 0) return undefined;
+  if (pairs.length === 1) return pairs[0];
+  const roll = random();
+  if (roll < 0.4) return pairs[0];
+  if (roll < 0.75) return pairs[1];
+  return pairs[randomInt(random, 0, pairs.length - 1)];
+}
+
+function buildTensSplitQuestions(count: number, random: RandomSource, numberMax: number): TensSplitQuestion[] {
+  const maxWhole = Math.max(11, Math.min(NUMBER_SENSE_MAX, Math.trunc(numberMax)));
+  if (count <= 0) return [];
+  const questions: TensSplitQuestion[] = [];
+  const used = new Set<string>();
+  const usedWholes = new Set<number>();
   let attempts = 0;
-  while (selected.length < count && attempts < count * 20) {
+  while (questions.length < count && attempts < count * 40) {
     attempts += 1;
-    const left = randomInt(random, 1, safeMax);
-    const right = randomInt(random, 1, safeMax);
-    const key = `${left}:${right}`;
-    if (left === right || used.has(key)) continue;
+    const whole = randomInt(random, 11, maxWhole);
+    if (usedWholes.has(whole) && usedWholes.size < Math.min(count, maxWhole - 10)) continue;
+    const pair = pickTensSplitPair(whole, random);
+    if (!pair) continue;
+    const missing: TensSplitMissing = random() < 0.7 ? "right" : "left";
+    const key = `${whole}:${pair[0]}:${pair[1]}:${missing}`;
+    if (used.has(key)) continue;
     used.add(key);
-    selected.push({ left, right });
+    usedWholes.add(whole);
+    questions.push({
+      id: "tens-split-" + questions.length,
+      type: "tens-split",
+      section: "tens-split",
+      number: 0,
+      whole,
+      left: missing === "left" ? null : pair[0],
+      right: missing === "right" ? null : pair[1],
+      answer: missing === "left" ? pair[0] : pair[1],
+      missing,
+    });
   }
-  return shuffle(selected, random).map((pair, index) => ({ id: "compare-" + index, type: "compare", section: "compare", number: 0, left: pair.left, right: pair.right, answer: pair.left < pair.right ? "<" : pair.left > pair.right ? ">" : "=" }));
+  return questions;
 }
 
 function buildMentalCandidates(method: MentalMethod, level: Exclude<MentalLevel, "three-number">, resultMax: number): MentalCandidate[] {
@@ -892,8 +931,9 @@ function resolveGroupingMode(mode: GroupingMode, index: number): Exclude<Groupin
 function buildGroupingQuestions(count: number, blueprint: MonthTwoDayBlueprint, random: RandomSource, idPrefix: string): GroupingQuestion[] {
   return Array.from({ length: count }, (_, index) => {
     const mode = resolveGroupingMode(blueprint.groupingMode, index);
-    const groupCount = randomInt(random, 2, blueprint.monthDay >= 21 ? 5 : 4);
-    const perGroup = randomInt(random, 2, blueprint.monthDay >= 16 ? 6 : 5);
+    // 分组图要能印在一行里：组数、每组个数都控制在 2～4。
+    const groupCount = randomInt(random, 2, 4);
+    const perGroup = randomInt(random, 2, 4);
     const total = groupCount * perGroup;
     const icon = WORKSHEET_ICON_KEYS[(blueprint.monthDay + index) % WORKSHEET_ICON_KEYS.length];
     return {
@@ -1738,7 +1778,7 @@ interface LayoutBlock {
   type: WorksheetPageSectionType;
   title: string;
   questions: readonly WorksheetQuestion[];
-  columns: 1 | 2 | 3 | 4;
+  columns: 1 | 2 | 3 | 4 | 5;
   rowHeightMm: number;
 }
 
@@ -1765,9 +1805,19 @@ function sectionBlocks(section: WorksheetSection): LayoutBlock[] {
     const rowHeightMm = Math.max(APPLICATION_MIN_ROW_HEIGHT_MM, Math.min(maxRowHeight, Math.floor((PAGE_BODY_HEIGHT_MM - SECTION_TITLE_HEIGHT_MM) / section.questions.length)));
     return chunk(section.questions, 1).map((questions) => ({ type: "application", title: section.title, questions, columns: 1, rowHeightMm }));
   }
-  if (section.type === "vertical") return chunk(section.questions, 4).map((questions) => ({ type: "vertical", title: section.title, questions, columns: 4, rowHeightMm: VERTICAL_ROW_HEIGHT_MM }));
-  if (section.type === "missing-number") return chunk(section.questions, 3).map((questions) => ({ type: "missing-number", title: section.title, questions, columns: 3, rowHeightMm: MISSING_NUMBER_ROW_HEIGHT_MM }));
-  if (section.type === "grouping") return chunk(section.questions, 3).map((questions) => ({ type: "grouping", title: section.title, questions, columns: 3, rowHeightMm: GROUPING_ROW_HEIGHT_MM }));
+  if (section.type === "vertical") {
+    // 5 题及以内单行排满，贴近一年级竖式练习纸。
+    const columns = Math.min(5, Math.max(1, section.questions.length)) as 1 | 2 | 3 | 4 | 5;
+    return chunk(section.questions, columns).map((questions) => ({ type: "vertical" as const, title: section.title, questions, columns, rowHeightMm: VERTICAL_ROW_HEIGHT_MM }));
+  }
+  if (section.type === "missing-number") {
+    const columns = Math.min(3, Math.max(1, section.questions.length)) as 1 | 2 | 3;
+    return chunk(section.questions, columns).map((questions) => ({ type: "missing-number" as const, title: section.title, questions, columns, rowHeightMm: MISSING_NUMBER_ROW_HEIGHT_MM }));
+  }
+  if (section.type === "grouping") {
+    const columns = Math.min(2, Math.max(1, section.questions.length)) as 1 | 2;
+    return chunk(section.questions, columns).map((questions) => ({ type: "grouping" as const, title: section.title, questions, columns, rowHeightMm: GROUPING_ROW_HEIGHT_MM }));
+  }
   if (section.type === "life-math") {
     const rowHeightMm = Math.max(LIFE_MATH_MIN_ROW_HEIGHT_MM, Math.min(LIFE_MATH_MAX_ROW_HEIGHT_MM, Math.floor((PAGE_BODY_HEIGHT_MM - SECTION_TITLE_HEIGHT_MM) / Math.max(1, section.questions.length))));
     return chunk(section.questions, 1).map((questions) => ({ type: "life-math", title: section.title, questions, columns: 1, rowHeightMm }));
@@ -1787,24 +1837,26 @@ function sectionBlocks(section: WorksheetSection): LayoutBlock[] {
   return blocks;
 }
 
-function numberSenseBlocks(sections: readonly WorksheetSection[]): LayoutBlock[] {
-  const neighbor = sections.find((section) => section.type === "neighbor")?.questions ?? [];
-  const compare = sections.find((section) => section.type === "compare")?.questions ?? [];
-  const rows = Math.max(Math.ceil(neighbor.length / 2), Math.ceil(compare.length / 2));
-  if (rows === 0) return [];
+function neighborBlocks(section: WorksheetSection | undefined): LayoutBlock[] {
+  const questions = section?.questions ?? [];
+  if (questions.length === 0) return [];
+  // 固定四列，避免题少时被拉成两栏大空行。
+  return chunk(questions, 4).map((row) => ({ type: "neighbor" as const, title: "相邻数", questions: row, columns: 4 as const, rowHeightMm: NEIGHBOR_ROW_HEIGHT_MM }));
+}
 
-  // 两类数感题共用一次列定义，余数行也不会重新扩成整页宽度。
-  const questions = Array.from({ length: rows }, (_, row) => [
-    ...neighbor.slice(row * 2, row * 2 + 2),
-    ...compare.slice(row * 2, row * 2 + 2),
-  ]).flat();
-  return [{ type: "number-sense", title: "相邻数", questions, columns: 2, rowHeightMm: NUMBER_SENSE_ROW_HEIGHT_MM * rows }];
+function tensSplitBlocks(section: WorksheetSection | undefined): LayoutBlock[] {
+  const questions = section?.questions ?? [];
+  if (questions.length === 0) return [];
+  // 6/3/9 题用三列，圆圈更大更满；其余固定四列。
+  const columns = questions.length % 3 === 0 && questions.length % 4 !== 0 ? 3 : 4;
+  return chunk(questions, columns).map((row) => ({ type: "tens-split" as const, title: "数的组成", questions: row, columns: columns as 3 | 4, rowHeightMm: TENS_SPLIT_ROW_HEIGHT_MM }));
 }
 
 function composeWorksheetPages(sections: readonly WorksheetSection[], showMethod: boolean): readonly WorksheetPrintPage[] {
   const blocks: LayoutBlock[] = [];
-  if (sections.some((section) => section.type === "neighbor" || section.type === "compare")) blocks.push(...numberSenseBlocks(sections));
-  sections.filter((section) => section.type !== "neighbor" && section.type !== "compare").forEach((section) => blocks.push(...sectionBlocks(section)));
+  blocks.push(...neighborBlocks(sections.find((section) => section.type === "neighbor")));
+  blocks.push(...tensSplitBlocks(sections.find((section) => section.type === "tens-split")));
+  sections.filter((section) => section.type !== "neighbor" && section.type !== "tens-split").forEach((section) => blocks.push(...sectionBlocks(section)));
   const firstPageHeights = [showMethod ? METHOD_HEIGHT_MM : 0];
   for (let index = 0; index < blocks.length; index += 1) {
     const needsTitle = index === 0 || blocks[index - 1].type !== blocks[index].type;
@@ -1816,15 +1868,21 @@ function composeWorksheetPages(sections: readonly WorksheetSection[], showMethod
     secondPageHeights[index] = blocks[index].rowHeightMm + SECTION_TITLE_HEIGHT_MM + secondPageHeights[index + 1] - sharedTitle;
   }
   const onePageHeight = firstPageHeights[blocks.length];
+  const backMatterTypes = new Set<WorksheetPageSectionType>(["application", "grouping", "life-math"]);
+  const firstBackIndex = blocks.findIndex((block) => backMatterTypes.has(block.type));
   let preferredBreak = -1;
   if (onePageHeight > PAGE_BODY_HEIGHT_MM) {
-    // 两页内容采用约 57:43 的高度分配，避免第二页只留下少量应用题。
+    // 优先把应用题/乘除/生活数学整段落到背面，避免正面只剩一道应用题占脚。
     let bestScore = Number.POSITIVE_INFINITY;
     for (let index = 1; index < blocks.length; index += 1) {
       const firstHeight = firstPageHeights[index];
       const secondHeight = secondPageHeights[index];
       if (firstHeight > PAGE_BODY_HEIGHT_MM || secondHeight > PAGE_BODY_HEIGHT_MM) continue;
-      const score = Math.abs(firstHeight / (firstHeight + secondHeight) - 0.57);
+      const balance = Math.abs(firstHeight / (firstHeight + secondHeight) - 0.52);
+      const thinPenalty = secondHeight < 110 ? (110 - secondHeight) / 200 : 0;
+      const splitsBackMatter = firstBackIndex >= 0 && index > firstBackIndex ? 0.45 : 0;
+      const keepsBackTogether = firstBackIndex >= 0 && index === firstBackIndex ? -0.2 : 0;
+      const score = balance + thinPenalty + splitsBackMatter + keepsBackTogether;
       if (score < bestScore) {
         bestScore = score;
         preferredBreak = index;
@@ -1855,8 +1913,58 @@ function composeWorksheetPages(sections: readonly WorksheetSection[], showMethod
     page.usedHeightMm += height;
     started.add(block.type);
   }
-  const pageCount = pages.length;
-  return pages.map((page, index) => ({ pageNumber: index + 1, pageCount, showMethod: page.showMethod, sections: page.sections, questionCount: page.sections.reduce((sum, section) => sum + section.questions.length, 0), usedHeightMm: page.usedHeightMm }));
+  const expanded = pages.map((page, pageIndex) => (pageIndex === 0 && pages.length === 2 ? expandFrontPageSections(page) : page));
+  const pageCount = expanded.length;
+  return expanded.map((page, index) => ({ pageNumber: index + 1, pageCount, showMethod: page.showMethod, sections: page.sections, questionCount: page.sections.reduce((sum, section) => sum + section.questions.length, 0), usedHeightMm: page.usedHeightMm }));
+}
+
+const FRONT_PAGE_ROW_CAPS: Partial<Record<WorksheetPageSectionType, number>> = {
+  neighbor: 20,
+  "tens-split": 24,
+  mental: 24,
+  vertical: 34,
+  composition: 30,
+  guided: 54,
+  "picture-equation": 38,
+};
+
+const FRONT_PAGE_EXPAND_PRIORITY: readonly WorksheetPageSectionType[] = [
+  "vertical",
+  "tens-split",
+  "mental",
+  "neighbor",
+  "composition",
+  "guided",
+  "picture-equation",
+];
+
+function expandFrontPageSections(page: { showMethod: boolean; sections: WorksheetPageSection[]; usedHeightMm: number }) {
+  let slack = PAGE_BODY_HEIGHT_MM - page.usedHeightMm;
+  if (slack < 6) return page;
+  const expandableIndexes = page.sections
+    .map((section, index) => ({ section, index, cap: FRONT_PAGE_ROW_CAPS[section.type] }))
+    .filter((item) => item.cap != null && item.section.rowHeightMm < (item.cap as number))
+    .sort((left, right) => FRONT_PAGE_EXPAND_PRIORITY.indexOf(left.section.type) - FRONT_PAGE_EXPAND_PRIORITY.indexOf(right.section.type));
+  if (expandableIndexes.length === 0) return page;
+  const sections = page.sections.map((section) => ({ ...section }));
+  let usedHeightMm = page.usedHeightMm;
+  let guard = 0;
+  while (slack > 0 && guard < 200) {
+    guard += 1;
+    let progressed = false;
+    for (const item of expandableIndexes) {
+      const section = sections[item.index];
+      const cap = item.cap as number;
+      if (section.rowHeightMm >= cap || slack <= 0) continue;
+      section.rowHeightMm += 1;
+      usedHeightMm += 1;
+      slack -= 1;
+      progressed = true;
+      if (slack <= 0) break;
+    }
+    if (!progressed) break;
+  }
+  return { ...page, sections, usedHeightMm };
 }
 
 function createDailyWorksheet(args: { id: string; day: number; stage: WorksheetStage; stageDay: number; phase: number; phaseTitle: string; phaseSummary: string; title: string; objective: string; sections: readonly WorksheetSection[]; theme: WorksheetTheme; methodLesson?: WorksheetMethodExample; plan: WorksheetDayPlan }): DailyWorksheet {
@@ -1874,14 +1982,14 @@ function foundationDayPlan(index: number): WorksheetDayPlan {
 
 function buildFoundationDay(index: number): DailyWorksheet {
   const plan = foundationDayPlan(index);
-  if (index === 1) return createDailyWorksheet({ id: "foundation-1", day: 1, stage: "foundation", stageDay: 1, phase: 0, phaseTitle: plan.phaseTitle, phaseSummary: plan.phaseSummary, title: plan.title, objective: plan.objective, sections: [{ type: "composition", title: "数的组成与分解", questions: buildNumberBondQuestions() }, { type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(4, createSeededRandom(101), 20) }, { type: "compare", title: "比大小", questions: buildCompareQuestions(4, createSeededRandom(102), 20) }], theme: "make-ten", methodLesson: createNumberBondLesson(), plan });
+  if (index === 1) return createDailyWorksheet({ id: "foundation-1", day: 1, stage: "foundation", stageDay: 1, phase: 0, phaseTitle: plan.phaseTitle, phaseSummary: plan.phaseSummary, title: plan.title, objective: plan.objective, sections: [{ type: "composition", title: "数的组成与分解", questions: buildNumberBondQuestions().slice(0, 16) }, { type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(4, createSeededRandom(101), 20) }, { type: "tens-split", title: "数的组成", questions: buildTensSplitQuestions(8, createSeededRandom(102), 20) }], theme: "make-ten", methodLesson: createNumberBondLesson(), plan });
   if (index <= 4) {
     const method = index === 2 ? "make-ten" : index === 3 ? "break-ten" : "flat-ten";
-    const mental = buildFoundationMental(method).map((question) => ({ ...question, id: `foundation-${index}-${question.id}` }));
-    return createDailyWorksheet({ id: `foundation-${index}`, day: index, stage: "foundation", stageDay: index, phase: 0, phaseTitle: plan.phaseTitle, phaseSummary: plan.phaseSummary, title: plan.title, objective: plan.objective, sections: [{ type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(4, createSeededRandom(200 + index), 20) }, { type: "compare", title: "比大小", questions: buildCompareQuestions(4, createSeededRandom(210 + index), 20) }, { type: "mental", title: "计算式", questions: mental }], theme: method, methodLesson: createMethodLesson(method), plan });
+    const mental = buildFoundationMental(method).slice(0, 16).map((question) => ({ ...question, id: `foundation-${index}-${question.id}` }));
+    return createDailyWorksheet({ id: `foundation-${index}`, day: index, stage: "foundation", stageDay: index, phase: 0, phaseTitle: plan.phaseTitle, phaseSummary: plan.phaseSummary, title: plan.title, objective: plan.objective, sections: [{ type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(4, createSeededRandom(200 + index), 20) }, { type: "tens-split", title: "数的组成", questions: buildTensSplitQuestions(8, createSeededRandom(210 + index), 20) }, { type: "mental", title: "计算式", questions: mental }], theme: method, methodLesson: createMethodLesson(method), plan });
   }
   const mental = buildFoundationMental("make-ten").slice(0, 6).map((question, index) => ({ ...question, id: `foundation-5-mental-${index}`, presentation: "direct" as const, guidance: undefined }));
-  return createDailyWorksheet({ id: "foundation-5", day: 5, stage: "foundation", stageDay: 5, phase: 0, phaseTitle: plan.phaseTitle, phaseSummary: plan.phaseSummary, title: plan.title, objective: plan.objective, sections: [{ type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(4, createSeededRandom(501), 20) }, { type: "compare", title: "比大小", questions: buildCompareQuestions(4, createSeededRandom(502), 20) }, { type: "mental", title: "计算式", questions: mental }, { type: "picture-equation", title: "看图列式", questions: buildPictureEquationQuestions() }, { type: "application", title: "一步应用题", questions: buildFoundationApplications() }], theme: "mixed", methodLesson: createPictureEquationLesson(), plan });
+  return createDailyWorksheet({ id: "foundation-5", day: 5, stage: "foundation", stageDay: 5, phase: 0, phaseTitle: plan.phaseTitle, phaseSummary: plan.phaseSummary, title: plan.title, objective: plan.objective, sections: [{ type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(4, createSeededRandom(501), 20) }, { type: "tens-split", title: "数的组成", questions: buildTensSplitQuestions(7, createSeededRandom(502), 20) }, { type: "mental", title: "计算式", questions: mental }, { type: "picture-equation", title: "看图列式", questions: buildPictureEquationQuestions() }, { type: "application", title: "一步应用题", questions: buildFoundationApplications().slice(0, 5) }], theme: "mixed", methodLesson: createPictureEquationLesson(), plan });
 }
 
 export function getReinforcementDayBlueprint(stageDay: number): ReinforcementDayBlueprint {
@@ -1956,7 +2064,7 @@ function buildReinforcementDay(stageDay: number, seed: number, configInput: Part
   const counts = allocateCounts(config, stageDay);
   const sections: WorksheetSection[] = [
     { type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(counts.neighbor, random, blueprint.numberMax) },
-    { type: "compare", title: "比大小", questions: buildCompareQuestions(counts.compare, random, blueprint.numberMax) },
+    { type: "tens-split", title: "数的组成", questions: buildTensSplitQuestions(counts.compare, random, blueprint.numberMax) },
     { type: "mental", title: "计算式", questions: buildMentalQuestions(counts.mental, blueprint.methodTheme, random, { resultMax: blueprint.resultMax, binaryShape: blueprint.binaryShape, binaryTwoDigitRatio: blueprint.binaryTwoDigitRatio, threeNumberRatio: blueprint.threeNumberRatio, tripleMinTerm: blueprint.tripleMinTerm }) },
     { type: "application", title: "应用题", questions: monthOneContext
       ? buildMonthOneApplicationQuestions(counts.application, blueprint, random, `practice-${stageDay}`, monthOneContext)
@@ -1985,14 +2093,15 @@ export interface MonthTwoQuestionCounts {
 
 export function getMonthTwoQuestionCounts(config: Partial<MonthTwoConfig> = {}): MonthTwoQuestionCounts {
   const total = normalizeMonthTwoConfig(config).dailyQuestionCount;
+  // 参考幼小衔接卷面：相邻数/组成加厚，同时保留应用题与生活题覆盖量。
   const weights = [
-    ["neighbor", 2],
-    ["compare", 2],
-    ["mental", 6],
-    ["vertical", 7],
-    ["missing", 3],
+    ["neighbor", 4],
+    ["compare", 6],
+    ["mental", 5],
+    ["vertical", 5],
+    ["missing", 2],
     ["application", 4],
-    ["grouping", 3],
+    ["grouping", 1],
     ["lifeMath", 3],
   ] as const;
   const raw = weights.map(([key, weight]) => ({ key, value: total * weight / 30 }));
@@ -2031,7 +2140,7 @@ function buildMonthTwoDay(monthDay: number, seed: number, configInput: Partial<M
   const counts = getMonthTwoQuestionCounts(config);
   const sections: WorksheetSection[] = [
     { type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(counts.neighbor, random, blueprint.numberMax) },
-    { type: "compare", title: "比大小", questions: buildCompareQuestions(counts.compare, random, blueprint.numberMax) },
+    { type: "tens-split", title: "数的组成", questions: buildTensSplitQuestions(counts.compare, random, blueprint.numberMax) },
     { type: "mental", title: "横式加减", questions: buildMentalQuestions(counts.mental, blueprint.methodTheme, random, { resultMax: blueprint.resultMax, binaryShape: blueprint.binaryShape, binaryTwoDigitRatio: blueprint.binaryTwoDigitRatio, threeNumberRatio: blueprint.threeNumberRatio, tripleMinTerm: blueprint.tripleMinTerm }) },
     { type: "vertical", title: "竖式加减", questions: buildVerticalQuestions(counts.vertical, blueprint, random, `month2-${monthDay}`) },
     { type: "missing-number", title: "填未知数", questions: buildMissingNumberQuestions(counts.missing, blueprint, random, `month2-${monthDay}`) },
@@ -2047,7 +2156,7 @@ export function generateWorksheet(config: WorksheetConfig, seed = 1): { sections
   const total = normalized.neighborCount + normalized.compareCount + normalized.mentalCount + (normalized.applicationCount ?? 0);
   const sections: WorksheetSection[] = [
     { type: "neighbor", title: "相邻数", questions: buildNeighborQuestions(normalized.neighborCount, createSeededRandom(seed), 100) },
-    { type: "compare", title: "比大小", questions: buildCompareQuestions(normalized.compareCount, createSeededRandom(seed + 1), 100) },
+    { type: "tens-split", title: "数的组成", questions: buildTensSplitQuestions(normalized.compareCount, createSeededRandom(seed + 1), 100) },
     { type: "mental", title: "计算式", questions: buildMentalQuestions(normalized.mentalCount, normalized.theme, createSeededRandom(seed + 2), { resultMax: 100, binaryShape: "two-digit", binaryTwoDigitRatio: 0.5, threeNumberRatio: 0, tripleMinTerm: 1 }) },
     { type: "application", title: "应用题", questions: buildApplicationQuestions(normalized.applicationCount ?? 0, getReinforcementDayBlueprint(15), createSeededRandom(seed + 3), "worksheet") },
   ];
