@@ -773,7 +773,7 @@ async function createRenderContext(baseUrl: string, externalCharacters: MathPdfE
   const document = await PDFDocument.create();
   document.registerFontkit(fontkit);
   const [chineseBytes, numericBytes, numericBoldBytes] = await Promise.all([
-    fetchBytes(baseUrl, "/fonts/noto-sans-sc-math-subset.ttf"),
+    fetchBytes(baseUrl, "/fonts/noto-sans-sc-math-subset.ttf?v=2"),
     fetchBytes(baseUrl, "/fonts/andika-regular.ttf"),
     fetchBytes(baseUrl, "/fonts/andika-bold.ttf"),
   ]);

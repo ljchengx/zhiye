@@ -35,7 +35,10 @@ function collectText(value: unknown, texts: string[]) {
 describe("数学练习 PDF 字体", () => {
   it("子集包含 60 天练习纸会写到纸面上的汉字", () => {
     const font = fontkit.create(fs.readFileSync("public/fonts/noto-sans-sc-math-subset.ttf"));
-    const texts = [...PDF_LABELS];
+    const texts = [
+      ...PDF_LABELS,
+      ...["lib/tools/math-worksheet.ts", "lib/tools/math-pdf.ts", "lib/tools/math-picture-assets.ts"].map((file) => fs.readFileSync(file, "utf8")),
+    ];
     for (let day = 1; day <= WORKSHEET_PLAN_DAYS; day += 1) {
       const worksheet = generateDailyWorksheet(day);
       texts.push(worksheet.title);
