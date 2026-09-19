@@ -395,16 +395,31 @@ function drawBondDiagram(page: PDFPage, centerMm: number, topMm: number, whole: 
   });
 }
 
-function drawRoundedBox(page: PDFPage, leftMm: number, topMm: number, widthMm: number, heightMm: number) {
-  page.drawRectangle({
+function roundedRectPath(width: number, height: number, radius: number) {
+  const corner = Math.min(radius, width / 2, height / 2);
+  return [
+    `M ${corner} 0`,
+    `H ${width - corner}`,
+    `A ${corner} ${corner} 0 0 1 ${width} ${corner}`,
+    `V ${height - corner}`,
+    `A ${corner} ${corner} 0 0 1 ${width - corner} ${height}`,
+    `H ${corner}`,
+    `A ${corner} ${corner} 0 0 1 0 ${height - corner}`,
+    `V ${corner}`,
+    `A ${corner} ${corner} 0 0 1 ${corner} 0`,
+    "Z",
+  ].join(" ");
+}
+
+function drawRoundedBox(page: PDFPage, leftMm: number, topMm: number, widthMm: number, heightMm: number, radiusMm = 1.2, borderWidthMm = 0.4) {
+  const width = mm(widthMm);
+  const height = mm(heightMm);
+  page.drawSvgPath(roundedRectPath(width, height, mm(radiusMm)), {
     x: mm(leftMm),
-    y: yFromTop(topMm + heightMm),
-    width: mm(widthMm),
-    height: mm(heightMm),
+    y: yFromTop(topMm),
     color: COLORS.paper,
     borderColor: COLORS.ink,
-    borderWidth: mm(0.4),
-    borderRadius: mm(1.2),
+    borderWidth: mm(borderWidthMm),
   });
 }
 
@@ -422,16 +437,7 @@ async function drawSharingPlates(page: PDFPage, question: GroupingQuestion, left
   const image = await ensureObject(context, question.icon);
   for (let index = 0; index < question.groupCount; index += 1) {
     const plateLeft = leftMm + index * (plateWidth + gap);
-    page.drawRectangle({
-      x: mm(plateLeft),
-      y: yFromTop(topMm + plateHeight),
-      width: mm(plateWidth),
-      height: mm(plateHeight),
-      color: COLORS.paper,
-      borderColor: COLORS.ink,
-      borderWidth: mm(0.65),
-      borderRadius: mm(plateHeight / 2),
-    });
+    drawRoundedBox(page, plateLeft, topMm, plateWidth, plateHeight, plateHeight / 2, 0.65);
     const rowWidth = (question.perGroup * iconSize + Math.max(0, question.perGroup - 1) * iconGap) * scale;
     const iconLeft = plateLeft + (plateWidth - rowWidth) / 2;
     const iconTop = topMm + (plateHeight - iconSize * scale) / 2;
