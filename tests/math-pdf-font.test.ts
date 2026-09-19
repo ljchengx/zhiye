@@ -48,7 +48,8 @@ describe("数学练习 PDF 字体", () => {
     const missing = new Set<string>();
     for (const text of texts) {
       for (const character of text.match(/[\u3400-\u9fff]/g) ?? []) {
-        if (font.glyphForCodePoint(character.codePointAt(0)).id === 0) missing.add(character);
+        const codePoint = character.codePointAt(0);
+        if (codePoint !== undefined && font.glyphForCodePoint(codePoint).id === 0) missing.add(character);
       }
     }
     expect([...missing].join("")).toBe("");
