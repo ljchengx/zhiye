@@ -915,7 +915,8 @@ function hay(card){return (bodyIndex&&bodyIndex[card.dataset.id])||card.dataset.
 function filter(){let n=0;const q=search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);for(const card of cards){const show=q.every(part=>hay(card).includes(part))&&(!section.value||card.dataset.section===section.value);card.hidden=!show;if(show)n++;}document.querySelector('#count').textContent=n+' / '+cards.length+' 条';}
 search.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(async()=>{if(search.value.trim()&&!bodyIndex)bodyIndex=await fetch('data/search-index.json').then(r=>r.json());filter();},120);});
 section.addEventListener('input',filter);filter();
-async function openLesson(){const hash=decodeURIComponent(location.hash);if(!hash.startsWith('#lesson-')){document.body.classList.remove('reading');reader.hidden=true;reader.replaceChildren();return;}const id=hash.slice('#lesson-'.length);document.body.classList.add('reading');reader.hidden=false;reader.textContent='正在打开…';try{const response=await fetch('lessons/'+encodeURIComponent(id)+'.html');if(!response.ok)throw new Error(String(response.status));reader.innerHTML=await response.text();scrollTo(0,0);}catch(error){reader.textContent='这节课没有打开。';}}
+async function fetchLesson(id){const stem='lessons/'+encodeURIComponent(id);for(const url of[stem,stem+'.html']){const response=await fetch(url);if(response.ok)return response;}throw new Error('404');}
+async function openLesson(){const hash=decodeURIComponent(location.hash);if(!hash.startsWith('#lesson-')){document.body.classList.remove('reading');reader.hidden=true;reader.replaceChildren();return;}const id=hash.slice('#lesson-'.length);document.body.classList.add('reading');reader.hidden=false;reader.textContent='正在打开…';try{const response=await fetchLesson(id);reader.innerHTML=await response.text();scrollTo(0,0);}catch(error){reader.textContent='这节课没有打开。';}}
 addEventListener('hashchange',openLesson);openLesson();
 </script>
 </body>

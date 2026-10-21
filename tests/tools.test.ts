@@ -185,7 +185,7 @@ describe("启蒙工具注册表", () => {
     expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
     expect(getKidsToolByPath("pinyin-worksheet")?.href).toBe("/kids/pinyin-worksheet");
     expect(getKidsToolByPath("spatial-blocks")?.href).toBe("/kids/spatial-blocks");
-    expect(getKidsToolByPath("english-catalog")?.href).toBe("/kids/catalog/index.html");
+    expect(getKidsToolByPath("english-catalog")?.href).toBe("/kids/catalog/");
     expect(kidsToolDefinitions.map((tool) => ({ format: tool.format, domain: tool.domain, estimatedMinutes: tool.estimatedMinutes }))).toEqual([
       { format: "printable", domain: "math", estimatedMinutes: 15 },
       { format: "printable", domain: "pinyin", estimatedMinutes: 10 },

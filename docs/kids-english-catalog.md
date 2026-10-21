@@ -2,7 +2,7 @@
 
 ## 在站点中的位置
 
-- **首页入口**：`/kids` →「阅读目录」→ `/kids/catalog/index.html`（避免被 `/kids/[slug]` 接走）。Vercel 上 `/kids/catalog` 会重写到同一页。
+- **首页入口**：`/kids` →「阅读目录」→ `/kids/catalog/`（不要用 `/kids/catalog/index.html`，Vercel 部署会去掉 `.html` 后缀导致 404）。
 - **静态文件**：`public/kids/catalog/`（由 `wo-d` 仓库同步，勿手改）
 - **注册表**：`lib/tools/kids-registry.ts` 中 `english-catalog`，`format: "library"`，`component: "static-site"`（不生成 `/kids/english-catalog` 的 Next 页面，避免与静态目录冲突）
 

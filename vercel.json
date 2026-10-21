@@ -2,8 +2,12 @@
   "cleanUrls": false,
   "rewrites": [
     {
-      "source": "/kids/catalog",
-      "destination": "/kids/catalog/index.html"
+      "source": "/kids/catalog/index.html",
+      "destination": "/kids/catalog"
+    },
+    {
+      "source": "/kids/catalog/lessons/:slug.html",
+      "destination": "/kids/catalog/lessons/:slug"
     },
     {
       "source": "/baidu_verify_codeva-bKYy1pUpPr.html",
