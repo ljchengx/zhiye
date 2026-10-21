@@ -56,6 +56,7 @@ const formatLabels: Record<KidsToolFormat, string> = {
   printable: "A4 打印",
   interactive: "在线互动",
   creative: "自由创作",
+  library: "阅读浏览",
 };
 
 function ToolCollection({
@@ -100,10 +101,17 @@ function ToolCollection({
               <ul className={styles.skillList} aria-label={`${tool.title}练习内容`}>
                 {tool.skillAreas.map((skill) => <li key={skill}>{skill}</li>)}
               </ul>
-              <Link className={styles.toolAction} href={getKidsToolHref(tool)}>
-                开始使用
-                <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />
-              </Link>
+              {tool.component === "static-site" ? (
+                <a className={styles.toolAction} href={getKidsToolHref(tool)}>
+                  开始使用
+                  <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />
+                </a>
+              ) : (
+                <Link className={styles.toolAction} href={getKidsToolHref(tool)}>
+                  开始使用
+                  <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />
+                </Link>
+              )}
             </div>
           </article>
         ))}
@@ -117,6 +125,7 @@ export function KidsHomeExperience() {
   const interactiveTools = getKidsToolsByFormat("interactive");
   const printableTools = getKidsToolsByFormat("printable");
   const creativeTools = getKidsToolsByFormat("creative");
+  const libraryTools = getKidsToolsByFormat("library");
 
   return (
     <KidsShell>
@@ -175,6 +184,13 @@ export function KidsHomeExperience() {
             kicker="动手探索"
             title="互动探究"
             description="通过点击、拖动和观察，把抽象概念变成孩子可以直接操作的体验。"
+          />
+          <ToolCollection
+            tools={libraryTools}
+            sectionId="kids-library-tools-title"
+            kicker="朗读积累"
+            title="阅读目录"
+            description="按板块浏览晨读封面与中英正文，支持搜索与导出 PDF，不记录使用状态。"
           />
           <ToolCollection
             tools={printableTools}

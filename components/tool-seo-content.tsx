@@ -129,14 +129,20 @@ export function ToolSeoContent({
           <nav className="tool-seo-content__related" aria-labelledby="related-tools-title">
             <h3 id="related-tools-title">相关工具</h3>
             <ul>
-              {related.map((tool) => (
-                <li key={tool.slug}>
-                  <Link href={tool.href ?? `/${tool.path}`}>
+              {related.map((tool) => {
+                const href = tool.href ?? `/${tool.path}`;
+                const label = (
+                  <>
                     <span>{tool.title}</span>
                     <small>{tool.seo.summary}</small>
-                  </Link>
-                </li>
-              ))}
+                  </>
+                );
+                return (
+                  <li key={tool.slug}>
+                    {tool.component === "static-site" ? <a href={href}>{label}</a> : <Link href={href}>{label}</Link>}
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         ) : null}

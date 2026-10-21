@@ -2,9 +2,9 @@ export type ToolSlug = "base64" | "json-formatter" | "markdown-cleaner" | "image
 
 export type ToolPath = "base64" | "json" | "markdown" | "image-watermark" | "timestamp";
 
-export type ToolIconName = "binary" | "braces" | "eraser" | "stamp" | "clock" | "calculator" | "languages" | "blocks";
+export type ToolIconName = "binary" | "braces" | "eraser" | "stamp" | "clock" | "calculator" | "languages" | "blocks" | "book-open";
 
-export type ToolAccent = "amber" | "sage" | "clay";
+export type ToolAccent = "amber" | "sage" | "clay" | "teal";
 
 export interface ToolFaq {
   question: string;

@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { getKidsToolMetadata, KidsToolPageContent } from "@/components/kids-tool-page";
-import { getKidsToolByPath, kidsToolDefinitions } from "@/lib/tools/kids-registry";
+import { getKidsToolByPath, isKidsAppRouteTool, kidsToolDefinitions } from "@/lib/tools/kids-registry";
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return kidsToolDefinitions.map((tool) => ({ slug: tool.path }));
+  return kidsToolDefinitions.filter(isKidsAppRouteTool).map((tool) => ({ slug: tool.path }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -21,7 +21,7 @@ export default async function KidsToolPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const tool = getKidsToolByPath(slug);
 
-  if (!tool) {
+  if (!tool || !isKidsAppRouteTool(tool)) {
     notFound();
   }
 

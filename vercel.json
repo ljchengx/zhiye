@@ -2,6 +2,10 @@
   "cleanUrls": false,
   "rewrites": [
     {
+      "source": "/kids/catalog",
+      "destination": "/kids/catalog/index.html"
+    },
+    {
       "source": "/baidu_verify_codeva-bKYy1pUpPr.html",
       "destination": "/baidu_verify_codeva-bKYy1pUpPr"
     }

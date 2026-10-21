@@ -1,13 +1,13 @@
 import type { ToolDefinitionBase } from "./registry";
 
-export type KidsToolSlug = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks";
-export type KidsToolPath = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks";
-export type KidsToolFormat = "printable" | "interactive" | "creative";
-export type KidsContentDomain = "math" | "pinyin" | "chinese" | "spatial" | "logic" | "science";
-export type KidsToolComponent = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks";
+export type KidsToolSlug = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks" | "english-catalog";
+export type KidsToolPath = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks" | "english-catalog";
+export type KidsToolFormat = "printable" | "interactive" | "creative" | "library";
+export type KidsContentDomain = "math" | "pinyin" | "chinese" | "spatial" | "logic" | "science" | "english";
+export type KidsToolComponent = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks" | "static-site";
 
 interface KidsToolDefinitionBase extends ToolDefinitionBase<KidsToolSlug, KidsToolPath> {
-  href: `/kids/${KidsToolPath}`;
+  href: `/kids/${KidsToolPath}` | "/kids/catalog/index.html";
   component: KidsToolComponent;
   summary: string;
   stage: string;
@@ -28,7 +28,17 @@ export interface KidsStatefulToolDefinition extends KidsToolDefinitionBase {
   activityId: string;
 }
 
-export type KidsToolDefinition = KidsPrintableToolDefinition | KidsStatefulToolDefinition;
+export interface KidsStaticSiteToolDefinition extends KidsToolDefinitionBase {
+  format: "library";
+  component: "static-site";
+  activityId?: never;
+}
+
+export type KidsToolDefinition = KidsPrintableToolDefinition | KidsStatefulToolDefinition | KidsStaticSiteToolDefinition;
+
+export function isKidsAppRouteTool(tool: KidsToolDefinition): boolean {
+  return tool.component !== "static-site";
+}
 
 export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
   {
@@ -289,10 +299,65 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
       ],
     },
   },
+  {
+    slug: "english-catalog",
+    path: "english-catalog",
+    href: "/kids/catalog/index.html",
+    component: "static-site",
+    title: "英语晨读目录",
+    titleEn: "English Reading Catalog",
+    shortTitle: "晨读目录",
+    shortTitleEn: "Reading Catalog",
+    summary: "八个板块、800+ 节中英对照晨读，按封面整理，可搜索、阅读并导出 PDF。",
+    description: "浏览低幼启蒙、日常表达、科普等板块的英语晨读封面与正文。",
+    descriptionEn: "Browse bilingual morning reading lessons with covers, search, and PDF export.",
+    category: "英语晨读",
+    categoryEn: "English reading",
+    keywords: ["英语晨读", "中英对照", "儿童英语", "启蒙英语", "每日晨读", "英语阅读目录"],
+    icon: "book-open",
+    accent: "teal",
+    stage: "4～12 岁",
+    format: "library",
+    domain: "english",
+    estimatedMinutes: 10,
+    skillAreas: ["英语朗读", "中英对照", "分板块浏览", "PDF 导出"],
+    previewImage: "/kids/catalog-preview.webp",
+    order: 1,
+    metadata: {
+      title: "英语晨读目录 - 中英对照阅读与搜索",
+      description: "在一程一成长中浏览八个板块的英语晨读课程，查看封面与中英正文，支持全文搜索与单课 PDF 导出。",
+    },
+    seo: {
+      heading: "英语晨读目录在线浏览",
+      summary: "按板块浏览晨读封面，点开即可看中英对照正文。",
+      intro: "英语晨读目录汇总多个板块的封面与整理后的中英句子，适合家庭晨读前先选篇、再朗读。内容在浏览器本地加载，无需额外登录。",
+      features: [
+        "865 节课程卡片，按板块与节次排序。",
+        "全文搜索标题与正文关键词。",
+        "阅读页支持导出 PDF，方便打印。",
+      ],
+      steps: [
+        "从首页进入英语晨读目录。",
+        "用板块筛选或搜索找到想读的一篇。",
+        "点击卡片阅读中英正文，需要时可导出 PDF。",
+      ],
+      h1: "英语晨读目录",
+      sections: [],
+      faqs: [
+        { question: "需要登录吗？", answer: "不需要。目录与阅读页在浏览器中直接打开即可使用。" },
+        { question: "和数学、拼音工具有数据互通吗？", answer: "不会。晨读目录是独立的静态阅读模块，不读取其他工具的使用记录。" },
+      ],
+    },
+  },
 ];
 
 export function getKidsToolByPath(path: string): KidsToolDefinition | undefined {
-  return kidsToolDefinitions.find((tool) => tool.path === path || tool.href === `/kids/${path}`);
+  return kidsToolDefinitions.find((tool) => {
+    if (tool.component === "static-site") {
+      return tool.path === path;
+    }
+    return tool.path === path || tool.href === `/kids/${path}`;
+  });
 }
 
 export function getKidsToolHref(tool: Pick<KidsToolDefinition, "href">): string {
