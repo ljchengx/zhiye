@@ -1,16 +1,9 @@
 {
   "cleanUrls": false,
-  "redirects": [
-    {
-      "source": "/kids/catalog",
-      "destination": "/kids/catalog/",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
       "source": "/kids/catalog/index.html",
-      "destination": "/kids/catalog/"
+      "destination": "/kids/catalog"
     },
     {
       "source": "/kids/catalog/lessons/:slug.html",

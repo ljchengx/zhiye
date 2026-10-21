@@ -2,7 +2,7 @@
 
 ## 在站点中的位置
 
-- **首页入口**：`/kids` →「阅读目录」→ `/kids/catalog/`（必须带尾部 `/`；否则相对路径 `covers/` 会错指到 `/kids/covers/` 导致封面全挂。页面内已加 `<base href="/kids/catalog/">` 兜底。）
+- **首页入口**：`/kids` →「阅读目录」→ `/kids/catalog`（勿在 Vercel 上强制加尾斜杠，会与平台规则形成重定向环。封面相对路径靠页面内 `<base href="/kids/catalog/">` 解析。）
 - **静态文件**：`public/kids/catalog/`（由 `wo-d` 仓库同步，勿手改）
 - **注册表**：`lib/tools/kids-registry.ts` 中 `english-catalog`，`format: "library"`，`component: "static-site"`（不生成 `/kids/english-catalog` 的 Next 页面，避免与静态目录冲突）
 

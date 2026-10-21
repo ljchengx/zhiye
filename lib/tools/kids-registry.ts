@@ -7,7 +7,7 @@ export type KidsContentDomain = "math" | "pinyin" | "chinese" | "spatial" | "log
 export type KidsToolComponent = "math-worksheet" | "pinyin-worksheet" | "spatial-blocks" | "static-site";
 
 interface KidsToolDefinitionBase extends ToolDefinitionBase<KidsToolSlug, KidsToolPath> {
-  href: `/kids/${KidsToolPath}` | "/kids/catalog/";
+  href: `/kids/${KidsToolPath}` | "/kids/catalog";
   component: KidsToolComponent;
   summary: string;
   stage: string;
@@ -302,7 +302,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
   {
     slug: "english-catalog",
     path: "english-catalog",
-    href: "/kids/catalog/",
+    href: "/kids/catalog",
     component: "static-site",
     title: "英语晨读目录",
     titleEn: "English Reading Catalog",
