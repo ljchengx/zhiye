@@ -70,20 +70,102 @@
     return blocks;
   }
 
+  function splitEnZhMixed(text) {
+    const value = (text || "").trim();
+    if (!value) return { en: "", zh: "" };
+    const index = value.search(/[\u4e00-\u9fff]/);
+    if (index <= 0) return { en: value, zh: "" };
+    const en = value.slice(0, index).trim();
+    const zh = value.slice(index).trim();
+    if (zh.length < 2) return { en: value, zh: "" };
+    return { en, zh };
+  }
+
+  /** 解析 DOM：新闻/长文常把中文写在 .en 内，需拆开再精简。 */
+  function blocksForPdfFromReading(root) {
+    const blocks = [];
+    if (!root) return blocks;
+    root.querySelectorAll(".sentence, h3, .vocab li, .words li").forEach((node) => {
+      if (node.matches(".sentence")) {
+        const english = node.querySelector(".en");
+        const chinese = node.querySelector(".zh");
+        const enRaw = english?.textContent.trim() || "";
+        const zhRaw = chinese?.textContent.trim() || "";
+        if (zhRaw) {
+          if (enRaw) blocks.push({ kind: "en", text: enRaw });
+          blocks.push({ kind: "zh", text: zhRaw });
+          return;
+        }
+        if (!enRaw) return;
+        const split = splitEnZhMixed(enRaw);
+        if (split.zh) {
+          if (split.en) blocks.push({ kind: "en", text: split.en });
+          blocks.push({ kind: "zh", text: split.zh });
+        } else {
+          blocks.push({ kind: "en", text: enRaw });
+        }
+      } else if (node.matches("h3")) {
+        blocks.push({ kind: "heading", text: node.textContent.trim() });
+      } else if (node.textContent.trim()) {
+        blocks.push({ kind: "line", text: node.textContent.trim() });
+      }
+    });
+    return blocks;
+  }
+
   function normalizePdfKey(text) {
     return (text || "").toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, " ").replace(/\s+/g, " ").trim();
   }
 
-  function isPdfOcrNoise(text) {
+  function isPdfOcrNoise(text, strict) {
     const value = (text || "").trim();
     if (!value) return true;
-    if (value.length > 160) return true;
-    if (/\bLesson\s*\d+/i.test(value) && value.length > 36) return true;
-    if ((value.match(/\d/g) || []).length > 14) return true;
+    if (value.length > (strict ? 120 : 160)) return true;
+    if (/\bLesson\s*\d+/i.test(value) && value.length > 28) return true;
+    if ((value.match(/\d/g) || []).length > (strict ? 8 : 14)) return true;
     const letters = (value.match(/[a-zA-Z]/g) || []).length;
     const stuck = (value.match(/[a-z][A-Z]/g) || []).length;
-    if (letters > 30 && stuck > 8) return true;
+    if (letters > 24 && stuck > (strict ? 4 : 8)) return true;
+    if (strict && !/[\u4e00-\u9fff]/.test(value) && stuck > 2 && value.length > 48) return true;
     return false;
+  }
+
+  function sectionFromMeta(meta) {
+    const text = meta || "";
+    const index = text.indexOf("·");
+    return index === -1 ? "" : text.slice(0, index).trim();
+  }
+
+  const PDF_SECTION_PROFILES = {
+    低幼启蒙篇: { maxWordLines: 0, maxPairs: 8, requireZh: false, minZhLen: 1, maxEnOnlyLen: 48 },
+    日常表达: { maxWordLines: 10, maxPairs: 8, requireZh: false, minZhLen: 1, maxEnOnlyLen: 56 },
+    每日晨读: { maxWordLines: 0, maxPairs: 10, requireZh: true, minZhLen: 2, maxEnOnlyLen: 0 },
+    科普启蒙篇: { maxWordLines: 8, maxPairs: 8, requireZh: true, minZhLen: 1, maxEnOnlyLen: 0 },
+    科普进阶篇: { maxWordLines: 6, maxPairs: 6, requireZh: true, minZhLen: 2, maxEnOnlyLen: 0 },
+    用英文讲好中国故事: { maxWordLines: 0, maxPairs: 8, requireZh: true, minZhLen: 2, maxEnOnlyLen: 0 },
+    新闻时事: { maxWordLines: 0, maxPairs: 6, requireZh: true, minZhLen: 2, maxEnOnlyLen: 0 },
+    XIN概念: { maxWordLines: 0, maxPairs: 8, requireZh: true, minZhLen: 2, maxEnOnlyLen: 0, strictNoise: true },
+  };
+
+  function pdfProfile(meta) {
+    const section = sectionFromMeta(meta);
+    return (
+      PDF_SECTION_PROFILES[section] || {
+        maxWordLines: 8,
+        maxPairs: 10,
+        requireZh: false,
+        minZhLen: 1,
+        maxEnOnlyLen: 40,
+      }
+    );
+  }
+
+  function polishEnLine(text, strict) {
+    let en = (text || "").trim();
+    en = en.replace(/^Lesson\s*\d+[.:\s-]*/i, "");
+    en = en.replace(/\s+/g, " ").trim();
+    if (strict && isPdfOcrNoise(en, true)) return "";
+    return en;
   }
 
   function parseWordChip(text) {
@@ -93,8 +175,10 @@
     return { en: value, zh: "" };
   }
 
-  /** PDF 专用：精简为「词汇 + 核心句型」，去掉 OCR 垃圾与重复，不是封面逐字翻译。 */
-  function simplifyBlocksForPdf(rawBlocks, title) {
+  /** PDF 专用：按板块精简为「词汇 + 核心句型」，全站统一规则。 */
+  function simplifyBlocksForPdf(rawBlocks, title, meta) {
+    const profile = pdfProfile(meta);
+    const strict = Boolean(profile.strictNoise);
     const titleKey = normalizePdfKey(title);
     const words = [];
     const headings = [];
@@ -124,20 +208,26 @@
         }
       }
     }
-    if (pendingEn && !isPdfOcrNoise(pendingEn)) {
+    if (pendingEn && !isPdfOcrNoise(pendingEn, strict)) {
       pairs.push({ en: pendingEn, zh: "" });
     }
 
     const seenPair = new Set();
     const cleanPairs = [];
     for (const pair of pairs) {
-      let en = pair.en.trim();
+      let en = polishEnLine(pair.en, strict);
       let zh = pair.zh.trim();
       if (!en && !zh) continue;
       if (en && normalizePdfKey(en) === titleKey) en = "";
-      if (isPdfOcrNoise(en) && !zh) continue;
-      if (isPdfOcrNoise(en) && zh.length < 2) continue;
-      if (!zh && en && en.length > 90) continue;
+      if (isPdfOcrNoise(en, strict) && !zh) continue;
+      if (zh && zh.length < profile.minZhLen) zh = "";
+      if (profile.requireZh && !zh) continue;
+      if (!zh && en) {
+        if (profile.maxEnOnlyLen === 0) continue;
+        if (en.length > profile.maxEnOnlyLen) continue;
+        if (isPdfOcrNoise(en, strict)) continue;
+      }
+      if (isPdfOcrNoise(en, strict) && zh.length < profile.minZhLen) continue;
       const key = normalizePdfKey(en) + "|" + normalizePdfKey(zh);
       if (seenPair.has(key)) continue;
       seenPair.add(key);
@@ -157,19 +247,31 @@
       }
       if (line.trim()) wordLines.push(line.trim());
     }
-    if (wordLines.length) {
+    const wordLimit = profile.maxWordLines;
+    if (wordLines.length && wordLimit > 0) {
       out.push({ kind: "heading", text: "词汇" });
-      for (const line of wordLines.slice(0, 10)) out.push({ kind: "line", text: line });
+      for (const line of wordLines.slice(0, wordLimit)) out.push({ kind: "line", text: line });
     } else if (headings.length) {
       for (const heading of headings.slice(0, 2)) out.push({ kind: "heading", text: heading });
     }
 
     if (cleanPairs.length) {
-      out.push({ kind: "heading", text: "句型" });
-      const limit = wordLines.length ? 10 : 14;
-      for (const pair of cleanPairs.slice(0, limit)) {
+      const heading = profile.maxWordLines > 0 ? "句型" : "精读";
+      out.push({ kind: "heading", text: heading });
+      const pairLimit = profile.maxPairs;
+      for (const pair of cleanPairs.slice(0, pairLimit)) {
         if (pair.en) out.push({ kind: "en", text: pair.en });
         if (pair.zh) out.push({ kind: "zh", text: pair.zh });
+      }
+    } else if (pairs.length) {
+      out.push({ kind: "heading", text: "摘要" });
+      for (const pair of pairs.slice(0, 3)) {
+        const en = polishEnLine(pair.en, strict);
+        const zh = pair.zh.trim();
+        if (zh && zh.length >= 2) {
+          if (en && !isPdfOcrNoise(en, strict)) out.push({ kind: "en", text: en.slice(0, 200) });
+          out.push({ kind: "zh", text: zh.slice(0, 320) });
+        }
       }
     }
     return out;
@@ -202,11 +304,11 @@
     const meta = doc.querySelector(".reading .meta")?.textContent.trim() || "";
     const reading = doc.querySelector(".reading");
     const coverSrc = doc.querySelector(".poster img")?.getAttribute("src") || "";
-    const raw = blocksFromReading(reading);
+    const raw = blocksForPdfFromReading(reading);
     return {
       title,
       meta,
-      blocks: simplifyBlocksForPdf(raw, title),
+      blocks: simplifyBlocksForPdf(raw, title, meta),
       coverSrc,
     };
   }
@@ -524,8 +626,9 @@
       const titleEl = document.querySelector("#reader h2");
       const title = titleEl?.textContent.trim() || "课程";
       const blocks = simplifyBlocksForPdf(
-        blocksFromReading(document.querySelector("#reader .reading")),
-        title
+        blocksForPdfFromReading(document.querySelector("#reader .reading")),
+        title,
+        meta
       );
       let cover = null;
       try {
