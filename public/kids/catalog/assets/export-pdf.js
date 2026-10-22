@@ -236,42 +236,56 @@
   function drawTextPages(title, meta, blocks) {
     const width = 595;
     const height = 842;
-    const margin = 48;
-    const bottom = height - 42;
+    const margin = 44;
+    const bottom = height - 36;
     const maxWidth = width - margin * 2;
-    const pages = [];
-    let sheet = makeCanvas(width, height);
-    let y = margin;
 
-    function newPage() {
-      pages.push(sheet);
-      sheet = makeCanvas(width, height);
-      y = margin;
-    }
+    function layout(scale) {
+      const sheet = makeCanvas(width, height);
+      let y = margin;
+      let overflow = false;
 
-    function write(text, font, color, gap) {
-      const lineHeight = Number(font.match(/(\d+)px/)[1]) + 8;
-      const lines = wrap(sheet.ctx, text, maxWidth);
-      for (const line of lines) {
-        if (y + lineHeight > bottom) newPage();
+      function write(text, px, color, gap) {
+        if (overflow) return;
+        const value = (text || "").trim();
+        if (!value) return;
+        const size = Math.max(9, Math.round(px * scale));
+        const font = size + "px " + FONT;
+        const lineHeight = size + 6;
         sheet.ctx.font = font;
-        sheet.ctx.fillStyle = color;
-        sheet.ctx.fillText(line, margin, y + lineHeight - 8);
-        y += lineHeight;
+        const lines = wrap(sheet.ctx, value, maxWidth);
+        for (const line of lines) {
+          if (y + lineHeight > bottom) {
+            overflow = true;
+            return;
+          }
+          sheet.ctx.font = font;
+          sheet.ctx.fillStyle = color;
+          sheet.ctx.fillText(line, margin, y + lineHeight - 6);
+          y += lineHeight;
+        }
+        y += Math.max(2, Math.round(gap * scale));
       }
-      y += gap;
+
+      write(meta, 13, "#607484", 6);
+      write(title, 26, "#1b2c38", 12);
+      for (const block of blocks) {
+        if (overflow) break;
+        if (block.kind === "heading") write(block.text, 14, "#607484", 6);
+        if (block.kind === "en") write(block.text, 18, "#1b2c38", 2);
+        if (block.kind === "zh") write(block.text, 14, "#5d7280", 8);
+        if (block.kind === "line") write(block.text, 13, "#243846", 4);
+      }
+      return { sheet, overflow };
     }
 
-    write(meta || "", "13px " + FONT, "#607484", 8);
-    write(title || "", "26px " + FONT, "#1b2c38", 18);
-    for (const block of blocks) {
-      if (block.kind === "heading") write(block.text, "14px " + FONT, "#607484", 8);
-      if (block.kind === "en") write(block.text, "18px " + FONT, "#1b2c38", 2);
-      if (block.kind === "zh") write(block.text, "14px " + FONT, "#5d7280", 14);
-      if (block.kind === "line") write(block.text, "13px " + FONT, "#243846", 6);
+    let scale = 1;
+    let result = layout(scale);
+    while (result.overflow && scale > 0.5) {
+      scale -= 0.05;
+      result = layout(scale);
     }
-    pages.push(sheet);
-    return pages;
+    return [result.sheet];
   }
 
   async function encodeSheetsMain(sheets) {
@@ -353,7 +367,7 @@
     if (coverBitmap) sheets.push(drawCover(coverBitmap));
     sheets.push(...drawTextPages(lesson.title, lesson.meta, lesson.blocks));
     if (coverBitmap && typeof coverBitmap.close === "function") coverBitmap.close();
-    return encodeSheetsMain(sheets);
+    return encodeSheetsMain(sheets.slice(0, 2));
   }
 
   async function encodeLesson(lesson, coverBitmap) {
