@@ -70,6 +70,111 @@
     return blocks;
   }
 
+  function normalizePdfKey(text) {
+    return (text || "").toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function isPdfOcrNoise(text) {
+    const value = (text || "").trim();
+    if (!value) return true;
+    if (value.length > 160) return true;
+    if (/\bLesson\s*\d+/i.test(value) && value.length > 36) return true;
+    if ((value.match(/\d/g) || []).length > 14) return true;
+    const letters = (value.match(/[a-zA-Z]/g) || []).length;
+    const stuck = (value.match(/[a-z][A-Z]/g) || []).length;
+    if (letters > 30 && stuck > 8) return true;
+    return false;
+  }
+
+  function parseWordChip(text) {
+    const value = (text || "").trim();
+    const match = value.match(/^(.+?)\s+([\u4e00-\u9fff\u3000-\u303f\uff00-\uffef].*)$/);
+    if (match) return { en: match[1].trim(), zh: match[2].trim() };
+    return { en: value, zh: "" };
+  }
+
+  /** PDF 专用：精简为「词汇 + 核心句型」，去掉 OCR 垃圾与重复，不是封面逐字翻译。 */
+  function simplifyBlocksForPdf(rawBlocks, title) {
+    const titleKey = normalizePdfKey(title);
+    const words = [];
+    const headings = [];
+    const pairs = [];
+    let pendingEn = "";
+
+    for (const block of rawBlocks) {
+      if (block.kind === "heading") {
+        headings.push(block.text.trim());
+        continue;
+      }
+      if (block.kind === "line") {
+        words.push(parseWordChip(block.text));
+        continue;
+      }
+      if (block.kind === "en") {
+        pendingEn = block.text.trim();
+        continue;
+      }
+      if (block.kind === "zh") {
+        const zh = block.text.trim();
+        if (pendingEn) {
+          pairs.push({ en: pendingEn, zh });
+          pendingEn = "";
+        } else if (zh) {
+          pairs.push({ en: "", zh });
+        }
+      }
+    }
+    if (pendingEn && !isPdfOcrNoise(pendingEn)) {
+      pairs.push({ en: pendingEn, zh: "" });
+    }
+
+    const seenPair = new Set();
+    const cleanPairs = [];
+    for (const pair of pairs) {
+      let en = pair.en.trim();
+      let zh = pair.zh.trim();
+      if (!en && !zh) continue;
+      if (en && normalizePdfKey(en) === titleKey) en = "";
+      if (isPdfOcrNoise(en) && !zh) continue;
+      if (isPdfOcrNoise(en) && zh.length < 2) continue;
+      if (!zh && en && en.length > 90) continue;
+      const key = normalizePdfKey(en) + "|" + normalizePdfKey(zh);
+      if (seenPair.has(key)) continue;
+      seenPair.add(key);
+      if (!en && !zh) continue;
+      cleanPairs.push({ en, zh });
+    }
+
+    const out = [];
+    const wordLines = [];
+    for (let index = 0; index < words.length; index += 2) {
+      const left = words[index];
+      const right = words[index + 1];
+      let line = left.zh ? left.en + " " + left.zh : left.en;
+      if (right) {
+        const tail = right.zh ? right.en + " " + right.zh : right.en;
+        line += "    ·    " + tail;
+      }
+      if (line.trim()) wordLines.push(line.trim());
+    }
+    if (wordLines.length) {
+      out.push({ kind: "heading", text: "词汇" });
+      for (const line of wordLines.slice(0, 10)) out.push({ kind: "line", text: line });
+    } else if (headings.length) {
+      for (const heading of headings.slice(0, 2)) out.push({ kind: "heading", text: heading });
+    }
+
+    if (cleanPairs.length) {
+      out.push({ kind: "heading", text: "句型" });
+      const limit = wordLines.length ? 10 : 14;
+      for (const pair of cleanPairs.slice(0, limit)) {
+        if (pair.en) out.push({ kind: "en", text: pair.en });
+        if (pair.zh) out.push({ kind: "zh", text: pair.zh });
+      }
+    }
+    return out;
+  }
+
   async function bitmapFromSrc(src) {
     if (!src) return null;
     const url = new URL(src, document.baseURI).href;
@@ -97,10 +202,11 @@
     const meta = doc.querySelector(".reading .meta")?.textContent.trim() || "";
     const reading = doc.querySelector(".reading");
     const coverSrc = doc.querySelector(".poster img")?.getAttribute("src") || "";
+    const raw = blocksFromReading(reading);
     return {
       title,
       meta,
-      blocks: blocksFromReading(reading),
+      blocks: simplifyBlocksForPdf(raw, title),
       coverSrc,
     };
   }
@@ -414,9 +520,13 @@
       button.textContent = "正在生成 PDF…";
     }
     try {
-      const title = document.querySelector("#reader h2")?.textContent.trim() || "课程";
       const meta = document.querySelector("#reader .meta")?.textContent.trim() || "";
-      const blocks = blocksFromReading(document.querySelector("#reader .reading"));
+      const titleEl = document.querySelector("#reader h2");
+      const title = titleEl?.textContent.trim() || "课程";
+      const blocks = simplifyBlocksForPdf(
+        blocksFromReading(document.querySelector("#reader .reading")),
+        title
+      );
       let cover = null;
       try {
         cover = await bitmapFromImageElement(document.querySelector("#reader .poster img"));
