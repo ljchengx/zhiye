@@ -1,4 +1,4 @@
-/* 把当前课程导出成 PDF：第一页是封面图片，后面是正文图片页。 */
+/* 把课程导出成 PDF：第一页封面，后面正文；支持单节与目录批量。 */
 (function () {
   const FONT = '"Microsoft YaHei","PingFang SC",sans-serif';
 
@@ -172,8 +172,7 @@
     return concat(chunks);
   }
 
-  function lessonBlocks() {
-    const root = document.querySelector("#reader .reading");
+  function blocksFromReading(root) {
     const blocks = [];
     if (!root) return blocks;
     root.querySelectorAll(".sentence, h3, .vocab li, .words li").forEach((node) => {
@@ -191,8 +190,7 @@
     return blocks;
   }
 
-  async function loadCover() {
-    const image = document.querySelector("#reader .poster img");
+  async function loadImageElement(image) {
     if (!image) return null;
     if (!image.complete || !image.naturalWidth) {
       await new Promise((resolve, reject) => {
@@ -201,6 +199,72 @@
       });
     }
     return image.naturalWidth ? image : null;
+  }
+
+  async function loadImageUrl(src) {
+    if (!src) return null;
+    const url = new URL(src, document.baseURI).href;
+    const image = new Image();
+    image.decoding = "async";
+    image.src = url;
+    return loadImageElement(image);
+  }
+
+  async function encodeSheets(sheets) {
+    const encoded = [];
+    for (const sheet of sheets) {
+      encoded.push({
+        jpeg: await jpegBytes(sheet.canvas),
+        pxWidth: sheet.canvas.width,
+        pxHeight: sheet.canvas.height,
+        ptWidth: sheet.width,
+        ptHeight: sheet.height,
+      });
+    }
+    return encoded;
+  }
+
+  async function downloadPdf(encodedPages, filename) {
+    const bytes = pdfFromJpegs(encodedPages);
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const link = document.createElement("a");
+    const safe = (filename || "课程").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+    link.href = URL.createObjectURL(blob);
+    link.download = safe.endsWith(".pdf") ? safe : safe + ".pdf";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+    return bytes.length;
+  }
+
+  function safeFilename(title) {
+    return title.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  async function fetchLessonHtml(id) {
+    const stem = "lessons/" + encodeURIComponent(id);
+    for (const url of [stem, stem + ".html"]) {
+      const response = await fetch(url);
+      if (response.ok) return response.text();
+    }
+    throw new Error("404");
+  }
+
+  async function sheetsForLessonHtml(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const title = doc.querySelector(".reading h2")?.textContent.trim() || "课程";
+    const meta = doc.querySelector(".reading .meta")?.textContent.trim() || "";
+    const reading = doc.querySelector(".reading");
+    const blocks = blocksFromReading(reading);
+    const sheets = [];
+    const coverSrc = doc.querySelector(".poster img")?.getAttribute("src");
+    try {
+      const cover = await loadImageUrl(coverSrc);
+      if (cover) sheets.push(drawCover(cover));
+    } catch (_) {
+      /* 封面加载失败时仍导出正文 */
+    }
+    sheets.push(...drawTextPages(title, meta, blocks));
+    return { title, sheets };
   }
 
   window.exportLessonPdf = async function exportLessonPdf(button) {
@@ -212,33 +276,57 @@
     try {
       const title = document.querySelector("#reader h2")?.textContent.trim() || "课程";
       const meta = document.querySelector("#reader .meta")?.textContent.trim() || "";
-      const pages = [];
-      const cover = await loadCover();
-      if (cover) pages.push(drawCover(cover));
-      pages.push(...drawTextPages(title, meta, lessonBlocks()));
-      const encoded = [];
-      for (const sheet of pages) {
-        encoded.push({
-          jpeg: await jpegBytes(sheet.canvas),
-          pxWidth: sheet.canvas.width,
-          pxHeight: sheet.canvas.height,
-          ptWidth: sheet.width,
-          ptHeight: sheet.height,
-        });
-      }
-      const bytes = pdfFromJpegs(encoded);
-      const blob = new Blob([bytes], { type: "application/pdf" });
-      const link = document.createElement("a");
-      const safe = title.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
-      link.href = URL.createObjectURL(blob);
-      link.download = safe + ".pdf";
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 2000);
-      return bytes.length;
+      const sheets = [];
+      const cover = await loadImageElement(document.querySelector("#reader .poster img"));
+      if (cover) sheets.push(drawCover(cover));
+      sheets.push(...drawTextPages(title, meta, blocksFromReading(document.querySelector("#reader .reading"))));
+      return downloadPdf(await encodeSheets(sheets), safeFilename(title));
     } finally {
       if (button) {
         button.disabled = false;
         button.textContent = label || "导出 PDF";
+      }
+    }
+  };
+
+  window.exportCatalogBatch = async function exportCatalogBatch(ids, button, onProgress) {
+    if (!ids || !ids.length) return 0;
+    const label = button ? button.textContent : "";
+    if (button) button.disabled = true;
+    const failures = [];
+    let firstTitle = "";
+    try {
+      const allSheets = [];
+      for (let index = 0; index < ids.length; index += 1) {
+        const id = ids[index];
+        if (button) button.textContent = "正在生成 " + (index + 1) + "/" + ids.length + "…";
+        if (onProgress) onProgress(index + 1, ids.length, id);
+        try {
+          const html = await fetchLessonHtml(id);
+          const lesson = await sheetsForLessonHtml(html);
+          if (!firstTitle) firstTitle = lesson.title;
+          allSheets.push(...lesson.sheets);
+        } catch (error) {
+          failures.push(id);
+        }
+      }
+      if (!allSheets.length) throw new Error("没有可导出的内容");
+      const name =
+        ids.length === 1 && firstTitle
+          ? safeFilename(firstTitle)
+          : "英语晨读-批量-" + (ids.length - failures.length) + "节";
+      const size = await downloadPdf(await encodeSheets(allSheets), name);
+      if (failures.length && button) {
+        button.textContent = "完成（" + failures.length + " 节失败）";
+        setTimeout(() => {
+          button.textContent = label || "批量导出 PDF";
+        }, 2500);
+      }
+      return size;
+    } finally {
+      if (button) {
+        button.disabled = false;
+        if (button.textContent.startsWith("正在生成")) button.textContent = label || "批量导出 PDF";
       }
     }
   };
