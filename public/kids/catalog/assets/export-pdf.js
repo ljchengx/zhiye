@@ -1,6 +1,18 @@
-/* 把课程导出成 PDF：第一页封面，后面正文；支持单节与目录批量。 */
+/* 把课程导出成 PDF：第一页封面，后面正文；支持单节与目录批量。
+ * 绘制与 PDF 组装仍在主线程（浏览器 Canvas 限制），批量时按课节/分页 yield，避免长时间卡死 UI。 */
 (function () {
   const FONT = '"Microsoft YaHei","PingFang SC",sans-serif';
+
+  function yieldToMain() {
+    if (typeof scheduler !== "undefined" && typeof scheduler.yield === "function") {
+      return scheduler.yield();
+    }
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        setTimeout(resolve, 0);
+      });
+    });
+  }
 
   function concat(parts) {
     const total = parts.reduce((sum, part) => sum + part.length, 0);
@@ -115,7 +127,7 @@
     return pages;
   }
 
-  function pdfFromJpegs(pages) {
+  async function pdfFromJpegsAsync(pages) {
     const encoder = new TextEncoder();
     const bodies = [];
     function text(value) {
@@ -132,7 +144,8 @@
     });
     bodies[1] = text("<< /Type /Catalog /Pages 2 0 R >>");
     bodies[2] = text("<< /Type /Pages /Count " + pages.length + " /Kids [" + pageIds.map((id) => id + " 0 R").join(" ") + "] >>");
-    for (const record of records) {
+    for (let index = 0; index < records.length; index += 1) {
+      const record = records[index];
       const content = "q\n" + record.page.ptWidth + " 0 0 " + record.page.ptHeight + " 0 0 cm\n/Im0 Do\nQ\n";
       const contentBytes = text(content);
       bodies[record.pageId] = text(
@@ -152,6 +165,7 @@
         record.page.jpeg,
         text("\nendstream"),
       ]);
+      if ((index + 1) % 6 === 0) await yieldToMain();
     }
     const chunks = [text("%PDF-1.4\n")];
     let length = chunks[0].length;
@@ -161,6 +175,7 @@
       const piece = concat([text(id + " 0 obj\n"), bodies[id], text("\nendobj\n")]);
       chunks.push(piece);
       length += piece.length;
+      if (id % 24 === 0) await yieldToMain();
     }
     const xrefAt = length;
     let xref = "xref\n0 " + bodies.length + "\n0000000000 65535 f \n";
@@ -169,6 +184,7 @@
     }
     xref += "trailer\n<< /Size " + bodies.length + " /Root 1 0 R >>\nstartxref\n" + xrefAt + "\n%%EOF";
     chunks.push(text(xref));
+    await yieldToMain();
     return concat(chunks);
   }
 
@@ -204,15 +220,33 @@
   async function loadImageUrl(src) {
     if (!src) return null;
     const url = new URL(src, document.baseURI).href;
+    if (typeof createImageBitmap === "function") {
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const blob = await response.blob();
+          return createImageBitmap(blob);
+        }
+      } catch (_) {
+        /* 回退到 Image */
+      }
+    }
     const image = new Image();
     image.decoding = "async";
     image.src = url;
     return loadImageElement(image);
   }
 
+  function releaseSheet(sheet) {
+    if (!sheet?.canvas) return;
+    sheet.canvas.width = 0;
+    sheet.canvas.height = 0;
+  }
+
   async function encodeSheets(sheets) {
     const encoded = [];
-    for (const sheet of sheets) {
+    for (let index = 0; index < sheets.length; index += 1) {
+      const sheet = sheets[index];
       encoded.push({
         jpeg: await jpegBytes(sheet.canvas),
         pxWidth: sheet.canvas.width,
@@ -220,12 +254,14 @@
         ptWidth: sheet.width,
         ptHeight: sheet.height,
       });
+      releaseSheet(sheet);
+      await yieldToMain();
     }
     return encoded;
   }
 
   async function downloadPdf(encodedPages, filename) {
-    const bytes = pdfFromJpegs(encodedPages);
+    const bytes = await pdfFromJpegsAsync(encodedPages);
     const blob = new Blob([bytes], { type: "application/pdf" });
     const link = document.createElement("a");
     const safe = (filename || "课程").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
@@ -259,11 +295,16 @@
     const coverSrc = doc.querySelector(".poster img")?.getAttribute("src");
     try {
       const cover = await loadImageUrl(coverSrc);
-      if (cover) sheets.push(drawCover(cover));
+      if (cover) {
+        sheets.push(drawCover(cover));
+        if (typeof cover.close === "function") cover.close();
+      }
     } catch (_) {
       /* 封面加载失败时仍导出正文 */
     }
+    await yieldToMain();
     sheets.push(...drawTextPages(title, meta, blocks));
+    await yieldToMain();
     return { title, sheets };
   }
 
@@ -295,27 +336,31 @@
     if (button) button.disabled = true;
     const failures = [];
     let firstTitle = "";
+    const encodedPages = [];
     try {
-      const allSheets = [];
       for (let index = 0; index < ids.length; index += 1) {
         const id = ids[index];
         if (button) button.textContent = "正在生成 " + (index + 1) + "/" + ids.length + "…";
         if (onProgress) onProgress(index + 1, ids.length, id);
+        await yieldToMain();
         try {
           const html = await fetchLessonHtml(id);
           const lesson = await sheetsForLessonHtml(html);
           if (!firstTitle) firstTitle = lesson.title;
-          allSheets.push(...lesson.sheets);
+          const pages = await encodeSheets(lesson.sheets);
+          encodedPages.push(...pages);
         } catch (error) {
           failures.push(id);
         }
       }
-      if (!allSheets.length) throw new Error("没有可导出的内容");
+      if (!encodedPages.length) throw new Error("没有可导出的内容");
+      if (button) button.textContent = "正在打包 PDF…";
+      await yieldToMain();
       const name =
         ids.length === 1 && firstTitle
           ? safeFilename(firstTitle)
           : "英语晨读-批量-" + (ids.length - failures.length) + "节";
-      const size = await downloadPdf(await encodeSheets(allSheets), name);
+      const size = await downloadPdf(encodedPages, name);
       if (failures.length && button) {
         button.textContent = "完成（" + failures.length + " 节失败）";
         setTimeout(() => {
