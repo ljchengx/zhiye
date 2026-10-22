@@ -9,14 +9,22 @@
 <style>
 :root{--ink:#0f1c2e;--muted:#5f7183;--line:#e2e8ef;--surface:#fff;--accent:#14616d;--accent-deep:#0b4a54;--accent-soft:#e6f3f5;--radius:18px;--shadow:0 14px 40px rgba(15,28,46,.08);--shadow-hover:0 22px 50px rgba(15,28,46,.12)}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#eef2f6;background-image:radial-gradient(ellipse 120% 80% at 10% -10%,#dceef1 0%,transparent 55%),radial-gradient(ellipse 90% 60% at 100% 0%,#e8ebe3 0%,transparent 50%)}
-a{color:var(--accent)}header{position:relative;overflow:hidden;padding:0;color:#f7fbfc;background:linear-gradient(135deg,#0b2233 0%,#123d4a 48%,#0f2f3a 100%)}
-header::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(201,162,39,.18),transparent 45%),radial-gradient(circle at 10% 100%,rgba(120,200,210,.12),transparent 40%);pointer-events:none}
-.header-inner{position:relative;max-width:1280px;margin:0 auto;padding:28px 24px 32px}
-.site-nav{margin:0 0 20px;font-size:13px;letter-spacing:.04em}.site-nav a{color:rgba(255,255,255,.72);text-decoration:none;transition:color .2s}.site-nav a:hover{color:#fff}
-.hero{max-width:720px}.eyebrow{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-h1{margin:0 0 12px;font-size:clamp(26px,4vw,34px);font-weight:650;letter-spacing:.01em;line-height:1.25}.lede{margin:0;font-size:15px;line-height:1.7;color:rgba(255,255,255,.78)}
-#library{max-width:1280px;margin:-18px auto 48px;padding:0 20px 40px;position:relative;z-index:1}
-.toolbar-panel{position:sticky;top:12px;z-index:5;margin-bottom:22px;padding:16px 18px;border-radius:calc(var(--radius) + 2px);background:rgba(255,255,255,.88);border:1px solid rgba(255,255,255,.9);box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+a{color:var(--accent)}header{position:relative;overflow:hidden;padding:0 0 8px;color:#f7fbfc;background:linear-gradient(155deg,#071a28 0%,#0f3340 42%,#123a45 100%)}
+header::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 78% 8%,rgba(212,175,84,.22),transparent 38%),radial-gradient(circle at 0% 100%,rgba(96,180,192,.16),transparent 42%),linear-gradient(180deg,transparent 70%,rgba(0,0,0,.18));pointer-events:none}
+header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);opacity:.6}
+.header-inner{position:relative;max-width:1280px;margin:0 auto;padding:20px 24px 0}
+.top-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px}
+.brand{display:inline-flex;align-items:center;gap:12px;text-decoration:none;color:#fff}.brand img{width:44px;height:44px;border-radius:50%;object-fit:cover;box-shadow:0 6px 18px rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.25)}
+.brand-text{display:flex;flex-direction:column;gap:2px;line-height:1.2}.brand-text strong{font-size:15px;font-weight:650;letter-spacing:.02em}.brand-text small{font-size:12px;color:rgba(255,255,255,.62)}
+.top-link{font-size:13px;color:rgba(255,255,255,.78);text-decoration:none;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);transition:background .2s,border-color .2s}.top-link:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(220px,.8fr);gap:24px;align-items:end;margin-bottom:22px}
+.hero-copy{max-width:680px}.eyebrow{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.52)}
+h1{margin:0 0 14px;font-size:clamp(28px,4.2vw,38px);font-weight:650;letter-spacing:.01em;line-height:1.2}.lede{margin:0;font-size:15px;line-height:1.75;color:rgba(255,255,255,.76);max-width:560px}
+.hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat{padding:14px 12px;border-radius:14px;text-align:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px)}
+.stat-num{display:block;font-size:22px;font-weight:700;line-height:1.1;letter-spacing:.02em}.stat-label{display:block;margin-top:6px;font-size:11px;color:rgba(255,255,255,.65);letter-spacing:.06em}
+.header-console{position:sticky;top:10px;z-index:6;margin:0 0 26px;padding:16px 18px;border-radius:20px;background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.85);box-shadow:0 20px 50px rgba(8,20,32,.22);backdrop-filter:blur(16px)}
+#library{max-width:1280px;margin:0 auto 48px;padding:0 20px 40px;position:relative;z-index:1}
+.toolbar-panel{padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none;position:static;margin:0}
 .toolbar-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.search-row{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .search-wrap{flex:1;min-width:200px;position:relative}.search-wrap::before{content:"";position:absolute;left:14px;top:50%;width:16px;height:16px;transform:translateY(-50%);opacity:.45;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235f7183'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z'/%3E%3C/svg%3E") center/contain no-repeat;pointer-events:none}
 input,select{font:inherit;color:var(--ink)}#search{width:100%;padding:12px 14px 12px 40px;border:1px solid var(--line);border-radius:12px;background:#f8fafb;transition:border-color .2s,box-shadow .2s}#search:focus{outline:0;border-color:#9cc4cc;box-shadow:0 0 0 3px rgba(20,97,109,.12)}
@@ -48,26 +56,14 @@ input,select{font:inherit;color:var(--ink)}#search{width:100%;padding:12px 14px 
 .words{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:0;list-style:none}.words li{background:#f3f7f9;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:15px}
 .vocab{margin:0 0 16px;padding-left:18px;color:var(--ink);line-height:1.7}
 .source{font-size:12px;line-height:1.8;color:var(--muted);margin-top:28px;padding-top:14px;border-top:1px solid var(--line)}
-@media(max-width:760px){.header-inner{padding:22px 16px 28px}.toolbar-panel{top:0;border-radius:0;margin-left:-20px;margin-right:-20px;padding:14px}.count-pill{margin-left:0}.btn-primary,.export{margin-left:0;width:100%}.sheet{grid-template-columns:1fr}.thumb{height:210px}.en{font-size:18px}}
+@media(max-width:760px){.header-inner{padding:16px 16px 0}.hero-grid{grid-template-columns:1fr;gap:18px}.hero-stats{grid-template-columns:repeat(3,1fr)}.header-console{top:0;border-radius:16px;margin-left:-4px;margin-right:-4px;padding:14px}.count-pill{margin-left:0}.btn-primary,.export{margin-left:0;width:100%}#library{padding:0 16px 32px}.sheet{grid-template-columns:1fr}.thumb{height:210px}.en{font-size:18px}}
 </style>
 <script src="assets/export-pdf.js"></script>
 </head>
 <body>
-<header id="top"><div class="header-inner"><p class="site-nav"><a href="/kids/">← 一程一成长</a></p><div class="hero"><p class="eyebrow">Kids Reading</p><h1>英语晨读目录</h1><p class="lede">共 865 节课程 · 搜索、选节，一键导出打印 PDF</p></div></div></header>
+<header id="top"><div class="header-inner"><div class="top-bar"><a class="brand" href="/kids/"><img src="/kids/logo.webp" width="44" height="44" alt=""><span class="brand-text"><strong>一程一成长</strong><small>英语晨读 · 返回首页</small></span></a><a class="top-link" href="/kids/">全部启蒙工具</a></div><div class="hero-grid"><div class="hero-copy"><p class="eyebrow">English Reading Library</p><h1>英语晨读目录</h1><p class="lede">搜索、勾选课节，合并导出 PDF，适合打印与亲子共读。</p></div><div class="hero-stats"><div class="stat"><span class="stat-num">865</span><span class="stat-label">课程</span></div><div class="stat"><span class="stat-num">8</span><span class="stat-label">板块</span></div><div class="stat"><span class="stat-num">PDF</span><span class="stat-label">批量导出</span></div></div></div><div class="header-console toolbar-panel"><div class="toolbar-row search-row"><div class="search-wrap"><input id="search" type="search" placeholder="搜索正文、标题…" autocomplete="off"></div><select id="section"><option value="">全部板块</option><option>低幼启蒙篇</option><option>日常表达</option><option>每日晨读</option><option>科普启蒙篇</option><option>科普进阶篇</option><option>用英文讲好中国故事</option><option>新闻时事</option><option>XIN概念</option></select><span id="count" class="count-pill"></span></div><div class="toolbar-row bulk-row"><label class="chip select-all"><input type="checkbox" id="select-all"><span>全选当前列表</span></label><span id="pick-count" class="pick-badge">已选 0 节</span><button type="button" class="btn-primary" id="batch-export" disabled>批量导出 PDF</button></div></div></div></header>
 <main>
 <section id="library">
-<div class="toolbar-panel">
-<div class="toolbar-row search-row">
-<div class="search-wrap"><input id="search" type="search" placeholder="搜索正文、标题…" autocomplete="off"></div>
-<select id="section"><option value="">全部板块</option><option>低幼启蒙篇</option><option>日常表达</option><option>每日晨读</option><option>科普启蒙篇</option><option>科普进阶篇</option><option>用英文讲好中国故事</option><option>新闻时事</option><option>XIN概念</option></select>
-<span id="count" class="count-pill"></span>
-</div>
-<div class="toolbar-row bulk-row">
-<label class="chip select-all"><input type="checkbox" id="select-all"><span>全选当前列表</span></label>
-<span id="pick-count" class="pick-badge">已选 0 节</span>
-<button type="button" class="btn-primary" id="batch-export" disabled>批量导出 PDF</button>
-</div>
-</div>
 <div class="grid"><article class="card-item" data-id="sec_qslfuq-d014-hjj" data-section="低幼启蒙篇" data-label="低幼启蒙篇 i love china. sec_qslfuq-d014-hjj"><label class="pick" title="选中本课"><input type="checkbox" class="pick-input" aria-label="选中 I Love China."><span class="pick-ui" aria-hidden="true"></span></label><a class="card card-link" href="#lesson-sec_qslfuq-d014-hjj"><span class="thumb"><img loading="lazy" decoding="async" src="covers/sec_qslfuq/sec_qslfuq-d014-hjj.webp" alt=""></span><span class="copy"><span class="meta">低幼启蒙篇 · 第 1 节</span><strong>I Love China.</strong><span class="excerpt">I Love China.</span></span></a></article>
 <article class="card-item" data-id="sec_pv2ctf-d076-b79" data-section="低幼启蒙篇" data-label="低幼启蒙篇 my pets sec_pv2ctf-d076-b79"><label class="pick" title="选中本课"><input type="checkbox" class="pick-input" aria-label="选中 My Pets"><span class="pick-ui" aria-hidden="true"></span></label><a class="card card-link" href="#lesson-sec_pv2ctf-d076-b79"><span class="thumb"><img loading="lazy" decoding="async" src="covers/sec_qslfuq/sec_pv2ctf-d076-b79.webp" alt=""></span><span class="copy"><span class="meta">低幼启蒙篇 · 第 2 节</span><strong>My Pets</strong><span class="excerpt">dog 狗 cat 猫 rabbit 兔子 hamster 仓鼠 bird 鸟 turtle 乌龟 fish 鱼</span></span></a></article>
 <article class="card-item" data-id="sec_pv2ctf-d078-ecy" data-section="低幼启蒙篇" data-label="低幼启蒙篇 fruits sec_pv2ctf-d078-ecy"><label class="pick" title="选中本课"><input type="checkbox" class="pick-input" aria-label="选中 Fruits"><span class="pick-ui" aria-hidden="true"></span></label><a class="card card-link" href="#lesson-sec_pv2ctf-d078-ecy"><span class="thumb"><img loading="lazy" decoding="async" src="covers/sec_qslfuq/sec_pv2ctf-d078-ecy.webp" alt=""></span><span class="copy"><span class="meta">低幼启蒙篇 · 第 3 节</span><strong>Fruits</strong><span class="excerpt">I can see an apple.</span></span></a></article>
