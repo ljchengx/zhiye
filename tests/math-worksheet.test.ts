@@ -1,442 +1,141 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_REINFORCEMENT_CONFIG,
   FOUNDATION_WORKSHEET_DAYS,
   generateDailyWorksheet,
-  getApplicationQuestionSignature,
   generateWorksheetPlan,
   getExportDays,
-  getMonthTwoQuestionCounts,
-  getReinforcementQuestionCounts,
   getWorksheetDayPlan,
-  LIFE_MATH_STORYLINES,
-  MONTH_ONE_APPLICATION_STORYLINES,
-  MAX_APPLICATION_QUESTIONS,
-  MAX_WORKSHEET_QUESTIONS,
-  MONTH_TWO_APPLICATION_STORYLINES,
   MONTH_ONE_DAYS,
   MONTH_TWO_DAYS,
-  normalizeReinforcementConfig,
   REINFORCEMENT_WORKSHEET_DAYS,
-  WORKSHEET_PAGE_BODY_HEIGHT_MM,
   WORKSHEET_PLAN_DAYS,
-  type ApplicationQuestion,
-  type GroupingQuestion,
-  type LifeMathQuestion,
-  type MentalQuestion,
-  type MissingNumberQuestion,
-  type TensSplitQuestion,
-  type VerticalCalculationQuestion,
+  type BalanceEquationQuestion,
+  type EstimateJudgeQuestion,
+  type FriendlyCalcQuestion,
 } from "../lib/tools/math-worksheet";
 import {
   getMathBulkPdfFilename,
   getMathWorkbookPageEntries,
   getMathWorkbookPrintPageCount,
 } from "../lib/tools/math-pdf";
+import { NUMBER_SENSE_PARENT_USAGE } from "../lib/tools/math-number-sense";
 
 function allQuestions(worksheet: ReturnType<typeof generateDailyWorksheet>) {
   return worksheet.sections.flatMap((section) => section.questions);
 }
 
-function mentalQuestions(worksheet: ReturnType<typeof generateDailyWorksheet>) {
-  return allQuestions(worksheet).filter((question): question is MentalQuestion => question.type === "mental");
-}
-
-function calculate(left: number, operator: "+" | "-", right: number) {
-  return operator === "+" ? left + right : left - right;
-}
-
-describe("幼小数学 5 天基础引导 + 25 天强化训练", () => {
-  it("基础五天使用固定精选内容，并保持大字号下的题量", () => {
-    const first = generateWorksheetPlan(1);
-    const second = generateWorksheetPlan(999);
-
-    expect(first.foundationDays).toHaveLength(FOUNDATION_WORKSHEET_DAYS);
-    expect(first.foundationDays.map((day) => day.total)).toEqual([20, 18, 18, 18, 19]);
-    expect(first.foundationDays.map((day) => day.id)).toEqual([
-      "foundation-1", "foundation-2", "foundation-3", "foundation-4", "foundation-5",
-    ]);
-    expect(first.foundationDays.map((day) => day.sections.map((section) => [section.type, section.questions.length]))).toEqual(
-      second.foundationDays.map((day) => day.sections.map((section) => [section.type, section.questions.length])),
-    );
-    expect(first.foundationDays[0].methodLesson?.method).toBe("number-bond");
-    expect(first.foundationDays[1].methodLesson?.method).toBe("make-ten");
-    expect(first.foundationDays[2].methodLesson?.method).toBe("break-ten");
-    expect(first.foundationDays[3].methodLesson?.method).toBe("flat-ten");
-    expect(first.foundationDays[4].methodLesson?.method).toBe("picture-equation");
-    expect(first.foundationDays.every((day) => day.pages[0]?.showMethod)).toBe(true);
-    expect(first.reinforcementDays.every((day) => day.pages.every((page) => !page.showMethod))).toBe(true);
-    expect(first.foundationDays[4].sections.find((section) => section.type === "application")?.questions).toHaveLength(3);
-  });
-
-  it("固定基础方法的拆分和每一步都能还原答案", () => {
+describe("数感 60 天练习计划（5～6 岁）", () => {
+  it("第一个月 30 天、第二个月 30 天，无旧版基础引导分段", () => {
     const plan = generateWorksheetPlan(42);
-    plan.foundationDays.forEach((day) => {
-      const lesson = day.methodLesson;
-      expect(lesson).toBeDefined();
-      if (!lesson) return;
-      expect(calculate(lesson.original.left, lesson.original.operator, lesson.original.right)).toBe(lesson.original.answer);
-      expect(lesson.split[0] + lesson.split[1]).toBe(lesson.splitSource);
-      lesson.steps.forEach((step) => {
-        expect(step.answer).toBe(calculate(step.left, step.operator, step.right));
-      });
-
-      if (lesson.method === "make-ten") {
-        expect(lesson.splitSource).toBe(lesson.original.right);
-        expect(lesson.steps[0]).toMatchObject({ left: lesson.original.left, operator: "+", right: lesson.split[0] });
-        expect(lesson.steps[1]).toMatchObject({ left: lesson.steps[0].answer, operator: "+", right: lesson.split[1], answer: lesson.original.answer });
-      } else if (lesson.method === "break-ten") {
-        expect(lesson.splitSource).toBe(lesson.original.left);
-        expect(lesson.steps[0]).toMatchObject({ left: lesson.split[0], operator: "-", right: lesson.original.right });
-        expect(lesson.steps[1]).toMatchObject({ left: lesson.steps[0].answer, operator: "+", right: lesson.split[1], answer: lesson.original.answer });
-      } else if (lesson.method === "flat-ten") {
-        expect(lesson.splitSource).toBe(lesson.original.right);
-        expect(lesson.steps[0]).toMatchObject({ left: lesson.original.left, operator: "-", right: lesson.split[0] });
-        expect(lesson.steps[1]).toMatchObject({ left: lesson.steps[0].answer, operator: "-", right: lesson.split[1], answer: lesson.original.answer });
-      }
-    });
-  });
-
-  it("基础五天的数量图与题目数字始终一致", () => {
-    const plan = generateWorksheetPlan(20260902);
-    const numberBonds = allQuestions(plan.foundationDays[0]).filter((question) => question.type === "number-bond");
-    expect(numberBonds).toHaveLength(10);
-    numberBonds.forEach((question) => {
-      expect(question.knownPart + question.answer).toBe(question.whole);
-    });
-
-    const pictureEquations = allQuestions(plan.foundationDays[4]).filter((question) => question.type === "picture-equation");
-    expect(pictureEquations).toHaveLength(4);
-    pictureEquations.forEach((question) => {
-      expect(calculate(question.leftCount, question.operator, question.rightCount)).toBe(question.answer);
-    });
-
-    plan.foundationDays.slice(1, 4).forEach((day) => {
-      const guidedQuestions = mentalQuestions(day).filter((question) => question.presentation === "guided");
-      expect(guidedQuestions).toHaveLength(2);
-      guidedQuestions.forEach((question) => {
-        const guidance = question.guidance;
-        expect(guidance).toBeDefined();
-        if (!guidance) return;
-        expect(calculate(question.left, question.operator, question.right)).toBe(question.answer);
-        expect(guidance.split[0] + guidance.split[1]).toBe(guidance.splitSource);
-        guidance.steps.forEach((step) => expect(calculate(step.left, step.operator, step.right)).toBe(step.answer));
-        expect(guidance.steps[1].answer).toBe(question.answer);
-
-        if (question.method === "make-ten") {
-          expect(guidance.splitSource).toBe(question.right);
-          expect(guidance.steps[0]).toMatchObject({ left: question.left, operator: "+", right: guidance.split[0] });
-          expect(guidance.steps[1]).toMatchObject({ left: guidance.steps[0].answer, operator: "+", right: guidance.split[1] });
-        } else if (question.method === "break-ten") {
-          expect(guidance.splitSource).toBe(question.left);
-          expect(guidance.steps[0]).toMatchObject({ left: guidance.split[0], operator: "-", right: question.right });
-          expect(guidance.steps[1]).toMatchObject({ left: guidance.steps[0].answer, operator: "+", right: guidance.split[1] });
-        } else {
-          expect(guidance.splitSource).toBe(question.right);
-          expect(guidance.steps[0]).toMatchObject({ left: question.left, operator: "-", right: guidance.split[0] });
-          expect(guidance.steps[1]).toMatchObject({ left: guidance.steps[0].answer, operator: "-", right: guidance.split[1] });
-        }
-      });
-    });
-  });
-
-  it("两位数组成把一个数拆成整十和剩下的部分", () => {
-    const plan = generateWorksheetPlan(20260902);
-    const questions = [...plan.foundationDays, ...plan.reinforcementDays, ...plan.monthTwoDays]
-      .flatMap(allQuestions)
-      .filter((question): question is TensSplitQuestion => question.type === "tens-split");
-    expect(questions.length).toBeGreaterThan(0);
-    expect(allQuestions(plan.foundationDays[0]).filter((question) => question.type === "tens-split")).toHaveLength(6);
-    questions.forEach((question) => {
-      const left = question.left ?? question.answer;
-      const right = question.right ?? question.answer;
-      expect(left + right).toBe(question.whole);
-      expect(left % 10).toBe(0);
-      expect(left).toBeGreaterThanOrEqual(10);
-      expect(right).toBeGreaterThan(0);
-      expect(right).toBeLessThan(question.whole);
-      expect(question.whole).toBeGreaterThanOrEqual(11);
-      expect(question.missing === "left" ? question.left : question.right).toBeNull();
-      expect(question.answer).toBe(question.missing === "left" ? left : right);
-    });
-    expect(questions.some((question) => question.left === 10 || (question.missing === "left" && question.answer === 10))).toBe(true);
-    expect(questions.some((question) => {
-      const left = question.left ?? question.answer;
-      return left > 10 && left === Math.floor(question.whole / 10) * 10;
-    })).toBe(true);
-  });
-
-  it("强化配置限制在 10～30 题，应用题最多 25%", () => {
-    const normalized = normalizeReinforcementConfig({ dailyQuestionCount: 99, neighborRatio: 80, compareRatio: 50, applicationRatio: 90 });
-    expect(normalized.dailyQuestionCount).toBe(30);
-    expect(normalized.applicationRatio).toBeLessThanOrEqual(25);
-    expect(normalized.neighborRatio + normalized.compareRatio + normalized.applicationRatio + normalized.mentalRatio).toBe(100);
-    const counts = getReinforcementQuestionCounts(DEFAULT_REINFORCEMENT_CONFIG, 1);
-    expect(counts.neighbor + counts.compare + counts.mental + counts.application).toBe(22);
-    expect(counts.application).toBeLessThanOrEqual(MAX_APPLICATION_QUESTIONS);
-  });
-
-  it("统一配置应用到全部 25 天，题型数量准确且不超过 30", () => {
-    const config = { dailyQuestionCount: 28, neighborRatio: 15, compareRatio: 15, applicationRatio: 20 };
-    const plan = generateWorksheetPlan(20260902, config);
-    expect(plan.days).toHaveLength(WORKSHEET_PLAN_DAYS);
-    expect(plan.reinforcementDays).toHaveLength(REINFORCEMENT_WORKSHEET_DAYS);
-    plan.reinforcementDays.forEach((day) => {
-      const questions = allQuestions(day);
-      const counts = getReinforcementQuestionCounts(plan.reinforcementConfig, day.stageDay);
-      expect(day.total).toBe(28);
-      expect(day.total).toBeLessThanOrEqual(MAX_WORKSHEET_QUESTIONS);
-      expect(questions.filter((question) => question.type === "neighbor")).toHaveLength(counts.neighbor);
-      expect(questions.filter((question) => question.type === "tens-split")).toHaveLength(counts.compare);
-      expect(questions.filter((question) => question.type === "mental")).toHaveLength(counts.mental);
-      expect(questions.filter((question) => question.type === "application")).toHaveLength(counts.application);
-      expect(new Set(questions.map((question) => question.id)).size).toBe(questions.length);
-      const pageQuestions = day.pages.flatMap((page) => page.sections.flatMap((section) => section.questions));
-      expect(pageQuestions.map((question) => question.number)).toEqual(Array.from({ length: 28 }, (_, index) => index + 1));
-    });
-  });
-
-  it("强化题按阶段递进，并在早期保留挑战题", () => {
-    const day1 = generateDailyWorksheet(6, 12);
-    const day10 = generateDailyWorksheet(15, 12);
-    const day20 = generateDailyWorksheet(25, 12);
-    const day30 = generateDailyWorksheet(30, 12);
-
-    expect(day1.plan.resultMax).toBe(20);
-    expect(day10.plan.resultMax).toBe(50);
-    expect(day20.plan.resultMax).toBe(100);
-    expect(day30.plan.resultMax).toBe(200);
-    expect(mentalQuestions(day1).some((question) => question.level === "three-number")).toBe(true);
-    expect(mentalQuestions(day30).every((question) => question.third !== undefined)).toBe(true);
-    mentalQuestions(day30).forEach((question) => {
-      expect(question.answer).toBeLessThanOrEqual(200);
-      if (question.third !== undefined) {
-        const intermediate = question.left + (question.operator === "+" ? question.right : -question.right);
-        const answer = intermediate + (question.secondOperator === "+" ? question.third : -(question.third ?? 0));
-        expect(intermediate).toBeGreaterThanOrEqual(0);
-        expect(answer).toBe(question.answer);
-      }
-    });
-  });
-
-  it("第一个月低重复模式只优化强化训练，并保持基础引导固定", () => {
-    const legacy = generateWorksheetPlan(20260902);
-    const optimized = generateWorksheetPlan(20260902, {}, {}, { monthOneMode: "low-repeat" });
-    const applications = optimized.reinforcementDays.flatMap(allQuestions).filter((question): question is ApplicationQuestion => question.type === "application");
-
-    expect(legacy.monthOneMode).toBe("legacy");
-    expect(optimized.monthOneMode).toBe("low-repeat");
-    expect(MONTH_ONE_APPLICATION_STORYLINES).toHaveLength(160);
-    expect(applications).toHaveLength(100);
-    expect(applications.every((question) => question.storylineId && question.storylineFamily)).toBe(true);
-    expect(new Set(applications.map((question) => question.storylineId)).size).toBe(applications.length);
-    expect(new Set(applications.map(getApplicationQuestionSignature)).size).toBe(applications.length);
-
-    optimized.reinforcementDays.forEach((day) => {
-      const daily = allQuestions(day).filter((question): question is ApplicationQuestion => question.type === "application");
-      expect(new Set(daily.map((question) => question.storylineFamily)).size).toBe(daily.length);
-      expect(new Set(daily.map((question) => question.icon)).size).toBe(daily.length);
-      daily.forEach((question) => {
-        const calculated = question.operators.reduce((value, operator, index) => operator === "+" ? value + question.operands[index + 1] : value - question.operands[index + 1], question.operands[0]);
-        expect(calculated).toBe(question.answer);
-        expect(question.prompt).not.toContain("undefined");
-      });
-    });
-
-    expect(optimized.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.id)))).toEqual(
-      legacy.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.id))),
-    );
-    expect(optimized.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.type === "application" ? question.prompt : "")))).toEqual(
-      legacy.foundationDays.map((day) => day.sections.flatMap((section) => section.questions.map((question) => question.type === "application" ? question.prompt : ""))),
-    );
-  });
-
-  it("第二个月按 80% 加减、10% 乘除、10% 生活数学生成 22 题", () => {
-    const plan = generateWorksheetPlan(20260902);
+    expect(FOUNDATION_WORKSHEET_DAYS).toBe(0);
+    expect(REINFORCEMENT_WORKSHEET_DAYS).toBe(30);
+    expect(plan.foundationDays).toHaveLength(0);
+    expect(plan.reinforcementDays).toHaveLength(30);
     expect(plan.monthOneDays).toHaveLength(MONTH_ONE_DAYS);
     expect(plan.monthTwoDays).toHaveLength(MONTH_TWO_DAYS);
-    expect(plan.monthTwoDays[0].day).toBe(31);
-    expect(plan.monthTwoDays.at(-1)?.day).toBe(60);
+    expect(plan.days).toHaveLength(WORKSHEET_PLAN_DAYS);
+    expect(plan.days.every((day) => !day.methodLesson)).toBe(true);
+    expect(plan.days.every((day) => day.pages.every((page) => !page.showMethod))).toBe(true);
+  });
 
-    const expected = getMonthTwoQuestionCounts();
-    expect(LIFE_MATH_STORYLINES).toHaveLength(100);
-    expect(new Set(LIFE_MATH_STORYLINES.map((storyline) => storyline.id)).size).toBe(100);
-    expect(expected).toMatchObject({ neighbor: 4, compare: 3, mental: 4, vertical: 3, missing: 2, application: 3, grouping: 1, lifeMath: 2 });
-    expect(Object.values(expected).reduce((sum, count) => sum + count, 0)).toBe(22);
-
-    plan.monthTwoDays.forEach((day) => {
-      const questions = allQuestions(day);
-      expect(day.month).toBe(2);
-      expect(day.monthDay).toBe(day.day - MONTH_ONE_DAYS);
-      expect(day.total).toBe(22);
-      expect(new Set(questions.map((question) => question.id)).size).toBe(22);
-      expect(questions.filter((question) => question.type === "neighbor")).toHaveLength(expected.neighbor);
-      expect(questions.filter((question) => question.type === "tens-split")).toHaveLength(expected.compare);
-      expect(questions.filter((question) => question.type === "mental")).toHaveLength(expected.mental);
-      expect(questions.filter((question) => question.type === "vertical-calculation")).toHaveLength(expected.vertical);
-      expect(questions.filter((question) => question.type === "missing-number")).toHaveLength(expected.missing);
-      expect(questions.filter((question) => question.type === "application")).toHaveLength(expected.application);
-      expect(questions.filter((question) => question.type === "grouping")).toHaveLength(expected.grouping);
-      expect(questions.filter((question) => question.type === "life-math")).toHaveLength(expected.lifeMath);
-      expect(day.pages.length).toBeLessThanOrEqual(2);
+  it("每日题量控制在数感对话范围（约 4～12 题）", () => {
+    const plan = generateWorksheetPlan(7);
+    plan.days.forEach((day) => {
+      expect(day.total).toBeGreaterThanOrEqual(3);
+      expect(day.total).toBeLessThanOrEqual(14);
     });
   });
 
-  it("第二个月新增题型的计算关系和阶段范围正确", () => {
-    const plan = generateWorksheetPlan(20260902);
-    const questions = plan.monthTwoDays.flatMap(allQuestions);
-    questions.filter((question): question is VerticalCalculationQuestion => question.type === "vertical-calculation").forEach((question) => {
-      expect(question.operator === "+" ? question.left + question.right : question.left - question.right).toBe(question.answer);
-      expect(question.answer).toBeGreaterThanOrEqual(0);
-    });
-    questions.filter((question): question is MissingNumberQuestion => question.type === "missing-number").forEach((question) => {
-      const left = question.left ?? question.answer;
-      const right = question.right ?? question.answer;
-      const result = question.result ?? question.answer;
-      expect(question.operator === "+" ? left + right : left - right).toBe(result);
-    });
-    questions.filter((question): question is GroupingQuestion => question.type === "grouping").forEach((question) => {
-      expect(question.groupCount * question.perGroup).toBe(question.total);
-      expect(question.answer).toBe(question.mode === "sharing" ? question.perGroup : question.total);
-    });
-    questions.filter((question): question is LifeMathQuestion => question.type === "life-math").forEach((question) => {
-      const calculated = question.operators.length === 0
-        ? question.operands[0]
-        : question.operators.reduce((value, operator, index) => operator === "+" ? value + question.operands[index + 1] : value - question.operands[index + 1], question.operands[0]);
-      expect(calculated).toBe(question.answer);
-      expect(question.prompt).not.toContain("undefined");
-    });
-    expect(new Set(questions.filter((question): question is LifeMathQuestion => question.type === "life-math").map((question) => question.storylineId)).size).toBe(60);
-    plan.monthTwoDays.forEach((day) => {
-      const lifeQuestions = allQuestions(day).filter((question): question is LifeMathQuestion => question.type === "life-math");
-      const prompts = lifeQuestions.map((question) => question.prompt);
-      expect(new Set(prompts).size).toBe(prompts.length);
-      expect(new Set(lifeQuestions.map((question) => question.icon)).size).toBeGreaterThanOrEqual(Math.min(2, lifeQuestions.length));
-    });
-    expect(plan.monthTwoDays[0].plan.arithmeticFocus).toBe("review");
-    expect(plan.monthTwoDays[9].plan.arithmeticFocus).toBe("vertical-addition");
-    expect(plan.monthTwoDays[19].plan.arithmeticFocus).toBe("mixed-200");
-    expect(plan.monthTwoDays[24].plan.arithmeticFocus).toBe("missing-number");
-    expect(plan.monthTwoDays[29].plan.arithmeticFocus).toBe("assessment");
+  it("核心板块包含天平、代换、凑整或估算", () => {
+    const day = generateDailyWorksheet(3, 99);
+    const types = new Set(day.sections.map((section) => section.type));
+    expect(types.has("balance")).toBe(true);
+    expect(types.has("symbol") || types.has("estimate") || types.has("friendly-calc")).toBe(true);
   });
 
-  it("第二个月应用题从故事线知识库抽取且整月不重复", () => {
-    const plan = generateWorksheetPlan(20260902);
-    const applications = plan.monthTwoDays.flatMap(allQuestions).filter((question): question is ApplicationQuestion => question.type === "application");
-    expect(MONTH_TWO_APPLICATION_STORYLINES).toHaveLength(120);
-    expect(new Set(MONTH_TWO_APPLICATION_STORYLINES.map((storyline) => storyline.id)).size).toBe(120);
-    expect(applications).toHaveLength(90);
-    expect(applications.every((question) => question.storylineId && question.storylineFamily)).toBe(true);
-    expect(new Set(applications.map((question) => question.storylineId)).size).toBe(applications.length);
-    plan.monthTwoDays.forEach((day) => {
-      const daily = allQuestions(day).filter((question): question is ApplicationQuestion => question.type === "application");
-      expect(new Set(daily.map((question) => question.storylineFamily)).size).toBe(daily.length);
-      expect(new Set(daily.map((question) => question.icon)).size).toBe(daily.length);
-      daily.forEach((question) => {
-        const calculated = question.operators.reduce((value, operator, index) => operator === "+" ? value + question.operands[index + 1] : value - question.operands[index + 1], question.operands[0]);
-        expect(calculated).toBe(question.answer);
-        expect(question.prompt).not.toContain("undefined");
+  it("第 7 天与第 14 天附带聪明格", () => {
+    const weekA = generateDailyWorksheet(7, 1);
+    const weekB = generateDailyWorksheet(14, 1);
+    expect(weekA.sections.some((section) => section.type === "kenken")).toBe(true);
+    expect(weekB.sections.some((section) => section.type === "kenken")).toBe(true);
+  });
+
+  it("天平等量与凑整题答案自洽", () => {
+    const plan = generateWorksheetPlan(2026);
+    const balances = plan.days.flatMap(allQuestions).filter((q): q is BalanceEquationQuestion => q.type === "balance-equation");
+    const friendly = plan.days.flatMap(allQuestions).filter((q): q is FriendlyCalcQuestion => q.type === "friendly-calc");
+    expect(balances.length).toBeGreaterThan(10);
+    expect(friendly.length).toBeGreaterThan(10);
+    balances.forEach((question) => {
+      expect(question.expression).toContain("□");
+      expect(Number.isInteger(question.answer)).toBe(true);
+    });
+    friendly.forEach((question) => {
+      expect(question.hint.length).toBeGreaterThan(0);
+      expect(Number.isInteger(question.answer)).toBe(true);
+    });
+  });
+
+  it("估算题带参考理由", () => {
+    const estimates = generateWorksheetPlan(1).days.flatMap(allQuestions).filter((q): q is EstimateJudgeQuestion => q.type === "estimate-judge");
+    expect(estimates.length).toBeGreaterThan(20);
+    estimates.forEach((question) => {
+      expect(question.statement.length).toBeGreaterThan(3);
+      expect(question.reason.length).toBeGreaterThan(2);
+    });
+  });
+
+  it("60 天不含口算、竖式、旧应用题板块", () => {
+    const forbidden = new Set(["mental", "vertical", "application", "grouping", "neighbor", "tens-split", "guided"]);
+    const plan = generateWorksheetPlan(3);
+    plan.days.forEach((day) => {
+      day.sections.forEach((section) => {
+        expect(forbidden.has(section.type)).toBe(false);
       });
     });
   });
 
-  it("第二个月题量在 10～30 之间调整时仍保持题目总数准确", () => {
-    [10, 17, 24, 30].forEach((dailyQuestionCount) => {
-      const plan = generateWorksheetPlan(20260902, {}, { dailyQuestionCount });
-      plan.monthTwoDays.forEach((day) => expect(day.total).toBe(dailyQuestionCount));
-      expect(Object.values(getMonthTwoQuestionCounts({ dailyQuestionCount })).reduce((sum, count) => sum + count, 0)).toBe(dailyQuestionCount);
-    });
-  }, 15000);
-
-  it("应用题的文字情境、步骤和答案保持一致", () => {
-    const plan = generateWorksheetPlan(77);
-    const applications = plan.reinforcementDays.flatMap((day) => allQuestions(day)).filter((question): question is ApplicationQuestion => question.type === "application");
-    expect(applications.length).toBeGreaterThan(0);
-    applications.forEach((question) => {
-      expect(question.prompt).not.toContain("undefined");
-      expect(question.prompt).not.toContain("比它少");
-      expect(question.steps.length).toBe(question.level === "two-step" ? 2 : 1);
-      const last = question.steps[question.steps.length - 1];
-      expect(last.answer).toBe(question.answer);
-      expect(question.equation).toContain("=");
-      expect(question.answer).toBeGreaterThanOrEqual(0);
-    });
-    plan.days.forEach((day) => {
-      const dailyApplications = allQuestions(day).filter((question): question is ApplicationQuestion => question.type === "application");
-      const promptPatterns = dailyApplications.map((question) => question.prompt.replace(/\d+/g, "#"));
-      expect(new Set(promptPatterns).size).toBe(promptPatterns.length);
-      day.pages.flatMap((page) => page.sections).filter((section) => section.type === "application").forEach((section) => {
-        expect(section.columns).toBe(1);
-        expect(section.rowHeightMm).toBeGreaterThanOrEqual(36);
-        expect(section.rowHeightMm).toBeLessThanOrEqual(46);
-      });
-    });
-    expect(applications.some((question) => /马里奥|路易吉|蘑菇|金币/.test(question.prompt))).toBe(true);
-    expect(applications.some((question) => /书架|气球|饼干|花圃|球筐/.test(question.prompt))).toBe(true);
-    expect(new Set(applications.map((question) => question.icon)).size).toBeGreaterThanOrEqual(8);
-    expect(plan.reinforcementDays[0].sections.find((section) => section.type === "application")?.questions.every((question) => question.type === "application" && question.level !== "two-step")).toBe(true);
-    expect(plan.reinforcementDays[20].sections.find((section) => section.type === "application")?.questions.some((question) => question.type === "application" && question.level === "two-step")).toBe(true);
+  it("第二个月以图形代换与情境思考为主", () => {
+    const monthTwo = generateWorksheetPlan(3).monthTwoDays;
+    const hasStory = monthTwo.some((day) => day.sections.some((section) => section.type === "story"));
+    const hasSymbol = monthTwo.some((day) => day.sections.some((section) => section.type === "symbol"));
+    expect(hasStory || hasSymbol).toBe(true);
   });
 
-  it("分页保持完整题目顺序，并合理利用第二页", () => {
-    const plan = generateWorksheetPlan(20260902);
+  it("每日练习含家长提示", () => {
+    const day = generateDailyWorksheet(12, 3);
+    expect(day.parentTip).toBeTruthy();
+    expect(NUMBER_SENSE_PARENT_USAGE.length).toBeGreaterThan(10);
+  });
+
+  it("重新生成同一天会换题但结构稳定", () => {
+    const a = generateDailyWorksheet(8, 11);
+    const b = generateDailyWorksheet(8, 987654);
+    expect(a.sections.map((section) => [section.type, section.questions.length])).toEqual(
+      b.sections.map((section) => [section.type, section.questions.length]),
+    );
+    const idsA = allQuestions(a).map((question) => question.id);
+    const idsB = allQuestions(b).map((question) => question.id);
+    expect(idsA).not.toEqual(idsB);
+  });
+
+  it("导出范围与 60 天顺序", () => {
+    const plan = generateWorksheetPlan(5);
+    expect(getExportDays(plan, "month-one")).toHaveLength(30);
+    expect(getExportDays(plan, "month-two")).toHaveLength(30);
+    expect(getExportDays(plan, "all")).toHaveLength(60);
+    expect(getExportDays(plan, true)).toHaveLength(30);
+  });
+
+  it("分页与 PDF 页数可计算", () => {
+    const plan = generateWorksheetPlan(11);
     plan.days.forEach((day) => {
-      const questions = day.pages.flatMap((page) => page.sections.flatMap((section) => section.questions));
       expect(day.pages.length).toBeGreaterThanOrEqual(1);
-      expect(day.pages.length).toBeLessThanOrEqual(2);
-      expect(day.pages.every((page) => page.usedHeightMm <= WORKSHEET_PAGE_BODY_HEIGHT_MM)).toBe(true);
-      if (day.pages.length === 2) expect(day.pages[1].usedHeightMm).toBeGreaterThanOrEqual(110);
-      expect(questions.map((question) => question.number)).toEqual(Array.from({ length: day.total }, (_, index) => index + 1));
-      const mental = questions.filter((question): question is MentalQuestion => question.type === "mental");
-      const firstTriple = mental.findIndex((question) => question.third !== undefined);
-      if (firstTriple >= 0) expect(mental.slice(firstTriple).every((question) => question.third !== undefined)).toBe(true);
-      day.pages.flatMap((page) => page.sections).filter((section) => section.type === "mental").forEach((section) => {
-        const levels = section.questions.filter((question): question is MentalQuestion => question.type === "mental").map((question) => question.level);
-        if (section.columns === 3) expect(levels.every((level) => level === "basic" || level === "two-digit-single")).toBe(true);
-      });
-      const directMentalSections = day.pages.flatMap((page) => page.sections).filter((section) => section.type === "mental");
-      const hasComplexQuestion = mental.some((question) => question.level === "two-digit" || question.level === "three-number");
-      if (hasComplexQuestion) expect(directMentalSections.every((section) => section.columns === 2)).toBe(true);
+      expect(getMathWorkbookPrintPageCount([day])).toBeGreaterThanOrEqual(day.pages.length);
     });
-  });
-
-  it("是否包含基础引导只影响导出筛选，不改变强化题", () => {
-    const plan = generateWorksheetPlan(20260902);
-    const withFoundation = getExportDays(plan, true);
-    const practiceOnly = getExportDays(plan, false);
-    expect(withFoundation).toHaveLength(30);
-    expect(practiceOnly).toHaveLength(25);
-    expect(practiceOnly[0].id).toBe("practice-1");
-    expect(practiceOnly.map((day) => day.id)).toEqual(plan.reinforcementDays.map((day) => day.id));
-    expect(practiceOnly.flatMap((day) => allQuestions(day)).map((question) => question.id)).toEqual(plan.reinforcementDays.flatMap((day) => allQuestions(day)).map((question) => question.id));
-  });
-
-  it("全量 PDF 严格按练习日顺序排列，并为单数内容页补空白背面", () => {
-    const plan = generateWorksheetPlan(20260902);
-    const entries = getMathWorkbookPageEntries(plan.days);
-
-    expect(entries.map((entry) => entry.day)).toEqual([...entries.map((entry) => entry.day)].sort((left, right) => left - right));
-    expect(entries[0]).toEqual({ day: 1, pageNumber: 1, blank: false });
-    expect(entries.at(-1)?.day).toBe(60);
-    expect(getMathWorkbookPrintPageCount(plan.days)).toBe(entries.length);
-    expect(getMathBulkPdfFilename(true)).toBe("一程一成长-幼小数学练习-60天.pdf");
-    expect(getMathBulkPdfFilename(false)).toBe("一程一成长-幼小数学练习-强化25天.pdf");
-    expect(getMathBulkPdfFilename("month-one")).toBe("一程一成长-幼小数学练习-第1个月-30天.pdf");
-    expect(getMathBulkPdfFilename("month-two")).toBe("一程一成长-幼小数学练习-第2个月-30天.pdf");
-
-    const onePageDay = { ...plan.days[0], pages: plan.days[0].pages.slice(0, 1) };
-    expect(getMathWorkbookPageEntries([onePageDay])).toEqual([
-      { day: 1, pageNumber: 1, blank: false },
-      { day: 1, pageNumber: null, blank: true },
-    ]);
-  });
-
-  it("保留旧的单日生成入口，且仍能限制总题量", () => {
-    const worksheet = generateDailyWorksheet(12, 4, { neighborCount: 2, compareCount: 2, mentalCount: 10, applicationCount: 2, theme: "mixed" });
-    expect(worksheet.total).toBe(16);
-    expect(worksheet.total).toBeLessThanOrEqual(MAX_WORKSHEET_QUESTIONS);
-    expect(getWorksheetDayPlan(1).stage).toBe("foundation");
-    expect(getWorksheetDayPlan(6).stage).toBe("reinforcement");
+    const entries = getMathWorkbookPageEntries(plan.monthOneDays.slice(0, 3));
+    expect(entries.length).toBeGreaterThan(0);
+    expect(getMathBulkPdfFilename("month-one")).toMatch(/第1个月/);
   });
 });

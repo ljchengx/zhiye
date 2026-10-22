@@ -38,19 +38,12 @@ import {
   createWorksheetGuidance,
   DEFAULT_MONTH_TWO_CONFIG,
   DEFAULT_REINFORCEMENT_CONFIG,
-  FOUNDATION_WORKSHEET_DAYS,
   generateDailyWorksheet,
-  getApplicationQuestionSignature,
   getExportDays,
-  getMonthTwoQuestionCounts,
-  getReinforcementQuestionCounts,
-  MAX_APPLICATION_RATIO,
-  MAX_WORKSHEET_QUESTIONS,
   MENTAL_METHOD_LABELS,
   MONTH_ONE_DAYS,
   MONTH_TWO_DAYS,
-  normalizeMonthTwoConfig,
-  normalizeReinforcementConfig,
+  NUMBER_SENSE_PARENT_USAGE,
   REINFORCEMENT_WORKSHEET_DAYS,
   WORKSHEET_PAPER_HEADER_HEIGHT_MM,
   WORKSHEET_PLAN_DAYS,
@@ -62,8 +55,6 @@ import {
   type MissingNumberQuestion,
   type NumberBondQuestion,
   type PictureEquationQuestion,
-  type MonthOneGenerationMode,
-  type ReinforcementConfig,
   type WorksheetIconKey,
   type WorksheetExportRange,
   type WorksheetPageSection,
@@ -71,6 +62,12 @@ import {
   type WorksheetPrintPage,
   type WorksheetQuestion,
   type VerticalCalculationQuestion,
+  type BalanceEquationQuestion,
+  type EstimateJudgeQuestion,
+  type FriendlyCalcQuestion,
+  type KenkenQuestion,
+  type SenseStoryQuestion,
+  type SymbolSystemQuestion,
 } from "@/lib/tools/math-worksheet";
 import type { KidsToolDefinition } from "@/lib/tools/kids-registry";
 import type { MathWorksheetPlanGenerateRequest, MathWorksheetPlanWorkerResponse } from "../workers/math-worksheet.worker";
@@ -79,8 +76,6 @@ import { KidsShell } from "./kids-shell";
 import styles from "./math-worksheet-workspace.module.css";
 
 type StatusTone = "idle" | "success" | "error";
-type RatioKey = "neighborRatio" | "compareRatio" | "applicationRatio";
-
 interface StatusMessage {
   tone: StatusTone;
   text: string;
@@ -112,12 +107,6 @@ const ALL_OBJECT_ASSETS = [
   "/math-worksheet/objects/ten-rod.svg",
   "/math-worksheet/objects/one-stick.svg",
 ] as const;
-
-const RATIO_FIELDS: readonly { key: RatioKey; label: string; inputLabel: string }[] = [
-  { key: "neighborRatio", label: "相邻数", inputLabel: "相邻数占比" },
-  { key: "compareRatio", label: "数的组成", inputLabel: "数的组成占比" },
-  { key: "applicationRatio", label: "应用题", inputLabel: "应用题占比" },
-];
 
 function getWorksheetCharacter(day: number, characterOverrides?: LocalWorksheetCharacterMap) {
   const character = WORKSHEET_CHARACTERS[(Math.max(1, day) - 1) % WORKSHEET_CHARACTERS.length];
@@ -523,7 +512,123 @@ function LifeMathSectionView({ section }: { section: WorksheetPageSection }) {
   return <section className={styles.lifeMathSection} data-columns={section.columns} style={style} data-testid="worksheet-life-math-section"><SectionHeading title={section.title} /><div className={styles.lifeMathGrid}>{section.questions.map((question) => question.type === "life-math" ? <LifeMathView question={question} key={question.id} /> : null)}</div></section>;
 }
 
+function BalanceScaleView({ question }: { question: BalanceEquationQuestion }) {
+  return (
+    <div className={styles.numberSenseCard} data-testid="math-worksheet-question" data-type="balance-equation">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <div className={styles.balanceArt} aria-hidden="true">
+        <svg className={styles.balanceSvg} viewBox="0 0 220 58" role="presentation">
+          <line x1="110" y1="8" x2="110" y2="46" stroke="currentColor" strokeWidth="2.5" />
+          <line x1="38" y1="18" x2="182" y2="18" stroke="currentColor" strokeWidth="2.5" />
+          <line x1="38" y1="18" x2="38" y2="28" stroke="currentColor" strokeWidth="1.5" />
+          <line x1="182" y1="18" x2="182" y2="28" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M18 28 Q38 46 58 28 Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M162 28 Q182 46 202 28 Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <text x="38" y="54" textAnchor="middle" fontSize="9" fill="currentColor">左</text>
+          <text x="182" y="54" textAnchor="middle" fontSize="9" fill="currentColor">右</text>
+        </svg>
+      </div>
+      <p className={styles.numberSenseParentAsk}>💬 {question.parentAsk}</p>
+      <p className={styles.numberSenseEquation}>{question.expression}</p>
+      <div className={styles.numberSenseWriteBox} aria-label="填写 □" />
+    </div>
+  );
+}
+
+function SymbolSystemView({ question }: { question: SymbolSystemQuestion }) {
+  return (
+    <div className={styles.numberSenseCard} data-testid="math-worksheet-question" data-type="symbol-system">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <p className={styles.numberSenseParentAsk}>💬 先说说每个图形代表几，再填答案。</p>
+      {question.lines.map((line) => (
+        <p key={line.text} className={line.isAnswerLine ? styles.numberSenseSymbolAnswer : styles.numberSenseSymbolLine}>{line.text}</p>
+      ))}
+    </div>
+  );
+}
+
+function FriendlyCalcView({ question }: { question: FriendlyCalcQuestion }) {
+  return (
+    <div className={styles.numberSenseCard} data-testid="math-worksheet-question" data-type="friendly-calc">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <div className={styles.numberSenseTalkBox}>
+        <strong>说一说，别硬算</strong>
+        <p>{question.parentAsk}</p>
+        <p className={styles.numberSenseHint}>小提示：{question.hint}</p>
+      </div>
+      <p className={styles.numberSenseEquationMuted}>算式参考：{question.expression}</p>
+      <div className={styles.numberSenseWriteBox} aria-label="写下思路或结果" />
+    </div>
+  );
+}
+
+function EstimateJudgeView({ question }: { question: EstimateJudgeQuestion }) {
+  return (
+    <div className={styles.numberSenseCard} data-testid="math-worksheet-question" data-type="estimate-judge">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <p className={styles.numberSenseParentAsk}>💬 {question.parentAsk}</p>
+      <p className={styles.numberSenseStatement}>{question.statement}</p>
+      <div className={styles.estimateChoices} role="group" aria-label="估算判断">
+        <span className={styles.estimateChoice}>✅ 对</span>
+        <span className={styles.estimateChoice}>❌ 错</span>
+      </div>
+    </div>
+  );
+}
+
+function SenseStoryView({ question }: { question: SenseStoryQuestion }) {
+  return (
+    <div className={styles.numberSenseCard} data-testid="math-worksheet-question" data-type="sense-story">
+      <div className={styles.senseStoryPrompt}>
+        <span className={styles.questionNumber}>{question.number}.</span>
+        <ObjectSprite asset={question.icon} className={styles.applicationIcon} />
+        <p>{question.prompt}</p>
+      </div>
+      <p className={styles.numberSenseParentAsk}>💬 {question.parentAsk}</p>
+      <div className={styles.numberSenseStorySpace} aria-label="分步说明或画图" />
+    </div>
+  );
+}
+
+function KenkenGridView({ question }: { question: KenkenQuestion }) {
+  return (
+    <div className={styles.numberSenseCard} data-testid="math-worksheet-question" data-type="kenken">
+      <span className={styles.questionNumber}>{question.number}.</span>
+      <p className={styles.numberSenseHint}>{question.title} · 每行每列 1～4 各出现一次</p>
+      <div className={styles.kenkenGrid} aria-label="聪明格">
+        {question.cells.flatMap((row, rowIndex) =>
+          row.map((cell, colIndex) => (
+            <div className={styles.kenkenCell} key={`${rowIndex}-${colIndex}`}>
+              {cell.cageLabel ? <span className={styles.kenkenCage}>{cell.cageLabel}</span> : null}
+            </div>
+          )),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NumberSenseSectionView({ section }: { section: WorksheetPageSection }) {
+  return (
+    <section className={styles.numberSenseBlock} data-testid={`worksheet-${section.type}-section`}>
+      <SectionHeading title={section.title} />
+      {section.questions.map((question) => {
+        if (question.type === "balance-equation") return <BalanceScaleView question={question} key={question.id} />;
+        if (question.type === "symbol-system") return <SymbolSystemView question={question} key={question.id} />;
+        if (question.type === "friendly-calc") return <FriendlyCalcView question={question} key={question.id} />;
+        if (question.type === "estimate-judge") return <EstimateJudgeView question={question} key={question.id} />;
+        if (question.type === "sense-story") return <SenseStoryView question={question} key={question.id} />;
+        if (question.type === "kenken") return <KenkenGridView question={question} key={question.id} />;
+        return null;
+      })}
+    </section>
+  );
+}
+
 function WorksheetPageSectionView({ section }: { section: WorksheetPageSection }) {
+  if (section.type === "balance" || section.type === "symbol" || section.type === "friendly-calc" || section.type === "estimate" || section.type === "story" || section.type === "kenken") {
+    return <NumberSenseSectionView section={section} />;
+  }
   if (section.type === "guided") return <section className={styles.guidedSection} data-testid="worksheet-guided-section"><SectionHeading title={section.title} /><div className={styles.guidedGrid}>{section.questions.map((question) => question.type === "mental" ? <GuidedQuestion question={question} key={question.id} /> : null)}</div></section>;
   if (section.type === "neighbor") return <NeighborSection section={section} />;
   if (section.type === "tens-split") return <TensSplitSection section={section} />;
@@ -542,7 +647,7 @@ function WorksheetPaper({ worksheet, page, printCopy = false, characterOverrides
   const greeting = getWorksheetCompanionGreeting(character.name, worksheet.title);
   const stageLabel = worksheet.month === 2
     ? `第二个月 ${worksheet.monthDay}/${MONTH_TWO_DAYS}`
-    : worksheet.stage === "foundation" ? `基础 ${worksheet.stageDay}/${FOUNDATION_WORKSHEET_DAYS}` : `强化 ${worksheet.stageDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
+    : `第一个月 ${worksheet.monthDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
   const paperStyle = { "--paper-header-height": `${WORKSHEET_PAPER_HEADER_HEIGHT_MM}mm` } as CSSProperties;
   return (
     <article className={styles.paper} style={paperStyle} data-testid={printCopy ? undefined : "math-worksheet-paper"} data-day={worksheet.day} data-stage={worksheet.stage} data-stage-day={worksheet.stageDay} data-page={page.pageNumber} data-page-count={page.pageCount} data-used-height={page.usedHeightMm} data-print-copy={printCopy || undefined} data-print-side={printCopy ? (page.pageNumber === 1 ? "front" : "back") : undefined} data-blank={printCopy ? "false" : undefined} aria-label={`第 ${worksheet.day} 天数学练习第 ${page.pageNumber} 页`}>
@@ -553,6 +658,10 @@ function WorksheetPaper({ worksheet, page, printCopy = false, characterOverrides
         </div>
         <img className={styles.character} src={character.src} alt="" data-character={character.name} draggable="false" />
       </header>
+      <div className={styles.paperUsage} data-testid={printCopy ? undefined : "worksheet-usage-banner"}>
+        <strong>使用说明</strong> {NUMBER_SENSE_PARENT_USAGE}
+        {worksheet.parentTip ? <p className={styles.paperParentTip}>💡 {worksheet.parentTip}</p> : null}
+      </div>
       <div className={styles.paperBody} data-testid={printCopy ? undefined : "worksheet-paper-body"}>{page.showMethod ? <MethodExample worksheet={worksheet} /> : null}{page.sections.map((section, index) => <WorksheetPageSectionView section={section} key={`${section.type}-${index}`} />)}</div>
       <footer className={styles.paperFooter} data-testid={printCopy ? undefined : "worksheet-paper-footer"}><span>第 {worksheet.day} / {WORKSHEET_PLAN_DAYS} 天</span><span>第 {page.pageNumber} / {page.pageCount} 页 · 本页 {page.questionCount} 题</span></footer>
     </article>
@@ -578,9 +687,6 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
   const [printPending, setPrintPending] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<number | null>(null);
   const [exportRange, setExportRange] = useState<WorksheetExportRange>("all");
-  const [config, setConfig] = useState<ReinforcementConfig>(DEFAULT_REINFORCEMENT_CONFIG);
-  const [monthOneMode, setMonthOneMode] = useState<MonthOneGenerationMode>("legacy");
-  const [monthTwoQuestionCount, setMonthTwoQuestionCount] = useState(DEFAULT_MONTH_TWO_CONFIG.dailyQuestionCount);
   const [localCharacters, setLocalCharacters] = useState<LocalWorksheetCharacterMap>({});
   const [plan, setPlan] = useState<WorksheetPlan | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
@@ -594,22 +700,13 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
   const selectedPrintPages = selectedWorksheet
     ? selectedWorksheet.pages.length + (selectedWorksheet.pages.length % 2 === 1 ? 1 : 0)
     : 0;
-  const selectedCounts = selectedWorksheet ? {
-    neighbor: getSectionQuestions(selectedWorksheet, "neighbor").length,
-    compare: getSectionQuestions(selectedWorksheet, "tens-split").length,
-    mental: getSectionQuestions(selectedWorksheet, "mental").length,
-    application: getSectionQuestions(selectedWorksheet, "application").length,
-  } : { neighbor: 0, compare: 0, mental: 0, application: 0 };
-  const expectedReinforcementCounts = selectedWorksheet?.month === 1 && selectedWorksheet.stage === "reinforcement"
-    ? getReinforcementQuestionCounts(config, selectedWorksheet.stageDay)
-    : undefined;
-  const expectedMonthTwoCounts = selectedWorksheet?.month === 2
-    ? getMonthTwoQuestionCounts({ dailyQuestionCount: monthTwoQuestionCount })
-    : undefined;
   const localCharacterCount = Object.keys(localCharacters).length;
+  const sectionPreview = selectedWorksheet
+    ? selectedWorksheet.sections.map((section) => `${section.title} ${section.questions.length}`).join(" · ")
+    : "";
 
   const nextSeed = () => { seedRef.current += 7919; return seedRef.current; };
-  const requestPlan = (seed: number, nextConfig: ReinforcementConfig, nextMonthTwoQuestionCount: number, successText: string, nextMonthOneMode = monthOneMode) => {
+  const requestPlan = (seed: number, successText: string) => {
     const requestId = planRequestRef.current + 1;
     planRequestRef.current = requestId;
     planWorkerRef.current?.terminate();
@@ -642,11 +739,17 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
       setPlanLoading(false);
       setStatus({ tone: "error", text: "数学练习生成失败，请刷新页面后重试" });
     };
-    worker.postMessage({ type: "generate", seed, config: nextConfig, monthTwoConfig: { ...DEFAULT_MONTH_TWO_CONFIG, dailyQuestionCount: nextMonthTwoQuestionCount }, monthOneMode: nextMonthOneMode } satisfies MathWorksheetPlanGenerateRequest);
+    worker.postMessage({
+      type: "generate",
+      seed,
+      config: DEFAULT_REINFORCEMENT_CONFIG,
+      monthTwoConfig: DEFAULT_MONTH_TWO_CONFIG,
+      monthOneMode: "low-repeat",
+    } satisfies MathWorksheetPlanGenerateRequest);
   };
 
   useEffect(() => {
-    requestPlan(INITIAL_SEED, DEFAULT_REINFORCEMENT_CONFIG, DEFAULT_MONTH_TWO_CONFIG.dailyQuestionCount, "两个 30 天数学练习计划已准备好", "legacy");
+    requestPlan(INITIAL_SEED, "60 天数感练习计划已准备好");
     characterFolderInputRef.current?.setAttribute("webkitdirectory", "");
     characterFolderInputRef.current?.setAttribute("directory", "");
     return () => {
@@ -680,22 +783,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
     };
   }, [printPending, selectedPrintPages, selectedWorksheet?.day]);
 
-  const regeneratePlan = (nextConfig = config, nextMonthTwoQuestionCount = monthTwoQuestionCount, text = "数学练习计划已重新生成", nextMonthOneMode = monthOneMode) => { requestPlan(nextSeed(), nextConfig, nextMonthTwoQuestionCount, text, nextMonthOneMode); };
-  const updateRatio = (key: RatioKey, value: number) => {
-    const next = normalizeReinforcementConfig({ ...config, [key]: Number.isFinite(value) ? value : 0 });
-    setConfig(next);
-    regeneratePlan(next, monthTwoQuestionCount, "第一个月强化训练题目比例已更新");
-  };
-  const updateTotal = (value: number) => {
-    const next = normalizeReinforcementConfig({ ...config, dailyQuestionCount: value });
-    setConfig(next);
-    regeneratePlan(next, monthTwoQuestionCount, "第一个月强化训练每日题量已更新");
-  };
-  const updateMonthTwoTotal = (value: number) => {
-    const next = normalizeMonthTwoConfig({ dailyQuestionCount: value }).dailyQuestionCount;
-    setMonthTwoQuestionCount(next);
-    regeneratePlan(config, next, "第二个月每日题量已更新");
-  };
+  const regeneratePlan = (text = "数学练习计划已重新生成") => { requestPlan(nextSeed(), text); };
   const replaceLocalCharacters = (next: LocalWorksheetCharacterMap) => {
     releaseWorksheetCharacterFolder(localCharactersRef.current);
     localCharactersRef.current = next;
@@ -719,29 +807,10 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
     replaceLocalCharacters({});
     setStatus({ tone: "success", text: "已恢复内置角色素材" });
   };
-  const updateMonthOneMode = (enabled: boolean) => {
-    const nextMode: MonthOneGenerationMode = enabled ? "low-repeat" : "legacy";
-    setMonthOneMode(nextMode);
-    regeneratePlan(config, monthTwoQuestionCount, enabled ? "第一个月低重复故事线已启用" : "第一个月已恢复旧版生成", nextMode);
-  };
   const regenerateDay = () => {
-    if (!selectedWorksheet || selectedWorksheet.stage === "foundation") { setStatus({ tone: "idle", text: "基础引导是固定精选内容" }); return; }
+    if (!selectedWorksheet) return;
     const currentWorksheet = selectedWorksheet;
-    const monthOneUsedStorylineIds = monthOneMode === "low-repeat" && plan
-      ? plan.monthOneDays
-        .filter((day) => day.id !== currentWorksheet.id)
-        .flatMap((day) => getSectionQuestions(day, "application"))
-        .flatMap((question) => question.type === "application" && question.storylineId ? [question.storylineId] : [])
-      : undefined;
-    const monthOneUsedQuestionSignatures = monthOneMode === "low-repeat" && plan
-      ? plan.monthOneDays
-        .filter((day) => day.id !== currentWorksheet.id)
-        .flatMap((day) => getSectionQuestions(day, "application"))
-        .flatMap((question) => question.type === "application" ? [getApplicationQuestionSignature(question)] : [])
-      : undefined;
-    const next = selectedWorksheet.month === 2
-      ? generateDailyWorksheet(selectedWorksheet.day, nextSeed(), { monthTwoQuestionCount })
-      : generateDailyWorksheet(selectedWorksheet.day, nextSeed(), { neighborCount: selectedCounts.neighbor, compareCount: selectedCounts.compare, mentalCount: selectedCounts.mental, applicationCount: selectedCounts.application, theme: selectedWorksheet.theme, monthOneMode, monthOneUsedStorylineIds, monthOneUsedQuestionSignatures });
+    const next = generateDailyWorksheet(selectedWorksheet.day, nextSeed());
     setPlan((previous) => {
       if (!previous) return previous;
       return {
@@ -752,11 +821,11 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
         reinforcementDays: previous.reinforcementDays.map((day) => day.id === next.id ? next : day),
       };
     });
-    setStatus({ tone: "success", text: `${currentWorksheet.month === 2 ? "第二个月" : "强化"}第 ${currentWorksheet.monthDay} 天已换一套题目` });
+    setStatus({ tone: "success", text: `第 ${currentWorksheet.monthDay} 天已换一套题目` });
   };
   const selectDay = (day: number) => { setSelectedDay(day); setPreviewPageIndex(0); setStatus({ tone: "idle", text: `正在查看第 ${day} 天` }); };
   const selectMonth = (month: 1 | 2) => { setActiveMonth(month); setSelectedDay(month === 1 ? 1 : MONTH_ONE_DAYS + 1); setPreviewPageIndex(0); setStatus({ tone: "idle", text: `正在查看第 ${month} 个月` }); };
-  const reset = () => { seedRef.current = INITIAL_SEED; setConfig(DEFAULT_REINFORCEMENT_CONFIG); setMonthOneMode("legacy"); setMonthTwoQuestionCount(DEFAULT_MONTH_TWO_CONFIG.dailyQuestionCount); setExportRange("all"); setActiveMonth(1); setSelectedDay(1); requestPlan(INITIAL_SEED, DEFAULT_REINFORCEMENT_CONFIG, DEFAULT_MONTH_TWO_CONFIG.dailyQuestionCount, "已恢复默认练习计划", "legacy"); };
+  const reset = () => { seedRef.current = INITIAL_SEED; setExportRange("all"); setActiveMonth(1); setSelectedDay(1); requestPlan(INITIAL_SEED, "已恢复默认练习计划"); };
   const queueCurrentDayPrint = () => {
     if (!selectedWorksheet) return;
     setPrintPending(true);
@@ -844,7 +913,7 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
       <header className="pulse-workbench__header"><div><div className="pulse-workbench__meta" aria-hidden="true"><span>一程一成长 / 工具</span><i /><span>{definition.category}</span></div><h1 id="tool-title">{definition.seo.h1}</h1><p>{definition.description}</p></div></header>
       <section className={styles.layout} aria-label="幼小数学练习生成工作区">
         <aside className={styles.settings} aria-label="数学练习设置">
-          <header className={styles.settingsHeader}><div><span>{selectedWorksheet.month === 1 ? "第一个月练习计划" : "第二个月进阶计划"}</span><h2>{selectedWorksheet.month === 2 ? `第 ${selectedWorksheet.monthDay} 天` : selectedWorksheet.stage === "foundation" ? `基础 ${selectedWorksheet.stageDay}` : `强化 ${selectedWorksheet.stageDay}`}</h2></div><strong>{selectedWorksheet.total}<small>题</small></strong></header>
+          <header className={styles.settingsHeader}><div><span>{selectedWorksheet.month === 1 ? "第一个月 · 数感建立" : "第二个月 · 代换与情境"}</span><h2>第 {selectedWorksheet.monthDay} 天</h2></div><strong>{selectedWorksheet.total}<small>题</small></strong></header>
           <div className={styles.overview}><span><b>30</b> 天第一个月</span><span><b>30</b> 天第二个月</span><span><b>{contentPages}</b> 内容页</span></div>
           <section className={styles.assetSource} aria-labelledby="character-asset-title">
             <div className={styles.settingLabel}><span id="character-asset-title">角色素材</span><small>{localCharacterCount > 0 ? "本地覆盖" : "内置兜底"}</small></div>
@@ -856,14 +925,18 @@ function MathWorksheetWorkspaceContent({ definition }: { definition: KidsToolDef
             <p className={styles.assetStatus}><ShieldCheck size={14} />{localCharacterCount > 0 ? `已读取 ${localCharacterCount}/${MATH_WORKSHEET_CHARACTER_ASSETS.length} 个角色图片` : "尚未选择文件夹，当前使用内置角色素材"}</p>
             <p className={styles.assetHint}>图片只在当前浏览器本地读取，用于预览、打印和 PDF 合成。</p>
           </section>
-          <section className={styles.exportRange} aria-labelledby="export-range-title"><div className={styles.settingLabel}><span id="export-range-title">导出内容</span><small>{printPages} 页双面打印</small></div><div className={styles.rangeTabs} role="tablist" aria-label="选择导出范围">{(["month-one", "month-two", "all"] as const).map((range) => <button type="button" role="tab" aria-selected={exportRange === range} className={exportRange === range ? styles.currentRange : ""} disabled={printPending || bulkProgress !== null} onClick={() => setExportRange(range)} key={range}>{range === "month-one" ? "第一个月" : range === "month-two" ? "第二个月" : "全部 60 天"}</button>)}</div><p>{exportRange === "month-one" ? "5 天基础引导 + 25 天强化训练" : exportRange === "month-two" ? "30 天加减进阶与综合练习" : "两个 30 天练习计划"}</p></section>
-          <nav className={styles.dayNav} aria-label="练习计划日期"><header><CalendarDays aria-hidden="true" size={16} /><span>预览每天内容</span></header><div className={styles.monthTabs} role="tablist" aria-label="选择练习月份"><button type="button" role="tab" aria-selected={activeMonth === 1} className={activeMonth === 1 ? styles.currentRange : ""} onClick={() => selectMonth(1)}>第一个月</button><button type="button" role="tab" aria-selected={activeMonth === 2} className={activeMonth === 2 ? styles.currentRange : ""} onClick={() => selectMonth(2)}>第二个月</button></div>{activeMonth === 1 ? <><div className={styles.dayGroup}><small>基础引导</small><div className={styles.dayGrid}>{plan.foundationDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`基础第 ${day.stageDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.stageDay}</button>)}</div></div><div className={styles.dayGroup}><small>强化训练</small><div className={styles.dayGrid}>{plan.reinforcementDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`强化第 ${day.stageDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.stageDay + FOUNDATION_WORKSHEET_DAYS}</button>)}</div></div></> : <div className={styles.dayGroup}><small>第二个月进阶训练</small><div className={styles.dayGrid}>{visibleDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`第二个月第 ${day.monthDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.monthDay}</button>)}</div></div>}</nav>
-          {selectedWorksheet.month === 2 ? <section className={styles.settingGroup} aria-labelledby="month-two-config-title"><div className={styles.settingLabel}><span id="month-two-config-title">第二个月配置</span><small>30 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={monthTwoQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="第二个月每天题量" onChange={(event) => updateMonthTwoTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}><div className={styles.ratioField}><span>加减进阶</span><strong>80</strong><em>%</em></div><div className={styles.ratioField}><span>乘除启蒙</span><strong>10</strong><em>%</em></div><div className={styles.ratioField}><span>生活数学</span><strong>10</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label="题型比例：加减进阶 80%，乘除启蒙 10%，生活数学 10%"><span style={{ width: "80%" }} /><span style={{ width: "10%" }} /><span style={{ width: "10%" }} /></div><p className={styles.ratioHint}>默认每天 26 道加减进阶、1 道乘除启蒙、3 道生活数学；相邻数与数的组成加厚排版</p></section> : <section className={styles.settingGroup} aria-labelledby="reinforcement-config-title"><div className={styles.settingLabel}><span id="reinforcement-config-title">强化训练配置</span><small>第一个月 25 天统一使用</small></div><label className={styles.totalField}><span>每天题量</span><input type="range" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><input type="number" min="10" max={MAX_WORKSHEET_QUESTIONS} value={config.dailyQuestionCount} disabled={printPending || bulkProgress !== null} aria-label="强化训练每天题量" onChange={(event) => updateTotal(event.currentTarget.valueAsNumber)} /><em>题</em></label><div className={styles.ratioGrid}>{RATIO_FIELDS.map((field) => <label className={styles.ratioField} key={field.key}><span>{field.label}</span><input type="number" min="0" max={field.key === "applicationRatio" ? MAX_APPLICATION_RATIO : 100} step="5" value={config[field.key]} disabled={printPending || bulkProgress !== null} aria-label={field.inputLabel} onChange={(event) => updateRatio(field.key, event.currentTarget.valueAsNumber)} /><em>%</em></label>)}<div className={`${styles.ratioField} ${styles.readonlyRatio}`}><span>计算式</span><strong>{config.mentalRatio}%</strong><em>%</em></div></div><div className={styles.ratioBar} aria-label={`题型比例：相邻数 ${config.neighborRatio}%，数的组成 ${config.compareRatio}%，计算式 ${config.mentalRatio}%，应用题 ${config.applicationRatio}%`}><span style={{ width: `${config.neighborRatio}%` }} /><span style={{ width: `${config.compareRatio}%` }} /><span style={{ width: `${config.mentalRatio}%` }} /><span style={{ width: `${config.applicationRatio}%` }} /></div><p className={styles.ratioHint}>应用题最多 25%，保证每天最多两页</p><label className={styles.repeatToggle}><input type="checkbox" checked={monthOneMode === "low-repeat"} disabled={printPending || bulkProgress !== null} onChange={(event) => updateMonthOneMode(event.currentTarget.checked)} /><span>低重复故事线</span><small>跨强化训练日期平衡故事和图案，前 5 天保持固定内容</small></label></section>}
-          {selectedWorksheet.month === 2 ? <div className={styles.expectedCounts}><span>本日预计</span><strong>{expectedMonthTwoCounts?.neighbor ?? 0}</strong><small>相邻</small><strong>{expectedMonthTwoCounts?.compare ?? 0}</strong><small>组成</small><strong>{expectedMonthTwoCounts?.mental ?? 0}</strong><small>横式</small><strong>{expectedMonthTwoCounts?.vertical ?? 0}</strong><small>竖式</small><strong>{expectedMonthTwoCounts?.missing ?? 0}</strong><small>未知数</small><strong>{expectedMonthTwoCounts?.grouping ?? 0}</strong><small>乘除</small><strong>{expectedMonthTwoCounts?.lifeMath ?? 0}</strong><small>生活</small></div> : selectedWorksheet.stage === "reinforcement" ? <div className={styles.expectedCounts}><span>本日预计</span><strong>{expectedReinforcementCounts?.neighbor ?? 0}</strong><small>相邻</small><strong>{expectedReinforcementCounts?.compare ?? 0}</strong><small>组成</small><strong>{expectedReinforcementCounts?.mental ?? 0}</strong><small>计算</small><strong>{expectedReinforcementCounts?.application ?? 0}</strong><small>应用</small></div> : <div className={styles.fixedNotice}><Check size={15} />前 5 天为固定精选内容</div>}
-          <div className={styles.actions} aria-busy={printPending || bulkProgress !== null}><button type="button" className={styles.primaryButton} disabled={printPending || bulkProgress !== null} onClick={() => regeneratePlan()}><Dices size={17} />重新生成强化题</button><button type="button" className={styles.bulkPrintButton} disabled={printPending} onClick={startBulkExport}>{bulkProgress === null ? <Files size={17} /> : <X size={17} />}{bulkProgress === null ? `导出 ${exportRange === "all" ? 60 : 30} 天 PDF` : `取消导出（${bulkProgress} / ${exportDays.length}）`}</button><button type="button" className={styles.printButton} disabled={printPending || bulkProgress !== null} onClick={queueCurrentDayPrint}><Printer size={17} />打印当前一天</button><button type="button" onClick={regenerateDay} disabled={selectedWorksheet.stage === "foundation" || printPending || bulkProgress !== null}><ClipboardList size={16} />本日换一套</button><button type="button" disabled={printPending || bulkProgress !== null} onClick={reset}><RotateCcw size={16} />恢复默认</button></div>
+          <section className={styles.exportRange} aria-labelledby="export-range-title"><div className={styles.settingLabel}><span id="export-range-title">导出内容</span><small>{printPages} 页双面打印</small></div><div className={styles.rangeTabs} role="tablist" aria-label="选择导出范围">{(["month-one", "month-two", "all"] as const).map((range) => <button type="button" role="tab" aria-selected={exportRange === range} className={exportRange === range ? styles.currentRange : ""} disabled={printPending || bulkProgress !== null} onClick={() => setExportRange(range)} key={range}>{range === "month-one" ? "第一个月" : range === "month-two" ? "第二个月" : "全部 60 天"}</button>)}</div><p>{exportRange === "month-one" ? "30 天数感练习（不必每天做完）" : exportRange === "month-two" ? "30 天图形代换、情境与聪明格" : "60 天数感计划 · 5～6 岁"}</p></section>
+          <nav className={styles.dayNav} aria-label="练习计划日期"><header><CalendarDays aria-hidden="true" size={16} /><span>预览每天内容</span></header><div className={styles.monthTabs} role="tablist" aria-label="选择练习月份"><button type="button" role="tab" aria-selected={activeMonth === 1} className={activeMonth === 1 ? styles.currentRange : ""} onClick={() => selectMonth(1)}>第一个月</button><button type="button" role="tab" aria-selected={activeMonth === 2} className={activeMonth === 2 ? styles.currentRange : ""} onClick={() => selectMonth(2)}>第二个月</button></div>{activeMonth === 1 ? <div className={styles.dayGroup}><small>第一个月（共 30 天）</small><div className={styles.dayGrid}>{plan.reinforcementDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`第 ${day.monthDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.monthDay}</button>)}</div></div> : <div className={styles.dayGroup}><small>第二个月（共 30 天）</small><div className={styles.dayGrid}>{visibleDays.map((day) => <button type="button" className={day.day === selectedDay ? styles.currentDay : ""} aria-label={`第 ${day.monthDay} 天：${day.title}`} aria-pressed={day.day === selectedDay} onClick={() => selectDay(day.day)} data-testid={`worksheet-day-${day.day}`} key={day.id}>{day.monthDay}</button>)}</div></div>}</nav>
+          <section className={styles.settingGroup} aria-labelledby="number-sense-guide-title">
+            <div className={styles.settingLabel}><span id="number-sense-guide-title">数感练习方式</span><small>5～6 岁 · 不必必达</small></div>
+            <p className={styles.ratioHint}>{NUMBER_SENSE_PARENT_USAGE}</p>
+            {selectedWorksheet.parentTip ? <p className={styles.ratioHint}><strong>今日提示：</strong>{selectedWorksheet.parentTip}</p> : null}
+            {sectionPreview ? <p className={styles.ratioHint}><strong>本日板块：</strong>{sectionPreview}</p> : null}
+          </section>
+          <div className={styles.actions} aria-busy={printPending || bulkProgress !== null}><button type="button" className={styles.primaryButton} disabled={printPending || bulkProgress !== null} onClick={() => regeneratePlan()}><Dices size={17} />重新生成全部题目</button><button type="button" className={styles.bulkPrintButton} disabled={printPending} onClick={startBulkExport}>{bulkProgress === null ? <Files size={17} /> : <X size={17} />}{bulkProgress === null ? `导出 ${exportRange === "all" ? 60 : 30} 天 PDF` : `取消导出（${bulkProgress} / ${exportDays.length}）`}</button><button type="button" className={styles.printButton} disabled={printPending || bulkProgress !== null} onClick={queueCurrentDayPrint}><Printer size={17} />打印当前一天</button><button type="button" onClick={regenerateDay} disabled={printPending || bulkProgress !== null}><ClipboardList size={16} />本日换一套</button><button type="button" disabled={printPending || bulkProgress !== null} onClick={reset}><RotateCcw size={16} />恢复默认</button></div>
           <div className={styles.status} data-tone={status.tone} role="status" aria-live="polite">{status.tone === "success" ? <Check size={15} /> : null}{status.tone === "error" ? <TriangleAlert size={15} /> : null}<span>{status.text}</span></div><p className={styles.local}><ShieldCheck size={15} />题目在浏览器本地生成</p><p className={styles.printSummary} data-testid="worksheet-print-summary">{contentPages} 页内容 / {printPages} 页双面打印包</p>
         </aside>
-        <section className={`${styles.preview} ${previewExpanded ? styles.previewExpanded : ""}`} aria-label="当天 A4 版面预览"><header className={styles.previewToolbar}><div><Calculator size={17} /><span>{selectedWorksheet.month === 2 ? "第二个月" : selectedWorksheet.stage === "foundation" ? "基础" : "强化"} {selectedWorksheet.month === 2 ? selectedWorksheet.monthDay : selectedWorksheet.stageDay} · A4 预览</span></div><div className={styles.previewControls}>{selectedWorksheet.pages.length > 1 ? <div className={styles.pageTabs} role="tablist" aria-label="选择预览页">{selectedWorksheet.pages.map((page, index) => <button type="button" role="tab" aria-selected={previewPageIndex === index} className={previewPageIndex === index ? styles.currentTab : ""} onClick={() => setPreviewPageIndex(index)} key={page.pageNumber}>第 {page.pageNumber} 页</button>)}</div> : <span className={styles.singlePage}>共 1 页</span>}<button type="button" className={styles.expandButton} aria-label={previewExpanded ? "退出放大预览" : "放大预览"} title={previewExpanded ? "退出放大预览" : "放大预览"} onClick={() => setPreviewExpanded((value) => !value)}>{previewExpanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button></div></header><div className={styles.daySummary} data-testid="worksheet-day-summary"><span><Target size={14} />今日目标</span><strong>{selectedWorksheet.title}</strong><p>{selectedWorksheet.objective}</p></div><div className={styles.previewCanvas}><WorksheetPaper worksheet={selectedWorksheet} page={selectedPage} characterOverrides={localCharacters} /></div></section>
+        <section className={`${styles.preview} ${previewExpanded ? styles.previewExpanded : ""}`} aria-label="当天 A4 版面预览"><header className={styles.previewToolbar}><div><Calculator size={17} /><span>{selectedWorksheet.month === 2 ? "第二个月" : "第一个月"} 第 {selectedWorksheet.monthDay} 天 · A4 预览</span></div><div className={styles.previewControls}>{selectedWorksheet.pages.length > 1 ? <div className={styles.pageTabs} role="tablist" aria-label="选择预览页">{selectedWorksheet.pages.map((page, index) => <button type="button" role="tab" aria-selected={previewPageIndex === index} className={previewPageIndex === index ? styles.currentTab : ""} onClick={() => setPreviewPageIndex(index)} key={page.pageNumber}>第 {page.pageNumber} 页</button>)}</div> : <span className={styles.singlePage}>共 1 页</span>}<button type="button" className={styles.expandButton} aria-label={previewExpanded ? "退出放大预览" : "放大预览"} title={previewExpanded ? "退出放大预览" : "放大预览"} onClick={() => setPreviewExpanded((value) => !value)}>{previewExpanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button></div></header><div className={styles.daySummary} data-testid="worksheet-day-summary"><span><Target size={14} />今日目标</span><strong>{selectedWorksheet.title}</strong><p>{selectedWorksheet.objective}</p>{selectedWorksheet.parentTip ? <p><strong>家长一句：</strong>{selectedWorksheet.parentTip}</p> : null}</div><div className={styles.previewCanvas}><WorksheetPaper worksheet={selectedWorksheet} page={selectedPage} characterOverrides={localCharacters} /></div></section>
       </section>
       <div className={styles.printPack} data-testid="worksheet-print-pack" data-render-scope="selected-day" ref={printPackRef} aria-label="当前数学练习双面打印内容">{selectedWorksheet.pages.map((page) => <WorksheetPaper worksheet={selectedWorksheet} page={page} printCopy characterOverrides={localCharacters} key={`${selectedWorksheet.id}-${page.pageNumber}`} />)}{selectedWorksheet.pages.length % 2 === 1 ? <WorksheetBlankBack day={selectedWorksheet.day} /> : null}</div>
       <div className={styles.assetPreload} aria-hidden="true">{ALL_OBJECT_ASSETS.map((src) => <img src={src} alt="" key={src} />)}</div>

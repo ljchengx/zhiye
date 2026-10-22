@@ -1,9 +1,11 @@
 .workbench {
-  --worksheet-accent: #e45d45;
-  --worksheet-ink: #22292d;
-  --worksheet-muted: #7a858a;
-  --worksheet-line: #cdd4d7;
-  --worksheet-soft: #fff6f1;
+  --worksheet-accent: #7eb8d4;
+  --worksheet-accent-warm: #f4a8c8;
+  --worksheet-ink: #3d4a52;
+  --worksheet-muted: #7a8a94;
+  --worksheet-line: #d4e4ec;
+  --worksheet-soft: #fdf4f8;
+  --worksheet-soft-blue: #eef7fc;
   width: 100%;
   max-width: none;
   padding-inline: 0;
@@ -622,14 +624,14 @@
   min-width: 210mm;
   min-height: 297mm;
   box-sizing: border-box;
-  grid-template-rows: var(--paper-header-height, 28mm) minmax(0, 1fr) 6mm;
+  grid-template-rows: var(--paper-header-height, 28mm) auto minmax(0, 1fr) 6mm;
   padding: 4mm 12mm 7mm;
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  background: #fff;
+  background: linear-gradient(165deg, #fdfbff 0%, #f3f9fd 48%, #fff8fb 100%);
   box-shadow: 0 0 0 1px #e2e7e9;
-  color: #22292d;
+  color: var(--worksheet-ink);
   font-family: "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   font-variant-numeric: tabular-nums;
   print-color-adjust: exact;
@@ -682,13 +684,222 @@
   max-width: calc(100% - 4mm);
   margin: 0;
   padding: 2.4mm 4mm 2.4mm 3.6mm;
-  border: 0.4mm solid var(--worksheet-ink);
+  border: 0.35mm solid #c8dce8;
   border-radius: 4mm;
   background: #fff;
   color: var(--worksheet-ink);
-  font-size: 13pt;
+  font-size: 12.5pt;
   font-weight: 700;
   line-height: 1.3;
+}
+
+.paperUsage {
+  margin: 0 0 2.5mm;
+  padding: 2mm 3mm;
+  border-radius: 3mm;
+  background: linear-gradient(90deg, var(--worksheet-soft-blue), var(--worksheet-soft));
+  color: #5a6d78;
+  font-size: 9pt;
+  line-height: 1.45;
+}
+
+.paperUsage strong {
+  color: var(--worksheet-accent-warm);
+  font-weight: 700;
+}
+
+.paperParentTip {
+  margin: 0.8mm 0 0;
+  color: var(--worksheet-ink);
+  font-size: 9pt;
+  font-weight: 600;
+}
+
+.numberSenseBlock {
+  margin-bottom: 3mm;
+  padding: 2.5mm 3mm 3mm;
+  border: 0.3mm solid var(--worksheet-line);
+  border-radius: 3mm;
+  background: rgb(255 255 255 / 0.72);
+}
+
+.numberSenseBlock .sectionHeading {
+  margin: 0 0 2mm;
+  padding: 1mm 2.5mm;
+  border-radius: 2mm;
+  background: var(--worksheet-soft-blue);
+  color: #4a7a94;
+  font-size: 11pt;
+}
+
+.numberSensePrompt {
+  margin: 0 0 2mm;
+  font-size: 14pt;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.numberSenseHint {
+  margin: 0;
+  color: var(--worksheet-muted);
+  font-size: 10pt;
+}
+
+.numberSenseCard {
+  position: relative;
+  margin: 0 0 3mm;
+  padding: 2.5mm 3mm 3mm 8mm;
+  border: 0.25mm dashed var(--worksheet-line);
+  border-radius: 2.5mm;
+  background: rgb(255 255 255 / 0.85);
+}
+
+.numberSenseCard .questionNumber {
+  position: absolute;
+  top: 2.5mm;
+  left: 2mm;
+}
+
+.numberSenseParentAsk {
+  margin: 0 0 1.5mm;
+  color: #5a6b7a;
+  font-size: 10.5pt;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.numberSenseEquation {
+  margin: 0 0 1.5mm;
+  font-family: var(--worksheet-numeric-font, inherit);
+  font-size: 13pt;
+  font-weight: 700;
+}
+
+.numberSenseEquationMuted {
+  margin: 0 0 1.5mm;
+  color: var(--worksheet-muted);
+  font-family: var(--worksheet-numeric-font, inherit);
+  font-size: 10pt;
+}
+
+.numberSenseStatement {
+  margin: 0 0 2mm;
+  font-family: var(--worksheet-numeric-font, inherit);
+  font-size: 15pt;
+  font-weight: 700;
+}
+
+.numberSenseTalkBox {
+  margin: 0 0 2mm;
+  padding: 2mm 2.5mm;
+  border-radius: 2mm;
+  background: var(--worksheet-soft-yellow, #fff8e6);
+  color: var(--worksheet-ink);
+  font-size: 10pt;
+  line-height: 1.45;
+}
+
+.numberSenseTalkBox strong {
+  display: block;
+  margin-bottom: 0.8mm;
+  font-size: 10.5pt;
+}
+
+.numberSenseWriteBox,
+.numberSenseStorySpace {
+  min-height: 10mm;
+  border-radius: 2mm;
+  background: repeating-linear-gradient(
+    transparent,
+    transparent 7mm,
+    rgb(180 195 210 / 0.35) 7mm,
+    rgb(180 195 210 / 0.35) 7.3mm
+  );
+}
+
+.numberSenseStorySpace {
+  min-height: 18mm;
+}
+
+.balanceArt {
+  margin: 0 0 1.5mm;
+  color: #6b8fa3;
+}
+
+.balanceSvg {
+  display: block;
+  width: 52mm;
+  max-width: 100%;
+  height: auto;
+}
+
+.numberSenseSymbolLine {
+  margin: 0 0 1mm;
+  font-size: 12pt;
+  font-weight: 600;
+}
+
+.numberSenseSymbolAnswer {
+  margin: 0 0 1mm;
+  font-size: 12pt;
+  font-weight: 700;
+}
+
+.estimateChoices {
+  display: flex;
+  gap: 4mm;
+}
+
+.estimateChoice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18mm;
+  min-height: 12mm;
+  border: 0.35mm solid var(--worksheet-line);
+  border-radius: 50%;
+  font-size: 12pt;
+  font-weight: 700;
+}
+
+.senseStoryPrompt {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 2mm;
+  align-items: start;
+  margin-bottom: 1.5mm;
+}
+
+.senseStoryPrompt p {
+  margin: 0;
+  font-size: 12pt;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.kenkenGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 11mm);
+  gap: 0;
+  width: fit-content;
+  margin-top: 1.5mm;
+  border: 0.35mm solid var(--worksheet-line);
+}
+
+.kenkenCell {
+  position: relative;
+  width: 11mm;
+  height: 11mm;
+  border: 0.2mm solid var(--worksheet-line);
+}
+
+.kenkenCage {
+  position: absolute;
+  top: 0.5mm;
+  left: 0.8mm;
+  color: var(--worksheet-muted);
+  font-size: 7pt;
+  font-weight: 700;
 }
 
 .paperGreeting::after {

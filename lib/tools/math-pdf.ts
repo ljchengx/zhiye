@@ -37,6 +37,12 @@ import {
   type WorksheetMethodExample,
   type WorksheetPageSection,
   type WorksheetPrintPage,
+  type BalanceEquationQuestion,
+  type EstimateJudgeQuestion,
+  type FriendlyCalcQuestion,
+  type KenkenQuestion,
+  type SymbolSystemQuestion,
+  type SenseStoryQuestion,
   type WorksheetQuestion,
   type VerticalCalculationQuestion,
   type WorksheetExportRange,
@@ -98,14 +104,16 @@ const BODY_TOP_MM = WORKSHEET_PAPER_PADDING_TOP_MM + WORKSHEET_PAPER_HEADER_HEIG
 const FOOTER_TOP_MM = WORKSHEET_PAPER_PADDING_TOP_MM + WORKSHEET_PAPER_HEADER_HEIGHT_MM + WORKSHEET_PAGE_BODY_HEIGHT_MM;
 
 const COLORS = {
-  accent: hex("#e76a52"),
-  accentDark: hex("#d44f3a"),
-  ink: hex("#263439"),
-  muted: hex("#6f7d82"),
-  line: hex("#d9e2e4"),
-  lineSoft: hex("#edf1f2"),
-  paper: hex("#ffffff"),
-  soft: hex("#fff6f1"),
+  accent: hex("#7eb8d4"),
+  accentDark: hex("#5a9ab8"),
+  accentWarm: hex("#f4a8c8"),
+  ink: hex("#3d4a52"),
+  muted: hex("#7a8a94"),
+  line: hex("#d4e4ec"),
+  lineSoft: hex("#eef4f8"),
+  paper: hex("#fdfbff"),
+  soft: hex("#eef7fc"),
+  softPink: hex("#fdf4f8"),
 };
 
 function mm(value: number) {
@@ -289,9 +297,7 @@ export function getMathWorkbookPrintPageCount(worksheets: readonly DailyWorkshee
 function drawHeader(page: PDFPage, worksheet: DailyWorksheet, context: PdfRenderContext, character: PDFImage) {
   const stageLabel = worksheet.month === 2
     ? `第二个月 ${worksheet.monthDay}/${MONTH_TWO_DAYS}`
-    : worksheet.stage === "foundation"
-      ? `基础 ${worksheet.stageDay}/${FOUNDATION_WORKSHEET_DAYS}`
-      : `强化 ${worksheet.stageDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
+    : `第一个月 ${worksheet.monthDay}/${REINFORCEMENT_WORKSHEET_DAYS}`;
   const greeting = getWorksheetCompanionGreeting(getMathPdfCharacter(worksheet.day), worksheet.title);
   const headerTop = WORKSHEET_PAPER_PADDING_TOP_MM;
   const characterSize = WORKSHEET_PAPER_HEADER_HEIGHT_MM;
@@ -317,6 +323,24 @@ function drawHeader(page: PDFPage, worksheet: DailyWorksheet, context: PdfRender
   });
   drawCenteredText(page, fitText(greeting, context.fonts.chinese, 11, bubbleWidth - 8), CONTENT_LEFT_MM + 3, bubbleTop, bubbleWidth - 6, bubbleHeight, context.fonts.chinese, 11, COLORS.ink);
   drawContainedImage(page, character, characterLeft, headerTop, characterSize, characterSize);
+}
+
+function drawUsageBanner(page: PDFPage, worksheet: DailyWorksheet, topMm: number, context: PdfRenderContext) {
+  const heightMm = worksheet.parentTip ? 14 : 10;
+  page.drawRectangle({
+    x: mm(CONTENT_LEFT_MM),
+    y: yFromTop(topMm + heightMm),
+    width: mm(CONTENT_RIGHT_MM - CONTENT_LEFT_MM),
+    height: mm(heightMm),
+    color: COLORS.soft,
+    borderColor: COLORS.line,
+    borderWidth: mm(0.25),
+  });
+  drawTextTop(page, "每天选 3～4 题深聊即可，不必整页做完；先让孩子说思路。", CONTENT_LEFT_MM + 2.5, topMm + 1.2, context.fonts.chinese, 8.5, COLORS.muted);
+  if (worksheet.parentTip) {
+    drawTextTop(page, `💡 ${worksheet.parentTip}`, CONTENT_LEFT_MM + 2.5, topMm + 6.2, context.fonts.chinese, 9, COLORS.ink);
+  }
+  return heightMm + 2;
 }
 
 async function drawMethodExample(page: PDFPage, lesson: WorksheetMethodExample, topMm: number, context: PdfRenderContext) {
@@ -729,7 +753,91 @@ async function drawApplicationQuestion(page: PDFPage, question: ApplicationQuest
   drawLine(page, CONTENT_LEFT_MM + 19, topMm + heightMm - 4, CONTENT_RIGHT_MM - 6, topMm + heightMm - 4, COLORS.lineSoft, 0.18);
 }
 
+function drawBalanceQuestion(page: PDFPage, question: BalanceEquationQuestion, topMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 2, context);
+  const mid = CONTENT_LEFT_MM + 52;
+  drawLine(page, mid, topMm + 4, mid, topMm + 18, COLORS.muted, 0.35);
+  drawLine(page, CONTENT_LEFT_MM + 18, topMm + 8, CONTENT_RIGHT_MM - 18, topMm + 8, COLORS.muted, 0.35);
+  drawLine(page, CONTENT_LEFT_MM + 18, topMm + 8, CONTENT_LEFT_MM + 18, topMm + 12, COLORS.muted, 0.25);
+  drawLine(page, CONTENT_RIGHT_MM - 18, topMm + 8, CONTENT_RIGHT_MM - 18, topMm + 12, COLORS.muted, 0.25);
+  drawTextTop(page, "💬 " + question.parentAsk, CONTENT_LEFT_MM + 10, topMm + 19, context.fonts.chinese, 9.5, COLORS.muted);
+  drawTextTop(page, question.expression, CONTENT_LEFT_MM + 10, topMm + 26, context.fonts.numericBold, 14, COLORS.ink);
+  drawLine(page, CONTENT_LEFT_MM + 10, topMm + 31, CONTENT_RIGHT_MM - 8, topMm + 31, COLORS.lineSoft, 0.18);
+}
+
+function drawSymbolQuestion(page: PDFPage, question: SymbolSystemQuestion, topMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 2, context);
+  question.lines.forEach((line, index) => {
+    drawTextTop(page, line.text, CONTENT_LEFT_MM + 10, topMm + index * 7.5, context.fonts.chinese, 13, COLORS.ink);
+  });
+}
+
+function drawFriendlyCalcQuestion(page: PDFPage, question: FriendlyCalcQuestion, topMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 2, context);
+  drawTextTop(page, "说一说，别硬算", CONTENT_LEFT_MM + 10, topMm + 1, context.fonts.chinese, 10, COLORS.ink);
+  const askLines = wrapText(question.parentAsk, context.fonts.chinese, 9, 150, 2);
+  askLines.forEach((line, index) => drawTextTop(page, line, CONTENT_LEFT_MM + 10, topMm + 7 + index * 4.5, context.fonts.chinese, 9, COLORS.muted));
+  drawTextTop(page, "小提示：" + question.hint, CONTENT_LEFT_MM + 10, topMm + 17, context.fonts.chinese, 8.5, COLORS.muted);
+  drawTextTop(page, "参考：" + question.expression, CONTENT_LEFT_MM + 10, topMm + 22, context.fonts.numericBold, 10, COLORS.muted);
+  drawLine(page, CONTENT_LEFT_MM + 10, topMm + 28, CONTENT_RIGHT_MM - 8, topMm + 28, COLORS.lineSoft, 0.18);
+}
+
+function drawEstimateQuestion(page: PDFPage, question: EstimateJudgeQuestion, topMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 2, context);
+  drawTextTop(page, "💬 " + question.parentAsk, CONTENT_LEFT_MM + 10, topMm + 1, context.fonts.chinese, 9, COLORS.muted);
+  drawTextTop(page, question.statement, CONTENT_LEFT_MM + 10, topMm + 8, context.fonts.numericBold, 14, COLORS.ink);
+  drawTextTop(page, "✅ 对", CONTENT_LEFT_MM + 12, topMm + 18, context.fonts.chinese, 12, COLORS.ink);
+  drawTextTop(page, "❌ 错", CONTENT_LEFT_MM + 38, topMm + 18, context.fonts.chinese, 12, COLORS.ink);
+}
+
+async function drawSenseStoryQuestion(page: PDFPage, question: SenseStoryQuestion, topMm: number, heightMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 3, context);
+  const image = await ensureObject(context, question.icon);
+  drawContainedImage(page, image, CONTENT_LEFT_MM + 7, topMm + 2, 9, 9);
+  const lines = wrapText(question.prompt, context.fonts.chinese, 12, 148, 3);
+  lines.forEach((line, index) => drawTextTop(page, line, CONTENT_LEFT_MM + 19, topMm + 2 + index * 6.5, context.fonts.chinese, 12, COLORS.ink));
+  drawTextTop(page, "💬 " + question.parentAsk, CONTENT_LEFT_MM + 10, topMm + 22, context.fonts.chinese, 9, COLORS.muted);
+  drawLine(page, CONTENT_LEFT_MM + 10, topMm + heightMm - 5, CONTENT_RIGHT_MM - 8, topMm + heightMm - 5, COLORS.lineSoft, 0.18);
+}
+
+function drawKenkenQuestion(page: PDFPage, question: KenkenQuestion, topMm: number, context: PdfRenderContext) {
+  drawQuestionNumber(page, question.number, CONTENT_LEFT_MM, topMm + 2, context);
+  const cellMm = 12;
+  const left = CONTENT_LEFT_MM + 8;
+  for (let row = 0; row < 4; row += 1) {
+    for (let col = 0; col < 4; col += 1) {
+      const x = left + col * cellMm;
+      const y = topMm + 4 + row * cellMm;
+      drawLine(page, x, y, x + cellMm, y, COLORS.line, 0.25);
+      drawLine(page, x, y, x, y + cellMm, COLORS.line, 0.25);
+      const cell = question.cells[row]?.[col];
+      if (cell?.cageLabel) drawTextTop(page, cell.cageLabel, x + 1, y + 1, context.fonts.numericBold, 7, COLORS.muted);
+    }
+  }
+  drawLine(page, left + 4 * cellMm, topMm + 4, left + 4 * cellMm, topMm + 4 + 4 * cellMm, COLORS.line, 0.25);
+  drawLine(page, left, topMm + 4 + 4 * cellMm, left + 4 * cellMm, topMm + 4 + 4 * cellMm, COLORS.line, 0.25);
+}
+
+async function drawNumberSenseSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
+  const contentTop = topMm + (section.title ? 12 : 0);
+  if (section.title) drawSectionHeading(page, section.title, topMm, context);
+  for (let index = 0; index < section.questions.length; index += 1) {
+    const question = section.questions[index];
+    const rowTop = contentTop + index * section.rowHeightMm;
+    if (question.type === "balance-equation") drawBalanceQuestion(page, question, rowTop, context);
+    if (question.type === "symbol-system") drawSymbolQuestion(page, question, rowTop, context);
+    if (question.type === "friendly-calc") drawFriendlyCalcQuestion(page, question, rowTop, context);
+    if (question.type === "estimate-judge") drawEstimateQuestion(page, question, rowTop, context);
+    if (question.type === "sense-story") await drawSenseStoryQuestion(page, question, rowTop, section.rowHeightMm, context);
+    if (question.type === "kenken") drawKenkenQuestion(page, question, rowTop, context);
+  }
+}
+
 async function drawPageSection(page: PDFPage, section: WorksheetPageSection, topMm: number, context: PdfRenderContext) {
+  if (section.type === "balance" || section.type === "symbol" || section.type === "friendly-calc" || section.type === "estimate" || section.type === "story" || section.type === "kenken") {
+    await drawNumberSenseSection(page, section, topMm, context);
+    return;
+  }
   if (section.type === "neighbor") await drawNeighborSection(page, section, topMm, context);
   if (section.type === "tens-split") await drawTensSplitSection(page, section, topMm, context);
   if (section.type === "composition") await drawCompositionSection(page, section, topMm, context);
@@ -757,7 +865,7 @@ async function drawWorksheetPage(context: PdfRenderContext, worksheet: DailyWork
   const character = await ensureCharacter(context, getMathPdfCharacter(worksheet.day));
   drawHeader(page, worksheet, context, character);
 
-  let topMm = BODY_TOP_MM;
+  let topMm = BODY_TOP_MM + drawUsageBanner(page, worksheet, BODY_TOP_MM, context);
   if (printPage.showMethod && worksheet.methodLesson) {
     await drawMethodExample(page, worksheet.methodLesson, topMm, context);
     topMm += 34;

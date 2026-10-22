@@ -1,7 +1,20 @@
+import {
+  buildNumberSenseQuestions,
+  getNumberSenseDayBlueprint,
+  numberSenseSectionsFromQuestions,
+  NUMBER_SENSE_PARENT_USAGE,
+  type BalanceEquationQuestion,
+  type EstimateJudgeQuestion,
+  type FriendlyCalcQuestion,
+  type KenkenQuestion,
+  type SenseStoryQuestion,
+  type SymbolSystemQuestion,
+} from "./math-number-sense";
+
 export const MAX_WORKSHEET_QUESTIONS = 30;
 export const MIN_WORKSHEET_QUESTIONS = 10;
-export const FOUNDATION_WORKSHEET_DAYS = 5;
-export const REINFORCEMENT_WORKSHEET_DAYS = 25;
+export const FOUNDATION_WORKSHEET_DAYS = 0;
+export const REINFORCEMENT_WORKSHEET_DAYS = 30;
 export const MONTH_ONE_DAYS = FOUNDATION_WORKSHEET_DAYS + REINFORCEMENT_WORKSHEET_DAYS;
 export const MONTH_TWO_DAYS = 30;
 export const WORKSHEET_PLAN_DAYS = MONTH_ONE_DAYS + MONTH_TWO_DAYS;
@@ -28,8 +41,41 @@ export type MentalBinaryShape = "basic" | "two-digit-single" | "two-digit";
 export type WorksheetStage = "foundation" | "reinforcement";
 export type WorksheetQuestionPresentation = "direct" | "guided";
 export type WorksheetIconKey = "apple" | "pineapple" | "heart" | "star" | "fish" | "mushroom" | "coin" | "flower" | "block" | "ball" | "book" | "cookie" | "balloon";
-export type WorksheetSectionType = "composition" | "neighbor" | "tens-split" | "mental" | "vertical" | "missing-number" | "grouping" | "life-math" | "picture-equation" | "application";
-export type WorksheetPageSectionType = "composition" | "neighbor" | "tens-split" | "guided" | "mental" | "vertical" | "missing-number" | "grouping" | "life-math" | "picture-equation" | "application";
+export type WorksheetSectionType =
+  | "balance"
+  | "symbol"
+  | "friendly-calc"
+  | "estimate"
+  | "story"
+  | "kenken"
+  | "composition"
+  | "neighbor"
+  | "tens-split"
+  | "mental"
+  | "vertical"
+  | "missing-number"
+  | "grouping"
+  | "life-math"
+  | "picture-equation"
+  | "application";
+export type WorksheetPageSectionType =
+  | "balance"
+  | "symbol"
+  | "friendly-calc"
+  | "estimate"
+  | "story"
+  | "kenken"
+  | "composition"
+  | "neighbor"
+  | "tens-split"
+  | "guided"
+  | "mental"
+  | "vertical"
+  | "missing-number"
+  | "grouping"
+  | "life-math"
+  | "picture-equation"
+  | "application";
 
 export const WORKSHEET_ICON_KEYS: readonly WorksheetIconKey[] = ["apple", "pineapple", "heart", "star", "fish", "mushroom", "coin", "flower", "block", "ball", "book", "cookie", "balloon"];
 
@@ -510,7 +556,26 @@ export interface ApplicationQuestion extends BaseQuestion {
   picture: boolean;
 }
 
-export type WorksheetQuestion = NeighborQuestion | TensSplitQuestion | NumberBondQuestion | PictureEquationQuestion | MentalQuestion | VerticalCalculationQuestion | MissingNumberQuestion | GroupingQuestion | LifeMathQuestion | ApplicationQuestion;
+export type WorksheetQuestion =
+  | BalanceEquationQuestion
+  | SymbolSystemQuestion
+  | FriendlyCalcQuestion
+  | EstimateJudgeQuestion
+  | KenkenQuestion
+  | SenseStoryQuestion
+  | NeighborQuestion
+  | TensSplitQuestion
+  | NumberBondQuestion
+  | PictureEquationQuestion
+  | MentalQuestion
+  | VerticalCalculationQuestion
+  | MissingNumberQuestion
+  | GroupingQuestion
+  | LifeMathQuestion
+  | ApplicationQuestion;
+
+export { NUMBER_SENSE_PARENT_USAGE };
+export type { BalanceEquationQuestion, SymbolSystemQuestion, FriendlyCalcQuestion, EstimateJudgeQuestion, KenkenQuestion, SenseStoryQuestion };
 
 export interface WorksheetSection {
   type: WorksheetSectionType;
@@ -548,6 +613,7 @@ export interface DailyWorksheet {
   phaseSummary: string;
   title: string;
   objective: string;
+  parentTip?: string;
   sections: readonly WorksheetSection[];
   pages: readonly WorksheetPrintPage[];
   total: number;
@@ -598,6 +664,12 @@ const LIFE_MATH_MAX_ROW_HEIGHT_MM = 32;
 const APPLICATION_MIN_ROW_HEIGHT_MM = 36;
 const APPLICATION_MAX_ROW_HEIGHT_MM = 46;
 const GUIDED_ROW_HEIGHT_MM = 58;
+const BALANCE_ROW_HEIGHT_MM = 34;
+const SYMBOL_ROW_HEIGHT_MM = 36;
+const FRIENDLY_CALC_ROW_HEIGHT_MM = 38;
+const ESTIMATE_ROW_HEIGHT_MM = 32;
+const KENKEN_ROW_HEIGHT_MM = 72;
+const STORY_ROW_HEIGHT_MM = 42;
 
 function createSeededRandom(seed: number): RandomSource {
   let state = Number.isFinite(seed) ? Math.abs(Math.trunc(seed)) % 2147483647 : 1;
@@ -1790,6 +1862,24 @@ function chunk<T>(items: readonly T[], size: number): readonly T[][] {
 }
 
 function sectionBlocks(section: WorksheetSection): LayoutBlock[] {
+  if (section.type === "balance") {
+    return chunk(section.questions, 1).map((questions) => ({ type: "balance", title: section.title, questions, columns: 1, rowHeightMm: BALANCE_ROW_HEIGHT_MM }));
+  }
+  if (section.type === "symbol") {
+    return chunk(section.questions, 1).map((questions) => ({ type: "symbol", title: section.title, questions, columns: 1, rowHeightMm: SYMBOL_ROW_HEIGHT_MM }));
+  }
+  if (section.type === "friendly-calc") {
+    return chunk(section.questions, 1).map((questions) => ({ type: "friendly-calc", title: section.title, questions, columns: 1, rowHeightMm: FRIENDLY_CALC_ROW_HEIGHT_MM }));
+  }
+  if (section.type === "estimate") {
+    return chunk(section.questions, 1).map((questions) => ({ type: "estimate", title: section.title, questions, columns: 1, rowHeightMm: ESTIMATE_ROW_HEIGHT_MM }));
+  }
+  if (section.type === "kenken") {
+    return chunk(section.questions, 1).map((questions) => ({ type: "kenken", title: section.title, questions, columns: 1, rowHeightMm: KENKEN_ROW_HEIGHT_MM }));
+  }
+  if (section.type === "story") {
+    return chunk(section.questions, 1).map((questions) => ({ type: "story", title: section.title, questions, columns: 1, rowHeightMm: STORY_ROW_HEIGHT_MM }));
+  }
   if (section.type === "composition") {
     const questions = section.questions.filter((question): question is NumberBondQuestion => question.type === "number-bond");
     const pictureQuestions = questions.filter((question) => question.mode === "picture-split");
@@ -1968,7 +2058,7 @@ function expandFrontPageSections(page: { showMethod: boolean; sections: Workshee
   return { ...page, sections, usedHeightMm };
 }
 
-function createDailyWorksheet(args: { id: string; day: number; stage: WorksheetStage; stageDay: number; phase: number; phaseTitle: string; phaseSummary: string; title: string; objective: string; sections: readonly WorksheetSection[]; theme: WorksheetTheme; methodLesson?: WorksheetMethodExample; plan: WorksheetDayPlan }): DailyWorksheet {
+function createDailyWorksheet(args: { id: string; day: number; stage: WorksheetStage; stageDay: number; phase: number; phaseTitle: string; phaseSummary: string; title: string; objective: string; parentTip?: string; sections: readonly WorksheetSection[]; theme: WorksheetTheme; methodLesson?: WorksheetMethodExample; plan: WorksheetDayPlan }): DailyWorksheet {
   const rawPages = composeWorksheetPages(args.sections, Boolean(args.methodLesson));
   const numbered = assignNumbers(args.sections, rawPages);
   const total = numbered.sections.reduce((sum, section) => sum + section.questions.length, 0);
@@ -1994,7 +2084,7 @@ function buildFoundationDay(index: number): DailyWorksheet {
 }
 
 export function getReinforcementDayBlueprint(stageDay: number): ReinforcementDayBlueprint {
-  const safe = Math.max(1, Math.min(REINFORCEMENT_WORKSHEET_DAYS, Math.trunc(stageDay)));
+  const safe = Math.max(1, Math.min(REINFORCEMENT_BLUEPRINTS.length, Math.trunc(stageDay)));
   return REINFORCEMENT_BLUEPRINTS[safe - 1];
 }
 
@@ -2022,17 +2112,26 @@ function getMonthTwoPhase(monthDay: number): { phase: number; title: string; sum
 
 export function getWorksheetDayPlan(day: number): WorksheetDayPlan {
   const safe = Number.isFinite(day) ? Math.max(1, Math.min(WORKSHEET_PLAN_DAYS, Math.trunc(day))) : 1;
-  if (safe <= FOUNDATION_WORKSHEET_DAYS) return foundationDayPlan(safe);
-  if (safe <= MONTH_ONE_DAYS) {
-    const stageDay = safe - FOUNDATION_WORKSHEET_DAYS;
-    const blueprint = getReinforcementDayBlueprint(stageDay);
-    const phase = getPhase(stageDay);
-    return { ...blueprint, day: safe, month: 1, monthDay: safe, stage: "reinforcement", phase: phase.phase, phaseTitle: phase.title, phaseSummary: phase.summary, startDay: FOUNDATION_WORKSHEET_DAYS + 1, endDay: MONTH_ONE_DAYS };
-  }
-  const monthDay = safe - MONTH_ONE_DAYS;
-  const blueprint = getMonthTwoDayBlueprint(monthDay);
-  const phase = getMonthTwoPhase(monthDay);
-  return { ...blueprint, day: safe, month: 2, monthDay, stage: "reinforcement", phase: phase.phase, phaseTitle: phase.title, phaseSummary: phase.summary, startDay: MONTH_ONE_DAYS + 1, endDay: WORKSHEET_PLAN_DAYS };
+  const month: WorksheetMonth = safe <= MONTH_ONE_DAYS ? 1 : 2;
+  const monthDay = month === 1 ? safe : safe - MONTH_ONE_DAYS;
+  const blueprint = getNumberSenseDayBlueprint(month, monthDay);
+  const legacy = month === 1 ? getReinforcementDayBlueprint(Math.min(monthDay, REINFORCEMENT_WORKSHEET_DAYS)) : getMonthTwoDayBlueprint(monthDay);
+  return {
+    ...legacy,
+    day: safe,
+    month,
+    monthDay,
+    stage: "reinforcement",
+    phase: blueprint.phase,
+    phaseTitle: blueprint.phaseTitle,
+    phaseSummary: blueprint.phaseSummary,
+    startDay: month === 1 ? 1 : MONTH_ONE_DAYS + 1,
+    endDay: month === 1 ? MONTH_ONE_DAYS : WORKSHEET_PLAN_DAYS,
+    title: blueprint.title,
+    objective: blueprint.objective,
+    resultMax: blueprint.numberMax,
+    numberMax: blueprint.numberMax,
+  };
 }
 
 function allocateCounts(config: ReinforcementConfig, stageDay: number): { neighbor: number; compare: number; mental: number; application: number } {
@@ -2165,22 +2264,56 @@ export function generateWorksheet(config: WorksheetConfig, seed = 1): { sections
   return { sections: numbered.sections, pages: numbered.pages, total, theme: normalized.theme };
 }
 
-export function generateDailyWorksheet(day: number, seed = 1, overrides: DailyWorksheetOverrides = {}): DailyWorksheet {
+function buildNumberSenseDay(month: WorksheetMonth, monthDay: number, seed: number): DailyWorksheet {
+  const blueprint = getNumberSenseDayBlueprint(month, monthDay);
+  const day = month === 1 ? monthDay : MONTH_ONE_DAYS + monthDay;
+  const idPrefix = month === 1 ? `m1-${monthDay}-${seed}` : `m2-${monthDay}-${seed}`;
+  const senseQuestions = buildNumberSenseQuestions(blueprint, seed, idPrefix);
+  const sections = numberSenseSectionsFromQuestions(blueprint, senseQuestions);
+  const plan: WorksheetDayPlan = {
+    stageDay: monthDay,
+    day,
+    month,
+    monthDay,
+    stage: "reinforcement",
+    phase: blueprint.phase,
+    phaseTitle: blueprint.phaseTitle,
+    phaseSummary: blueprint.phaseSummary,
+    startDay: month === 1 ? 1 : MONTH_ONE_DAYS + 1,
+    endDay: month === 1 ? MONTH_ONE_DAYS : WORKSHEET_PLAN_DAYS,
+    title: blueprint.title,
+    objective: blueprint.objective,
+    resultMax: blueprint.numberMax,
+    numberMax: blueprint.numberMax,
+    binaryShape: "two-digit",
+    binaryTwoDigitRatio: 1,
+    threeNumberRatio: 0.4,
+    tripleMinTerm: 1,
+    applicationLevel: monthDay >= 20 ? "two-step" : "one-step",
+    methodTheme: blueprint.theme,
+  };
+
+  return createDailyWorksheet({
+    id: idPrefix,
+    day,
+    stage: "reinforcement",
+    stageDay: monthDay,
+    phase: blueprint.phase,
+    phaseTitle: blueprint.phaseTitle,
+    phaseSummary: blueprint.phaseSummary,
+    title: blueprint.title,
+    objective: blueprint.objective,
+    parentTip: blueprint.parentTip,
+    sections,
+    theme: blueprint.theme,
+    plan,
+  });
+}
+
+export function generateDailyWorksheet(day: number, seed = 1, _overrides: DailyWorksheetOverrides = {}): DailyWorksheet {
   const safeDay = Number.isFinite(day) ? Math.max(1, Math.min(WORKSHEET_PLAN_DAYS, Math.trunc(day))) : 1;
-  if (safeDay <= FOUNDATION_WORKSHEET_DAYS) return buildFoundationDay(safeDay);
-  if (safeDay > MONTH_ONE_DAYS) return buildMonthTwoDay(safeDay - MONTH_ONE_DAYS, seed, { dailyQuestionCount: overrides.monthTwoQuestionCount });
-  const base = DEFAULT_REINFORCEMENT_CONFIG;
-  const hasCountOverrides = overrides.neighborCount !== undefined || overrides.compareCount !== undefined || overrides.mentalCount !== undefined || overrides.applicationCount !== undefined;
-  const total = hasCountOverrides ? (overrides.neighborCount ?? 0) + (overrides.compareCount ?? 0) + (overrides.mentalCount ?? 0) + (overrides.applicationCount ?? 0) : base.dailyQuestionCount;
-  const safeTotal = Math.max(MIN_WORKSHEET_QUESTIONS, Math.min(MAX_WORKSHEET_QUESTIONS, total));
-  const custom = hasCountOverrides ? { dailyQuestionCount: safeTotal, neighborRatio: ((overrides.neighborCount ?? 0) / safeTotal) * 100, compareRatio: ((overrides.compareCount ?? 0) / safeTotal) * 100, applicationRatio: ((overrides.applicationCount ?? 0) / safeTotal) * 100 } : { ...base, dailyQuestionCount: safeTotal };
-  const monthOneContext = overrides.monthOneMode === "low-repeat"
-    ? {
-      usedStorylineIds: new Set(overrides.monthOneUsedStorylineIds ?? []),
-      usedQuestionSignatures: new Set(overrides.monthOneUsedQuestionSignatures ?? []),
-    }
-    : undefined;
-  return buildReinforcementDay(safeDay - FOUNDATION_WORKSHEET_DAYS, seed, custom, monthOneContext);
+  if (safeDay > MONTH_ONE_DAYS) return buildNumberSenseDay(2, safeDay - MONTH_ONE_DAYS, seed);
+  return buildNumberSenseDay(1, safeDay, seed);
 }
 
 export function generateWorksheetPlan(
@@ -2191,16 +2324,15 @@ export function generateWorksheetPlan(
 ): WorksheetPlan {
   const reinforcementConfig = normalizeReinforcementConfig({ ...DEFAULT_REINFORCEMENT_CONFIG, ...config });
   const monthTwoConfig = normalizeMonthTwoConfig({ ...DEFAULT_MONTH_TWO_CONFIG, ...monthTwoConfigInput });
-  const monthOneMode = options.monthOneMode ?? "legacy";
-  const foundationDays = Array.from({ length: FOUNDATION_WORKSHEET_DAYS }, (_, index) => buildFoundationDay(index + 1));
-  const monthOneContext = monthOneMode === "low-repeat"
-    ? { usedStorylineIds: new Set<string>(), usedQuestionSignatures: new Set<string>() }
-    : undefined;
-  const reinforcementDays = Array.from({ length: REINFORCEMENT_WORKSHEET_DAYS }, (_, index) => buildReinforcementDay(index + 1, seed + (index + 1) * 1009, reinforcementConfig, monthOneContext));
+  const monthOneMode = options.monthOneMode ?? "low-repeat";
+  const foundationDays: DailyWorksheet[] = [];
+  const reinforcementDays = Array.from({ length: REINFORCEMENT_WORKSHEET_DAYS }, (_, index) =>
+    buildNumberSenseDay(1, index + 1, seed + (index + 1) * 1009),
+  );
   const monthOneDays = [...foundationDays, ...reinforcementDays];
-  const usedLifeMathStorylineIds = new Set<string>();
-  const usedApplicationStorylineIds = new Set<string>();
-  const monthTwoDays = Array.from({ length: MONTH_TWO_DAYS }, (_, index) => buildMonthTwoDay(index + 1, seed + (MONTH_ONE_DAYS + index + 1) * 1009, monthTwoConfig, usedLifeMathStorylineIds, usedApplicationStorylineIds));
+  const monthTwoDays = Array.from({ length: MONTH_TWO_DAYS }, (_, index) =>
+    buildNumberSenseDay(2, index + 1, seed + (MONTH_ONE_DAYS + index + 1) * 1009),
+  );
   const days = [...monthOneDays, ...monthTwoDays];
   return { days, foundationDays, reinforcementDays, monthOneDays, monthTwoDays, reinforcementConfig, monthTwoConfig, monthOneMode, totalDays: days.length, totalQuestions: days.reduce((sum, day) => sum + day.total, 0) };
 }
