@@ -1,19 +1,170 @@
-/* 把课程导出成 PDF：第一页封面，后面正文；支持单节与目录批量。
- * 绘制与 PDF 组装仍在主线程（浏览器 Canvas 限制），批量时按课节/分页 yield，避免长时间卡死 UI。 */
+/* 课程 PDF：主线程负责 DOM/拉取；绘制与打包优先走 Worker + OffscreenCanvas。 */
 (function () {
   const FONT = '"Microsoft YaHei","PingFang SC",sans-serif';
+  const WORKER_URL = new URL("assets/export-pdf.worker.js", document.baseURI).href;
+
+  let workerInstance = null;
+  let workerFailed = false;
+  let seq = 0;
+
+  function canUseWorker() {
+    return !workerFailed && typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined";
+  }
+
+  function getWorker() {
+    if (!canUseWorker()) return null;
+    if (workerInstance) return workerInstance;
+    try {
+      workerInstance = new Worker(WORKER_URL);
+      workerInstance.addEventListener("error", () => {
+        workerFailed = true;
+        workerInstance = null;
+      });
+      return workerInstance;
+    } catch (_) {
+      workerFailed = true;
+      return null;
+    }
+  }
+
+  function workerRequest(type, payload, transfer) {
+    const worker = getWorker();
+    if (!worker) return Promise.reject(new Error("worker unavailable"));
+    const id = ++seq;
+    return new Promise((resolve, reject) => {
+      function onMessage(event) {
+        if (!event.data || event.data.seq !== id) return;
+        worker.removeEventListener("message", onMessage);
+        if (event.data.ok) resolve(event.data);
+        else reject(new Error(event.data.message || "worker failed"));
+      }
+      worker.addEventListener("message", onMessage);
+      worker.postMessage(Object.assign({ seq: id, type }, payload), transfer || []);
+    });
+  }
 
   function yieldToMain() {
     if (typeof scheduler !== "undefined" && typeof scheduler.yield === "function") {
       return scheduler.yield();
     }
     return new Promise((resolve) => {
-      requestAnimationFrame(() => {
-        setTimeout(resolve, 0);
-      });
+      requestAnimationFrame(() => setTimeout(resolve, 0));
     });
   }
 
+  function blocksFromReading(root) {
+    const blocks = [];
+    if (!root) return blocks;
+    root.querySelectorAll(".sentence, h3, .vocab li, .words li").forEach((node) => {
+      if (node.matches(".sentence")) {
+        const english = node.querySelector(".en");
+        const chinese = node.querySelector(".zh");
+        if (english && english.textContent.trim()) blocks.push({ kind: "en", text: english.textContent.trim() });
+        if (chinese && chinese.textContent.trim()) blocks.push({ kind: "zh", text: chinese.textContent.trim() });
+      } else if (node.matches("h3")) {
+        blocks.push({ kind: "heading", text: node.textContent.trim() });
+      } else if (node.textContent.trim()) {
+        blocks.push({ kind: "line", text: node.textContent.trim() });
+      }
+    });
+    return blocks;
+  }
+
+  async function bitmapFromSrc(src) {
+    if (!src) return null;
+    const url = new URL(src, document.baseURI).href;
+    if (typeof createImageBitmap !== "function") return null;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return createImageBitmap(await response.blob());
+  }
+
+  async function bitmapFromImageElement(image) {
+    if (!image) return null;
+    if (!image.complete || !image.naturalWidth) {
+      await new Promise((resolve, reject) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", reject, { once: true });
+      });
+    }
+    if (!image.naturalWidth || typeof createImageBitmap !== "function") return null;
+    return createImageBitmap(image);
+  }
+
+  function lessonFromHtml(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const title = doc.querySelector(".reading h2")?.textContent.trim() || "课程";
+    const meta = doc.querySelector(".reading .meta")?.textContent.trim() || "";
+    const reading = doc.querySelector(".reading");
+    const coverSrc = doc.querySelector(".poster img")?.getAttribute("src") || "";
+    return {
+      title,
+      meta,
+      blocks: blocksFromReading(reading),
+      coverSrc,
+    };
+  }
+
+  async function fetchLessonHtml(id) {
+    const stem = "lessons/" + encodeURIComponent(id);
+    for (const url of [stem, stem + ".html"]) {
+      const response = await fetch(url);
+      if (response.ok) return response.text();
+    }
+    throw new Error("404");
+  }
+
+  function safeFilename(title) {
+    return title.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function triggerDownload(bytes, filename) {
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const link = document.createElement("a");
+    const safe = (filename || "课程").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+    link.href = URL.createObjectURL(blob);
+    link.download = safe.endsWith(".pdf") ? safe : safe + ".pdf";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+    return bytes.byteLength || bytes.length;
+  }
+
+  async function encodeLessonInWorker(lesson, cover) {
+    const transfer = cover ? [cover] : [];
+    const result = await workerRequest(
+      "encode-lesson",
+      {
+        lesson: { title: lesson.title, meta: lesson.meta, blocks: lesson.blocks },
+        cover: cover || null,
+      },
+      transfer
+    );
+    return {
+      title: result.title || lesson.title,
+      pages: (result.pages || []).map((page) => ({
+        jpeg: new Uint8Array(page.jpeg),
+        pxWidth: page.pxWidth,
+        pxHeight: page.pxHeight,
+        ptWidth: page.ptWidth,
+        ptHeight: page.ptHeight,
+      })),
+    };
+  }
+
+  async function buildPdfInWorker(pages) {
+    const normalized = pages.map((page) => ({
+      jpeg: page.jpeg,
+      pxWidth: page.pxWidth,
+      pxHeight: page.pxHeight,
+      ptWidth: page.ptWidth,
+      ptHeight: page.ptHeight,
+    }));
+    const transfer = normalized.map((page) => page.jpeg.buffer);
+    const result = await workerRequest("build-pdf", { pages: normalized }, transfer);
+    return new Uint8Array(result.pdf);
+  }
+
+  /* —— 主线程回退（无 Worker 时） —— */
   function concat(parts) {
     const total = parts.reduce((sum, part) => sum + part.length, 0);
     const out = new Uint8Array(total);
@@ -29,9 +180,7 @@
     const portrait = height >= width;
     const longSide = 842;
     const shortSide = 595;
-    return portrait
-      ? { width: shortSide, height: longSide }
-      : { width: longSide, height: shortSide };
+    return portrait ? { width: shortSide, height: longSide } : { width: longSide, height: shortSide };
   }
 
   function makeCanvas(ptWidth, ptHeight) {
@@ -49,8 +198,7 @@
   function wrap(ctx, text, maxWidth) {
     const lines = [];
     let line = "";
-    const chars = Array.from(text || "");
-    for (const char of chars) {
+    for (const char of Array.from(text || "")) {
       const next = line + char;
       if (line && ctx.measureText(next).width > maxWidth) {
         lines.push(line);
@@ -69,13 +217,13 @@
   }
 
   function drawCover(image) {
-    const size = pageSize(image.naturalWidth || image.width, image.naturalHeight || image.height);
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    const size = pageSize(sourceWidth, sourceHeight);
     const sheet = makeCanvas(size.width, size.height);
     const margin = 28;
     const maxWidth = size.width - margin * 2;
     const maxHeight = size.height - margin * 2;
-    const sourceWidth = image.naturalWidth || image.width;
-    const sourceHeight = image.naturalHeight || image.height;
     const ratio = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
     const width = sourceWidth * ratio;
     const height = sourceHeight * ratio;
@@ -103,7 +251,6 @@
 
     function write(text, font, color, gap) {
       const lineHeight = Number(font.match(/(\d+)px/)[1]) + 8;
-      sheet.ctx.font = font;
       const lines = wrap(sheet.ctx, text, maxWidth);
       for (const line of lines) {
         if (y + lineHeight > bottom) newPage();
@@ -127,7 +274,24 @@
     return pages;
   }
 
-  async function pdfFromJpegsAsync(pages) {
+  async function encodeSheetsMain(sheets) {
+    const encoded = [];
+    for (const sheet of sheets) {
+      encoded.push({
+        jpeg: await jpegBytes(sheet.canvas),
+        pxWidth: sheet.canvas.width,
+        pxHeight: sheet.canvas.height,
+        ptWidth: sheet.width,
+        ptHeight: sheet.height,
+      });
+      sheet.canvas.width = 0;
+      sheet.canvas.height = 0;
+      await yieldToMain();
+    }
+    return encoded;
+  }
+
+  function pdfFromJpegsMain(pages) {
     const encoder = new TextEncoder();
     const bodies = [];
     function text(value) {
@@ -144,8 +308,7 @@
     });
     bodies[1] = text("<< /Type /Catalog /Pages 2 0 R >>");
     bodies[2] = text("<< /Type /Pages /Count " + pages.length + " /Kids [" + pageIds.map((id) => id + " 0 R").join(" ") + "] >>");
-    for (let index = 0; index < records.length; index += 1) {
-      const record = records[index];
+    for (const record of records) {
       const content = "q\n" + record.page.ptWidth + " 0 0 " + record.page.ptHeight + " 0 0 cm\n/Im0 Do\nQ\n";
       const contentBytes = text(content);
       bodies[record.pageId] = text(
@@ -165,7 +328,6 @@
         record.page.jpeg,
         text("\nendstream"),
       ]);
-      if ((index + 1) % 6 === 0) await yieldToMain();
     }
     const chunks = [text("%PDF-1.4\n")];
     let length = chunks[0].length;
@@ -175,7 +337,6 @@
       const piece = concat([text(id + " 0 obj\n"), bodies[id], text("\nendobj\n")]);
       chunks.push(piece);
       length += piece.length;
-      if (id % 24 === 0) await yieldToMain();
     }
     const xrefAt = length;
     let xref = "xref\n0 " + bodies.length + "\n0000000000 65535 f \n";
@@ -184,128 +345,52 @@
     }
     xref += "trailer\n<< /Size " + bodies.length + " /Root 1 0 R >>\nstartxref\n" + xrefAt + "\n%%EOF";
     chunks.push(text(xref));
-    await yieldToMain();
     return concat(chunks);
   }
 
-  function blocksFromReading(root) {
-    const blocks = [];
-    if (!root) return blocks;
-    root.querySelectorAll(".sentence, h3, .vocab li, .words li").forEach((node) => {
-      if (node.matches(".sentence")) {
-        const english = node.querySelector(".en");
-        const chinese = node.querySelector(".zh");
-        if (english && english.textContent.trim()) blocks.push({ kind: "en", text: english.textContent.trim() });
-        if (chinese && chinese.textContent.trim()) blocks.push({ kind: "zh", text: chinese.textContent.trim() });
-      } else if (node.matches("h3")) {
-        blocks.push({ kind: "heading", text: node.textContent.trim() });
-      } else if (node.textContent.trim()) {
-        blocks.push({ kind: "line", text: node.textContent.trim() });
-      }
-    });
-    return blocks;
-  }
-
-  async function loadImageElement(image) {
-    if (!image) return null;
-    if (!image.complete || !image.naturalWidth) {
-      await new Promise((resolve, reject) => {
-        image.addEventListener("load", resolve, { once: true });
-        image.addEventListener("error", reject, { once: true });
-      });
-    }
-    return image.naturalWidth ? image : null;
-  }
-
-  async function loadImageUrl(src) {
-    if (!src) return null;
-    const url = new URL(src, document.baseURI).href;
-    if (typeof createImageBitmap === "function") {
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          const blob = await response.blob();
-          return createImageBitmap(blob);
-        }
-      } catch (_) {
-        /* 回退到 Image */
-      }
-    }
-    const image = new Image();
-    image.decoding = "async";
-    image.src = url;
-    return loadImageElement(image);
-  }
-
-  function releaseSheet(sheet) {
-    if (!sheet?.canvas) return;
-    sheet.canvas.width = 0;
-    sheet.canvas.height = 0;
-  }
-
-  async function encodeSheets(sheets) {
-    const encoded = [];
-    for (let index = 0; index < sheets.length; index += 1) {
-      const sheet = sheets[index];
-      encoded.push({
-        jpeg: await jpegBytes(sheet.canvas),
-        pxWidth: sheet.canvas.width,
-        pxHeight: sheet.canvas.height,
-        ptWidth: sheet.width,
-        ptHeight: sheet.height,
-      });
-      releaseSheet(sheet);
-      await yieldToMain();
-    }
-    return encoded;
-  }
-
-  async function downloadPdf(encodedPages, filename) {
-    const bytes = await pdfFromJpegsAsync(encodedPages);
-    const blob = new Blob([bytes], { type: "application/pdf" });
-    const link = document.createElement("a");
-    const safe = (filename || "课程").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
-    link.href = URL.createObjectURL(blob);
-    link.download = safe.endsWith(".pdf") ? safe : safe + ".pdf";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 2000);
-    return bytes.length;
-  }
-
-  function safeFilename(title) {
-    return title.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
-  }
-
-  async function fetchLessonHtml(id) {
-    const stem = "lessons/" + encodeURIComponent(id);
-    for (const url of [stem, stem + ".html"]) {
-      const response = await fetch(url);
-      if (response.ok) return response.text();
-    }
-    throw new Error("404");
-  }
-
-  async function sheetsForLessonHtml(html) {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const title = doc.querySelector(".reading h2")?.textContent.trim() || "课程";
-    const meta = doc.querySelector(".reading .meta")?.textContent.trim() || "";
-    const reading = doc.querySelector(".reading");
-    const blocks = blocksFromReading(reading);
+  async function encodeLessonMain(lesson, coverBitmap) {
     const sheets = [];
-    const coverSrc = doc.querySelector(".poster img")?.getAttribute("src");
-    try {
-      const cover = await loadImageUrl(coverSrc);
-      if (cover) {
-        sheets.push(drawCover(cover));
-        if (typeof cover.close === "function") cover.close();
+    if (coverBitmap) sheets.push(drawCover(coverBitmap));
+    sheets.push(...drawTextPages(lesson.title, lesson.meta, lesson.blocks));
+    if (coverBitmap && typeof coverBitmap.close === "function") coverBitmap.close();
+    return encodeSheetsMain(sheets);
+  }
+
+  async function encodeLesson(lesson, coverBitmap) {
+    if (getWorker()) {
+      try {
+        return await encodeLessonInWorker(lesson, coverBitmap);
+      } catch (_) {
+        workerFailed = true;
+        workerInstance = null;
       }
-    } catch (_) {
-      /* 封面加载失败时仍导出正文 */
     }
-    await yieldToMain();
-    sheets.push(...drawTextPages(title, meta, blocks));
-    await yieldToMain();
-    return { title, sheets };
+    const pages = await encodeLessonMain(lesson, coverBitmap);
+    return { title: lesson.title, pages };
+  }
+
+  async function buildPdf(pages) {
+    if (getWorker()) {
+      try {
+        return await buildPdfInWorker(pages);
+      } catch (_) {
+        workerFailed = true;
+        workerInstance = null;
+      }
+    }
+    return pdfFromJpegsMain(pages);
+  }
+
+  async function lessonWithCoverFromHtml(html) {
+    const parsed = lessonFromHtml(html);
+    let cover = null;
+    try {
+      cover = await bitmapFromSrc(parsed.coverSrc);
+    } catch (_) {
+      cover = null;
+    }
+    const lesson = { title: parsed.title, meta: parsed.meta, blocks: parsed.blocks };
+    return { lesson, cover };
   }
 
   window.exportLessonPdf = async function exportLessonPdf(button) {
@@ -317,11 +402,16 @@
     try {
       const title = document.querySelector("#reader h2")?.textContent.trim() || "课程";
       const meta = document.querySelector("#reader .meta")?.textContent.trim() || "";
-      const sheets = [];
-      const cover = await loadImageElement(document.querySelector("#reader .poster img"));
-      if (cover) sheets.push(drawCover(cover));
-      sheets.push(...drawTextPages(title, meta, blocksFromReading(document.querySelector("#reader .reading"))));
-      return downloadPdf(await encodeSheets(sheets), safeFilename(title));
+      const blocks = blocksFromReading(document.querySelector("#reader .reading"));
+      let cover = null;
+      try {
+        cover = await bitmapFromImageElement(document.querySelector("#reader .poster img"));
+      } catch (_) {
+        cover = null;
+      }
+      const encoded = await encodeLesson({ title, meta, blocks }, cover);
+      const bytes = await buildPdf(encoded.pages);
+      return triggerDownload(bytes, safeFilename(title));
     } finally {
       if (button) {
         button.disabled = false;
@@ -345,10 +435,10 @@
         await yieldToMain();
         try {
           const html = await fetchLessonHtml(id);
-          const lesson = await sheetsForLessonHtml(html);
+          const { lesson, cover } = await lessonWithCoverFromHtml(html);
           if (!firstTitle) firstTitle = lesson.title;
-          const pages = await encodeSheets(lesson.sheets);
-          encodedPages.push(...pages);
+          const encoded = await encodeLesson(lesson, cover);
+          encodedPages.push(...encoded.pages);
         } catch (error) {
           failures.push(id);
         }
@@ -360,7 +450,8 @@
         ids.length === 1 && firstTitle
           ? safeFilename(firstTitle)
           : "英语晨读-批量-" + (ids.length - failures.length) + "节";
-      const size = await downloadPdf(encodedPages, name);
+      const bytes = await buildPdf(encodedPages);
+      const size = triggerDownload(bytes, name);
       if (failures.length && button) {
         button.textContent = "完成（" + failures.length + " 节失败）";
         setTimeout(() => {
