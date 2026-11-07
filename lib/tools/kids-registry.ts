@@ -51,8 +51,8 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     shortTitle: "数感练习",
     shortTitleEn: "Math Worksheet",
     summary: "每月一套 A4 双面练习，每面一幅完整场景，在商店、花园和停车场中发现数学关系。",
-    description: "面向已熟练掌握 100 以内加减的孩子，通过观察、比较和解释，理解数量之间的关系。",
-    descriptionEn: "Monthly double-sided number sense activities for children fluent in addition and subtraction within 100.",
+    description: "面向已熟练掌握 100 以内加减的小学低年级孩子（建议 6 岁以上），通过观察、比较和解释，理解数量之间的关系。",
+    descriptionEn: "Monthly double-sided number sense activities for lower primary children (age 6+) fluent in addition and subtraction within 100.",
     category: "启蒙数学",
     categoryEn: "Early math",
     keywords: [
@@ -70,7 +70,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     ],
     icon: "calculator",
     accent: "amber",
-    stage: "百以内加减熟练",
+    stage: "6 岁以上",
     format: "printable",
     domain: "math",
     estimatedMinutes: 15,
@@ -79,12 +79,12 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     order: 1,
     metadata: {
       title: "月度混合数感练习 - A4 双面活动与 PDF 打印",
-      description: "为已熟练掌握 100 以内加减的孩子生成月度数感练习。默认 30 份、A4 双面，40 种图画活动混合安排，同类最多出现两次。支持本份、范围及整月 PDF，在浏览器本地生成。",
+      description: "为已熟练掌握 100 以内加减的小学低年级孩子（建议 6 岁以上）生成月度数感练习。默认 30 份、A4 双面，40 种图画活动混合安排，同类最多出现两次。支持本份、范围及整月 PDF，在浏览器本地生成。",
     },
     seo: {
       heading: "月度数感活动在线生成与 A4 双面打印",
       summary: "每面一幅完整场景，围绕同一份材料观察、操作和解释。",
-      intro: "一程一成长数感练习面向已熟练掌握 100 以内加减的孩子。默认每月 30 份，每份一张 A4 双面，每面围绕一幅图画观察、操作和解释。40 种活动包括遮挡推理、数线定位、座位寻找、图形拼合、衣橱搭配、花纹修错、生活中的数量变化，还有同一个数的多种表示、先猜再数、图和算式。整月混合安排，再次遇到同一活动时，换个条件或换种做法。",
+      intro: "一程一成长数感练习面向已熟练掌握 100 以内加减的小学低年级孩子（建议 6 岁以上）。默认每月 30 份，每份一张 A4 双面，每面围绕一幅图画观察、操作和解释。40 种活动包括遮挡推理、数线定位、座位寻找、图形拼合、衣橱搭配、花纹修错、生活中的数量变化，还有同一个数的多种表示、先猜再数、图和算式。整月混合安排，再次遇到同一活动时，换个条件或换种做法。",
       features: [
         "小小商店：比较价格，用同一份预算试出不同搭配。",
         "点心分配与停车场：看空位、挪物品，比较每处有多少，观察一共有没有变。",
@@ -132,7 +132,11 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
         },
         {
           question: "需要哪些基础？",
-          answer: "适合已熟练掌握 100 以内加减的孩子。练习着重观察关系、比较策略和说明理由，不预设掌握乘法口诀。孩子可以用圈、画、摆和口头表达自己的想法。",
+          answer: "适合已熟练掌握 100 以内加减的小学低年级孩子（建议 6 岁以上）。练习着重观察关系、比较策略和说明理由，不预设掌握乘法口诀。孩子可以用圈、画、摆和口头表达自己的想法。",
+        },
+        {
+          question: "幼儿园中大班可以用吗？",
+          answer: "不建议直接使用。幼儿园中大班的数范围通常在 10 以内，本练习包含两位数加减、位值拆合和 100 以内数线，题面也需要孩子自己读。建议进入小学低年级（6 岁以上）后再用。",
         },
         {
           question: "如何把练习保存成 PDF？",
