@@ -136,22 +136,27 @@ describe("数量活动的操作与数学关系", () => {
     expect(quantitySignature(collections, 0)).toBe(quantitySignature({ ...collections, items: [...collections.items].reverse() }, 0));
   });
 
-  it("种子 2 的分放题换题必须改变 A、B 的材料，而不是只改 C 盒", () => {
+  it("分放题换题必须改变 A、B 的材料，而不是只改 C 盒", () => {
     const original: QuantityProblem = { kind: "capacity", capacities: [20, 30, 10], occupied: [11, 23, 4], incoming: 7 };
     const unrelatedChange: QuantityProblem = { ...original, occupied: [11, 23, 7] };
     expect(validateQuantityProblem(original)).toBe(true);
     expect(validateQuantityProblem(unrelatedChange)).toBe(true);
     expect(quantitySignature(original, 1)).toBe(quantitySignature(unrelatedChange, 1));
     expect(quantitySignature(original, 0)).not.toBe(quantitySignature(unrelatedChange, 0));
-    const plan = generateWorksheetPlan(2);
-    const before = plan.days[24].pages[1].activity;
-    expect(before.edition).toBe(1);
-    expect(before.problem).toEqual(original);
-    const after = regenerateWorksheetDay(plan, 25, 1683).pages[1].activity;
+    // 活动顺序与重访名额都会随内容库变化，跨种子找到分放题的重访版。
+    const locate = (candidate: ReturnType<typeof generateWorksheetPlan>) => candidate.days
+      .flatMap((day) => day.pages.map((page, index) => ({ day: day.day, index, activity: page.activity })))
+      .find((item) => item.activity.problem.kind === "capacity" && item.activity.edition === 1);
+    let plan = generateWorksheetPlan(2), found = locate(plan);
+    for (let seed = 0; seed < 60 && !found; seed += 1) { plan = generateWorksheetPlan(seed); found = locate(plan); }
+    expect(found).toBeTruthy();
+    const before = found!.activity.problem;
+    if (before.kind !== "capacity") throw new Error("题型错误");
+    const after = regenerateWorksheetDay(plan, found!.day, 1683).pages[found!.index].activity;
     if (after.problem.kind !== "capacity") throw new Error("换题改变了活动种类");
     // 不用签名来自证；直接比较孩子真正用到的两个盒子和新来的数量。
     expect([after.problem.capacities.slice(0, 2), after.problem.occupied.slice(0, 2), after.problem.incoming])
-      .not.toEqual([original.capacities.slice(0, 2), original.occupied.slice(0, 2), original.incoming]);
+      .not.toEqual([before.capacities.slice(0, 2), before.occupied.slice(0, 2), before.incoming]);
   });
 
   it("数线活动重访版的右端小旗答题框不遮挡任何旗杆", () => {

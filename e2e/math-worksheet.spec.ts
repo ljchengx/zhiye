@@ -30,6 +30,17 @@ async function side(page: Page, value: "front" | "back") {
     .click();
 }
 
+/** 同一份的正反面不一定都画角色图，先切到带 mario 的那一面再做素材替换断言。 */
+async function faceWithMario(page: Page): Promise<Locator> {
+  const paper = page.getByTestId("math-worksheet-paper");
+  for (const value of ["front", "back"] as const) {
+    await side(page, value);
+    const image = paper.locator('image[data-character="mario"]').first();
+    if (await image.count()) return image;
+  }
+  throw new Error("这一份两面都没有 mario 角色图");
+}
+
 async function sceneSnapshot(paper: Locator) {
   // 图形题换题可能不改文字，只比较场景内部的实际绘图，排除任务编号。
   return paper.locator("[data-task-id]").innerHTML();
@@ -274,6 +285,7 @@ test("初次字体加载失败可重试，角色文件夹不改变场景物件",
   await page.getByRole("button", { name: "重试", exact: true }).click();
   const paper = page.getByTestId("math-worksheet-paper");
   await expect(paper).toBeVisible();
+  await faceWithMario(page);
   const before = await paper.textContent();
   const objectSources = await paper.locator("image[data-object]").evaluateAll(
     (images) => images.map((image) => image.getAttribute("href")),
@@ -338,6 +350,7 @@ test("放大预览中的导出失败提示可见，可直接重试", async ({ pa
 
 test("导出失败后清除本地角色，重试使用当前素材", async ({ page }) => {
   await openWorksheet(page);
+  await faceWithMario(page);
   await page.evaluate(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 16;
@@ -435,6 +448,7 @@ for (const fixture of [
     page,
   }) => {
     await openWorksheet(page);
+    await faceWithMario(page);
     const dimensions = await page.evaluate(
       async ({ orientation, source, format, transparent }) => {
         const canvas = document.createElement("canvas");
@@ -508,18 +522,20 @@ for (const fixture of [
         .locator('image[data-character="mario"]').first(),
     ).toHaveAttribute("href", /^blob:/);
     const { pdf } = await downloadPdf(page, "day");
-    const resources = pdf.getPage(0).node.Resources()!;
-    const objects = resources.lookup(PDFName.of("XObject"), PDFDict);
-    // 场景里同时有物件与角色，按替换图片的尺寸定位，再检验方向和像素。
-    const candidates = [...objects.values()]
-      .map((reference) => pdf.context.lookup(reference))
-      .filter(
-        (object): object is PDFRawStream =>
-          object instanceof PDFRawStream &&
-          object.dict.get(PDFName.of("Subtype"))?.toString() === "/Image" &&
-          object.dict.lookup(PDFName.of("Width"), PDFNumber).asNumber() === fixture.pdf[0] &&
-          object.dict.lookup(PDFName.of("Height"), PDFNumber).asNumber() === fixture.pdf[1],
-      );
+    // 角色图可能只出现在整份的某一面，按替换图片的尺寸在整份里定位，再检验方向和像素。
+    const candidates = pdf.getPages().flatMap((pdfPage) => {
+      const objects = pdfPage.node.Resources()?.lookup(PDFName.of("XObject"), PDFDict);
+      if (!objects) return [];
+      return [...objects.values()]
+        .map((reference) => pdf.context.lookup(reference))
+        .filter(
+          (object): object is PDFRawStream =>
+            object instanceof PDFRawStream &&
+            object.dict.get(PDFName.of("Subtype"))?.toString() === "/Image" &&
+            object.dict.lookup(PDFName.of("Width"), PDFNumber).asNumber() === fixture.pdf[0] &&
+            object.dict.lookup(PDFName.of("Height"), PDFNumber).asNumber() === fixture.pdf[1],
+        );
+    });
     expect(candidates).toHaveLength(1);
     const image = candidates[0];
     expect(image).toBeInstanceOf(PDFRawStream);
@@ -558,6 +574,7 @@ for (const fixture of [
 
 test("未使用的损坏素材不影响当天导出", async ({ page }) => {
   await openWorksheet(page);
+  await faceWithMario(page);
   await page.evaluate(async () => {
     const png = await (
       await fetch("/math-worksheet/characters/mario.png")

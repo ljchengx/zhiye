@@ -1,3 +1,4 @@
+import { ESTIMATE_DEFINITIONS } from "./activities-estimate";
 import { NUMBER_DEFINITIONS } from "./activities-number";
 import { SPATIAL_DEFINITIONS } from "./activities-spatial";
 import { QUANTITY_DEFINITIONS } from "./activities-quantity";
@@ -63,6 +64,7 @@ export const SCENE_DEFINITIONS: Record<SceneKind, ActivityDefinition> = {
   ...QUANTITY_DEFINITIONS,
   ...LOGIC_DEFINITIONS,
   ...NUMBER_DEFINITIONS,
+  ...ESTIMATE_DEFINITIONS,
 };
 export const SCENE_KINDS = Object.keys(SCENE_DEFINITIONS) as SceneKind[];
 export const MAX_ACTIVITY_OCCURRENCES = 2;
@@ -75,6 +77,7 @@ export const NUMBER_CORE_KINDS: ReadonlySet<SceneKind> = new Set<SceneKind>([
   "capacity", "collections", "bus", "calendar", "ribbon", "pockets", "outfits", "fence",
   "manyWays", "regroup", "dualLine", "benchmark", "aboutHowMany", "reasonable",
   "equationMatch", "compareBig",
+  "magnitude", "closerGuess",
 ]);
 
 /** 每种活动重访时换掉哪一类作答方式，测试会检查。 */
@@ -90,6 +93,7 @@ export const EDITION_SHIFTS: Record<SceneKind, EditionShift> = {
   manyWays: "representation", regroup: "openness", dualLine: "direction",
   benchmark: "condition", aboutHowMany: "condition", reasonable: "condition",
   equationMatch: "direction", compareBig: "openness",
+  magnitude: "condition", closerGuess: "condition",
 };
 
 export function monthCount(

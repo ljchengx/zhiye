@@ -19,10 +19,11 @@ function materialNumbers(value: unknown, out: number[]): void {
 }
 
 describe("内容质量验收", () => {
-  it("40 种活动都声明重访变化类型，两版指令与追问都不同", () => {
-    expect(SCENE_KINDS).toHaveLength(40);
-    expect(Object.keys(EDITION_SHIFTS)).toHaveLength(40);
-    expect(NUMBER_CORE_KINDS.size).toBeGreaterThanOrEqual(29);
+  it("全部活动都声明重访变化类型，两版指令与追问都不同", () => {
+    expect(SCENE_KINDS.length % 2).toBe(0);
+    expect(Object.keys(EDITION_SHIFTS)).toHaveLength(SCENE_KINDS.length);
+    // 数量核心活动始终占多数，图形与逻辑类是少数。
+    expect(NUMBER_CORE_KINDS.size / SCENE_KINDS.length).toBeGreaterThanOrEqual(0.7);
     for (const kind of SCENE_KINDS) {
       const definition = SCENE_DEFINITIONS[kind];
       expect(EDITION_SHIFTS[kind], kind).toBeDefined();

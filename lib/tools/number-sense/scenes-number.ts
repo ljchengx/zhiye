@@ -311,6 +311,8 @@ function compareBig(c: Canvas, p: Problem<"compareBig">, edition: 0 | 1, day: nu
 export function drawNumberScene(c: Canvas, task: NumberSenseTask, day: number): boolean {
   const p = task.problem as NumberProblem;
   const edition = task.edition;
+  // 不是本组活动时马上让位，避免读不到引入句。
+  if (!Object.prototype.hasOwnProperty.call(INTRO, p.kind)) return false;
   // 与其它 32 种活动相同：第 1 问放在页头下方，追问才是编号 2。
   instruction(c, INTRO[p.kind][edition]);
   if (p.kind === "manyWays") manyWays(c, p, edition, day);
