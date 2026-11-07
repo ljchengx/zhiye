@@ -8,6 +8,7 @@ import { drawQuantityScene } from "./scenes-quantity";
 import { drawLogicScene } from "./scenes-logic";
 import { drawEstimateScene } from "./scenes-estimate";
 import { drawNumberScene } from "./scenes-number";
+import { drawStrategyScene } from "./scenes-strategy";
 import type { NumberSenseDay, NumberSenseTask, WorksheetSide } from "./types";
 
 export { INK, type WorksheetNode } from "./drawing";
@@ -51,7 +52,7 @@ export function layoutWorksheetDay(day: NumberSenseDay, fonts: WorksheetFonts): 
     if (!drawLifeScene(scene, activity, day.day) && !drawMathScene(scene, activity, day.day)
       && !drawSpatialScene(scene, activity, day.day) && !drawQuantityScene(scene, activity, day.day)
       && !drawLogicScene(scene, activity, day.day) && !drawNumberScene(scene, activity, day.day)
-      && !drawEstimateScene(scene, activity, day.day))
+      && !drawEstimateScene(scene, activity, day.day) && !drawStrategyScene(scene, activity, day.day))
       throw new Error(`尚未实现活动画面：${activity.problem.kind}`);
     footer.caption(`第 ${day.day} 份 · ${side === "front" ? "正面" : "反面"} · 适合小学生`, 14, 279.5, 10, "chinese", INK.muted);
     footer.caption("看图 · 动手 · 想一想", 196, 279.5, 10, "chinese", INK.muted, "right");

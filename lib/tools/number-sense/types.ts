@@ -1,5 +1,6 @@
 import type { EstimateProblem, EstimateValidation } from "./activities-estimate";
 import type { NumberProblem, NumberValidation } from "./activities-number";
+import type { StrategyProblem, StrategyValidation } from "./activities-strategy";
 import type { SpatialProblem, SpatialValidation } from "./activities-spatial";
 import type { QuantityProblem, QuantityValidation } from "./activities-quantity";
 import type { LogicProblem, LogicValidation } from "./activities-logic";
@@ -32,7 +33,7 @@ export interface WindowPuzzle {
 }
 export interface PatternRule { start: number; step: number }
 export type NumberSenseProblem =
-  | SpatialProblem | QuantityProblem | LogicProblem | NumberProblem | EstimateProblem
+  | SpatialProblem | QuantityProblem | LogicProblem | NumberProblem | EstimateProblem | StrategyProblem
   | { kind: "market"; prices: readonly [number, number, number, number, number, number]; budget: number; discount: number }
   | { kind: "sharing"; left: number; right: number; extra: number }
   | { kind: "parking"; occupied: readonly [readonly number[], readonly number[]]; moveFrom: 0 | 1; move: number }
@@ -45,7 +46,7 @@ export type SceneKind = NumberSenseProblem["kind"];
 
 /** 内部验题数据不进入排版；索引均指向 problem 中对应材料。 */
 export type TaskValidation =
-  | SpatialValidation | QuantityValidation | LogicValidation | NumberValidation | EstimateValidation
+  | SpatialValidation | QuantityValidation | LogicValidation | NumberValidation | EstimateValidation | StrategyValidation
   | { kind: "market"; values: readonly number[]; pairs: readonly Pair[]; unaffordable: readonly number[]; discountedPrices: readonly number[]; savings: Pair }
   | { kind: "sharing"; values: readonly number[]; move: number; each: number; eachWithExtra: number; addOrRemove: number; totalsAfter: Pair }
   | { kind: "parking"; values: readonly number[]; empty: Pair; after: Pair; arrivals: Pair; total: number; moreAfter: "A" | "B" | "same"; moreAfterArrival: "A" | "B" | "same" }

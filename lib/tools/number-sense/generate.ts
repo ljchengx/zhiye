@@ -4,6 +4,7 @@ import { createQuantityProblem, inspectQuantityProblem, isQuantityKind, quantity
 import { createLogicProblem, inspectLogicProblem, isLogicKind, logicSignature, validateLogicProblem, type LogicProblem } from "./activities-logic";
 import { createEstimateProblem, estimateSignature, inspectEstimateProblem, isEstimateKind, validateEstimateProblem, type EstimateProblem } from "./activities-estimate";
 import { createNumberProblem, inspectNumberProblem, isNumberKind, numberSignature, validateNumberProblem, type NumberProblem } from "./activities-number";
+import { createStrategyProblem, inspectStrategyProblem, isStrategyKind, strategySignature, validateStrategyProblem, type StrategyProblem } from "./activities-strategy";
 import type {
   Expression, NumberSenseDay, NumberSenseMonthConfig, NumberSensePlan,
   NumberSenseProblem, NumberSenseTask, Pair, PatternRule, SceneKind,
@@ -70,6 +71,7 @@ export function inspectProblem(p: NumberSenseProblem): TaskValidation {
   if (isLogicKind(p.kind)) return inspectLogicProblem(p as LogicProblem);
   if (isNumberKind(p.kind)) return inspectNumberProblem(p as NumberProblem);
   if (isEstimateKind(p.kind)) return inspectEstimateProblem(p as EstimateProblem);
+  if (isStrategyKind(p.kind)) return inspectStrategyProblem(p as StrategyProblem);
   if (p.kind === "market") {
     const sums = p.prices.flatMap((price, a) => p.prices.slice(a + 1).map((other) => price + other));
     const discountedPrices = p.prices.map((price) => price - p.discount);
@@ -139,6 +141,7 @@ export function taskSignature(task: Pick<NumberSenseTask, "problem"> & Partial<P
   if (isLogicKind(p.kind)) return logicSignature(p as LogicProblem, task.edition ?? 0);
   if (isNumberKind(p.kind)) return numberSignature(p as NumberProblem, task.edition ?? 0);
   if (isEstimateKind(p.kind)) return estimateSignature(p as EstimateProblem, task.edition ?? 0);
+  if (isStrategyKind(p.kind)) return strategySignature(p as StrategyProblem, task.edition ?? 0);
   // 调换商品、题行或选项的顺序不能冒充内容换新。
   if (p.kind === "market") return JSON.stringify({ ...p, prices: sorted(p.prices) });
   if (p.kind === "sharing") return JSON.stringify({ kind: p.kind, left: p.left, right: p.right });
@@ -161,6 +164,7 @@ export function validateTask(task: NumberSenseTask): boolean {
   if (isLogicKind(p.kind)) return validateLogicProblem(p as LogicProblem);
   if (isNumberKind(p.kind)) return validateNumberProblem(p as NumberProblem);
   if (isEstimateKind(p.kind)) return validateEstimateProblem(p as EstimateProblem);
+  if (isStrategyKind(p.kind)) return validateStrategyProblem(p as StrategyProblem);
   if (p.kind === "market") return p.prices.length === 6 && new Set(p.prices).size === 6
     && p.prices.every((price) => price >= 8 && price <= 50) && p.budget >= 28 && p.budget <= 48
     && p.discount >= 1 && p.discount <= 5 && expected.kind === "market"
@@ -209,6 +213,7 @@ function candidate(kind: SceneKind, random: () => number, edition: 0 | 1): Numbe
   else if (isLogicKind(kind)) problem = createLogicProblem(kind, random);
   else if (isNumberKind(kind)) problem = createNumberProblem(kind, random);
   else if (isEstimateKind(kind)) problem = createEstimateProblem(kind, random);
+  else if (isStrategyKind(kind)) problem = createStrategyProblem(kind, random);
   else if (kind === "market") {
     const budget = integer(random, 28, 48);
     const lower = shuffle(Array.from({ length: Math.floor((budget - 1) / 2) - 7 }, (_, i) => i + 8), random);

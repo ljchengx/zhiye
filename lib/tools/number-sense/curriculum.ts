@@ -1,5 +1,6 @@
 import { ESTIMATE_DEFINITIONS } from "./activities-estimate";
 import { NUMBER_DEFINITIONS } from "./activities-number";
+import { STRATEGY_DEFINITIONS } from "./activities-strategy";
 import { SPATIAL_DEFINITIONS } from "./activities-spatial";
 import { QUANTITY_DEFINITIONS } from "./activities-quantity";
 import { LOGIC_DEFINITIONS } from "./activities-logic";
@@ -65,6 +66,7 @@ export const SCENE_DEFINITIONS: Record<SceneKind, ActivityDefinition> = {
   ...LOGIC_DEFINITIONS,
   ...NUMBER_DEFINITIONS,
   ...ESTIMATE_DEFINITIONS,
+  ...STRATEGY_DEFINITIONS,
 };
 export const SCENE_KINDS = Object.keys(SCENE_DEFINITIONS) as SceneKind[];
 export const MAX_ACTIVITY_OCCURRENCES = 2;
@@ -78,6 +80,7 @@ export const NUMBER_CORE_KINDS: ReadonlySet<SceneKind> = new Set<SceneKind>([
   "manyWays", "regroup", "dualLine", "benchmark", "aboutHowMany", "reasonable",
   "equationMatch", "compareBig",
   "magnitude", "closerGuess",
+  "compensateAdd", "compensateSub", "compareExpressions", "checkBack",
 ]);
 
 /** 每种活动重访时换掉哪一类作答方式，测试会检查。 */
@@ -94,6 +97,8 @@ export const EDITION_SHIFTS: Record<SceneKind, EditionShift> = {
   benchmark: "condition", aboutHowMany: "condition", reasonable: "condition",
   equationMatch: "direction", compareBig: "openness",
   magnitude: "condition", closerGuess: "condition",
+  compensateAdd: "representation", compensateSub: "representation",
+  compareExpressions: "direction", checkBack: "direction",
 };
 
 export function monthCount(
