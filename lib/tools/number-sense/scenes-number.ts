@@ -8,13 +8,13 @@ type Problem<K extends NumberProblem["kind"]> = Extract<NumberProblem, { kind: K
 /** 第 1 问只写看图提示，作答动作在第 2 问，不重复。 */
 const INTRO: Record<NumberProblem["kind"], readonly [string, string]> = {
   manyWays: ["五幅小图，说的都是同一个数吗？", "四幅小图，说的都是同一个数。"],
-  regroup: ["这些珠子，可以怎样说清它？", "同一个数，能拆成几种说法？"],
+  regroup: ["这些珠子，可以怎么装盒？", "珠子数不变，还能怎么装？"],
   dualLine: ["两条数线，每格表示多少？", "两张数卡，能落在同一格吗？"],
-  benchmark: ["四张数卡，离整十和 100 各多远？", "四张数卡，离 100 各差多少？"],
-  aboutHowMany: ["一群小圆点，先不要数。", "两处小圆点，哪一处更多？"],
+  benchmark: ["四张数卡，离整十和 100 各多远？", "四张数卡，谁离 100 更近？"],
+  aboutHowMany: ["先看看，这群小圆点多不多？", "上面和下面，各有多少？"],
   reasonable: ["先用整十想一想，再看结果。", "看这个算式，结果可能是几？"],
-  equationMatch: ["一幅图和几个算式，谁说得对？", "一个算式，哪幅图说得对？"],
-  compareBig: ["四张数卡，哪些落在这段里？", "四张数卡，换一张会怎样？"],
+  equationMatch: ["先看图，再读读旁边的算式。", "一个算式，哪幅图说得对？"],
+  compareBig: ["四张数卡，哪些落在这段里？", "换一张卡，区间里的数量会变。"],
 };
 
 function instruction(c: Canvas, text: string, y = 52) {
@@ -39,7 +39,7 @@ function note(c: Canvas, day: number, text: string, y = 258) {
   c.wrap(text, 36, y, 134, 14, 1);
 }
 
-/** 满十的小盒加散点，让「几个十和几个一」在图上直接看得见。 */
+/** 满十的小盒加散点，让「满盒和散珠」在图上直接看得见。 */
 function grouped(c: Canvas, value: number, x: number, y: number) {
   const tens = Math.floor(value / 10), ones = value % 10;
   for (let k = 0; k < tens && k < 8; k += 1) {
@@ -83,22 +83,23 @@ function manyWays(c: Canvas, p: Problem<"manyWays">, edition: 0 | 1, day: number
 function regroup(c: Canvas, p: Problem<"regroup">, edition: 0 | 1, day: number) {
   c.rect(18, 80, 174, 32, INK.soft, INK.dark, 0.5);
   c.text(`${p.total} 颗`, 105, 85, 24, "chineseBold", INK.dark, "center");
+  c.caption("每盒装满 10 颗", 105, 113, 12, "chinese", INK.muted, "center");
   if (edition === 0) {
     p.options.forEach(([tens, ones], i) => {
       const y = 122 + i * 28;
       choice(c, 24, y + 6);
       c.rect(34, y, 150, 20, INK.white, INK.line, 0.35);
-      c.text(`${tens} 个十和 ${ones} 个一`, 109, y + 2, 16, "chinese", INK.dark, "center");
+      c.text(`${tens} 盒满的和 ${ones} 颗散的`, 109, y + 2, 16, "chinese", INK.dark, "center");
     });
     question(c, 2, "圈出能说清这些珠子的说法。");
-    c.text("分法换了，珠子一共变了吗？圈：变了　没变", 20, 242, 14);
+    c.text("装法换了，珠子一共变了吗？圈：变了　没变", 20, 242, 14);
     note(c, day, "不看图，也能知道有几颗吗？");
   } else {
-    question(c, 2, "把同一个数拆成几个十和几个一，写出所有拆法。");
+    question(c, 2, "把珠子装进十格盒，写出所有装法。");
     for (let i = 0; i < 6; i += 1) box(c, 22 + (i % 3) * 58, 232 + Math.floor(i / 3) * 15, 52, 12);
     c.text("共有", 22, 262, 14);
     box(c, 56, 260, 18, 10);
-    c.text("种。", 78, 262, 14);
+    c.text("种装法。", 78, 262, 14);
   }
 }
 
@@ -211,8 +212,10 @@ function reasonable(c: Canvas, p: Problem<"reasonable">, edition: 0 | 1, day: nu
     c.text("只用整十想一想", 105, 130, 14, "chinese", INK.muted, "center");
   } else {
     const op = p.operator === 0 ? "+" : "-";
-    c.text(`${p.a} ${op} ${p.b} = ?`, 105, 92, 26, "numericBold", INK.dark, "center");
-    c.text("看算式，只用整十想一想", 105, 130, 14, "chinese", INK.muted, "center");
+    // 用框标出算式，提示这里的数可以改，和追问的“改哪个数、改成几”对上。
+    c.rect(30, 86, 150, 26, INK.pink, INK.line, 0.4);
+    c.text(`${p.a} ${op} ${p.b} = ?`, 105, 90, 26, "numericBold", INK.dark, "center");
+    c.text("算式里的数可以改一改", 105, 118, 14, "chinese", INK.muted, "center");
   }
   p.options.forEach((value, i) => {
     const x = 22 + i * 58;
@@ -220,10 +223,14 @@ function reasonable(c: Canvas, p: Problem<"reasonable">, edition: 0 | 1, day: nu
     c.rect(x + 8, 146, 44, 22, INK.white, INK.blue, 0.4);
     c.text(String(value), x + 30, 148, 20, "numericBold", INK.dark, "center");
   });
-  question(c, 2, edition ? "圈出合理的得数，再改一个数字让另一个结果也合理。" : "圈掉不可能的结果，把合理的那个圈出来。", 190);
+  question(c, 2, edition
+    ? "圈出合理的得数，再改算式里的一个数，让另一个结果也合理。"
+    : "圈掉不可能的结果，把合理的那个圈出来。", 190);
   if (edition === 1) {
-    c.text("改后的数字", 25, 222, 14);
-    box(c, 96, 220, 26, 12);
+    c.text("把", 25, 222, 14);
+    box(c, 40, 220, 24, 12);
+    c.text("改成", 70, 222, 14);
+    box(c, 100, 220, 24, 12);
   }
   c.text("为什么合理？写一句。", 25, 242, 14);
   box(c, 150, 240, 40, 12);

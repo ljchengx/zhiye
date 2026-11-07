@@ -37,12 +37,12 @@ export const NUMBER_DEFINITIONS: Record<NumberProblem["kind"], ActivityDefinitio
     objective: "在十格、数线、数卡和算式之间认出同一个数",
   },
   regroup: {
-    skill: "structure", title: "几个十和几个一", action: "circle", repeatAction: "fill",
+    skill: "structure", title: "满盒和散珠", action: "circle", repeatAction: "fill",
     prompt: "圈出能说清这些珠子的说法。",
-    followUp: "分法换了，珠子一共变了吗？",
-    repeatPrompt: "把同一个数拆成几个十和几个一，找出所有拆法。",
-    repeatFollowUp: "一共有几种拆法？写在框里。",
-    objective: "理解同一个数可以有几种不同的十与一的拆法",
+    followUp: "装法换了，珠子一共变了吗？",
+    repeatPrompt: "把珠子装进十格盒，找出所有装法。",
+    repeatFollowUp: "一共有几种装法？写在框里。",
+    objective: "理解同样的珠子可以有几种满盒和散珠的装法",
   },
   dualLine: {
     skill: "distance", title: "两条数线", action: "fill", repeatAction: "draw",
@@ -73,7 +73,7 @@ export const NUMBER_DEFINITIONS: Record<NumberProblem["kind"], ActivityDefinitio
     prompt: "只用整十想一想，圈掉不可能的结果。",
     followUp: "把合理的那个圈出来，说一说为什么。",
     repeatPrompt: "看算式，圈出合理的得数。",
-    repeatFollowUp: "改一个数字，让另一个结果也合理。",
+    repeatFollowUp: "把算式里的哪个数改一改，让另一个结果也合理？",
     objective: "用整十判断结果的范围，排除不合理答案",
   },
   equationMatch: {
@@ -122,8 +122,10 @@ export function createNumberProblem(kind: NumberProblem["kind"], random: () => n
       Array.from({ length: Math.floor(total / 10) + 1 }, (_, k) => [k, total - k * 10] as Pair),
       random,
     ).slice(0, 2);
-    // 另一个说法里，个位保持 0～9，只是合起来对不上，不出现“18 个一”这类不规范说法。
-    const bad: Pair = [base, (total - base * 10 + integer(random, 1, 9)) % 10];
+    // 另一个装法与正确装法只差 1～2 颗，孩子要数一数才能排除。
+    const ones = total - base * 10;
+    const delta = ones >= 1 && random() < 0.5 ? -integer(random, 1, 2) : integer(random, 1, 2);
+    const bad: Pair = [base, ones + delta];
     return { kind, total, options: shuffled([...good, bad], random) as unknown as Pair[] };
   }
   if (kind === "dualLine") {
@@ -141,8 +143,13 @@ export function createNumberProblem(kind: NumberProblem["kind"], random: () => n
     throw new Error("暂时无法生成合法的离整十材料");
   }
   if (kind === "aboutHowMany") {
-    const first = integer(random, 38, 62);
-    const second = first + (random() < 0.5 ? -1 : 1) * integer(random, 22, 32);
+    // 两处都要有 25 个以上，孩子才需要比一比。
+    let first = 40, second = 70;
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const candidate = integer(random, 28, 55);
+      const other = candidate + (random() < 0.5 ? -1 : 1) * integer(random, 22, 30);
+      if (other >= 25 && other <= 95) { first = candidate; second = other; break; }
+    }
     const near = first + integer(random, -3, 3);
     return { kind, first, second, options: shuffled([near, first - 24, first + 22, first + 36], random) };
   }
@@ -268,8 +275,10 @@ export function validateNumberProblem(p: NumberProblem): boolean {
     && v.different.length === 1 && Math.abs(v.delta) >= 4 && p.values[4] !== p.target;
   if (p.kind === "regroup") return bounded && v.kind === "regroup"
     && p.total >= 24 && p.total <= 58 && p.options.length === 3
-    && p.options.every(([tens, ones]) => Number.isInteger(tens) && Number.isInteger(ones))
-    && v.solutions.length >= 3 && v.valid.length === 2;
+    && p.options.every(([tens, ones]) => Number.isInteger(tens) && Number.isInteger(ones) && tens >= 0 && ones >= 0)
+    && v.solutions.length >= 3 && v.valid.length === 2
+    && p.options.filter(([tens, ones]) => tens * 10 + ones !== p.total)
+      .every(([tens, ones]) => Math.abs(tens * 10 + ones - p.total) <= 2);
   if (p.kind === "dualLine") return bounded && v.kind === "dualLine"
     && p.step >= 2 && p.step <= 9 && [60, 80, 100].includes(p.upperBound)
     && p.lowerBound === p.upperBound / 2
@@ -282,11 +291,11 @@ export function validateNumberProblem(p: NumberProblem): boolean {
     && p.cards.filter((value) => Math.abs(value - Math.round(value / 10) * 10)
       === Math.abs(p.cards[v.nearestTen] - Math.round(p.cards[v.nearestTen] / 10) * 10)).length === 1;
   if (p.kind === "aboutHowMany") return bounded && v.kind === "aboutHowMany"
-    && p.first >= 30 && p.first <= 70 && p.second >= 0 && p.second <= 100
+    && p.first >= 28 && p.first <= 55 && p.second >= 25 && p.second <= 95
     && p.options.length === 4 && new Set(p.options).size === 4
     && p.options.filter((value) => Math.abs(value - p.first) <= 5).length === 1
     && p.options.filter((value) => Math.abs(value - p.first) >= 15).length === 3
-    && v.gap >= 20;
+    && Math.min(p.first, p.second) >= 25 && v.gap >= 22 && v.gap <= 30;
   if (p.kind === "reasonable") return bounded && v.kind === "reasonable"
     && p.a >= 30 && p.a <= 70 && p.b >= 10 && p.b <= 30
     && v.exact >= 0 && v.exact <= 100 && new Set(p.options).size === 3
