@@ -42,27 +42,32 @@ function getBaseName(filePath: string) {
   return fileName.replace(/\.[^.]+$/, "");
 }
 
-function hasNumberBlockFolder(filePath: string) {
-  return /(?:number[-_ ]?blocks?|数字积木)/iu.test(filePath);
-}
+const CHARACTER_ALIASES: Readonly<Record<string, MathPdfCharacterAsset>> = {
+  马里奥: "mario",
+  马力欧: "mario",
+  路易吉: "luigi",
+  路易基: "luigi",
+  小库巴: "bowser-jr",
+  害羞幽灵: "boo",
+  嘘嘘鬼: "boo",
+};
 
 function getNumberBlockName(baseName: string, filePath: string): MathPdfCharacterAsset | null {
   const compactName = normalizeToken(baseName);
   const match = compactName.match(/^(?:numberblocks?|nb)?(\d{1,2})(?:better|image|character|nb)?$/);
-  if (!match || (!compactName.startsWith("number") && !compactName.startsWith("nb") && !hasNumberBlockFolder(filePath))) {
-    return null;
-  }
+  // 纯数字文件名仅在数字积木目录中识别，避免误用其他图片。
+  const hasContext = /(?:number[-_ ]?blocks?|数字积木)/iu.test(filePath);
+  if (!match || (!/^(?:number|nb)/.test(compactName) && !hasContext)) return null;
   const number = Number(match[1]);
-  if (number < 1 || number > 20) return null;
-  return `number-block-${number}` as MathPdfCharacterAsset;
+  return number >= 1 && number <= 20 ? `number-block-${number}` as MathPdfCharacterAsset : null;
 }
 
 export function matchWorksheetCharacterAsset(filePath: string): MathPdfCharacterAsset | null {
   const baseName = getBaseName(filePath);
+  // 中文别名先匹配，避免被英文文件名的归一化过滤掉。
+  if (Object.hasOwn(CHARACTER_ALIASES, baseName)) return CHARACTER_ALIASES[baseName];
   const directMatch = CHARACTER_NAME_BY_TOKEN.get(normalizeToken(baseName));
   if (directMatch && CHARACTER_NAMES.has(directMatch)) return directMatch;
-
-  if (normalizeToken(baseName) === "bowserjr") return "bowser-jr";
   return getNumberBlockName(baseName, filePath);
 }
 

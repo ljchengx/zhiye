@@ -6,7 +6,6 @@ import { stripMarkdown } from "../lib/tools/markdown";
 import { getKidsToolByPath, getKidsToolsByFormat, kidsToolDefinitions } from "../lib/tools/kids-registry";
 import { searchTools } from "../lib/tools/registry";
 import { matchWorksheetCharacterAsset } from "../lib/tools/math-local-assets";
-import { getWorksheetCompanionGreeting } from "../lib/tools/math-picture-assets";
 import {
   dateTimeToTimestamp,
   detectTimestampUnit,
@@ -122,17 +121,22 @@ describe("Markdown 清理", () => {
 
 describe("数学练习本地角色素材", () => {
   it("只识别约定的角色文件名，并支持递归文件夹路径", () => {
-    expect(matchWorksheetCharacterAsset("characters/number-block-11.png")).toBe("number-block-11");
-    expect(matchWorksheetCharacterAsset("number-blocks/11Better.png")).toBe("number-block-11");
-    expect(matchWorksheetCharacterAsset("characters/bowser_jr.jpg")).toBe("bowser-jr");
-    expect(matchWorksheetCharacterAsset("characters/number-block-21.png")).toBeNull();
+    expect(matchWorksheetCharacterAsset("characters/MARIO.png")).toBe("mario");
+    expect(matchWorksheetCharacterAsset("characters/BOWSER_JR.jpg")).toBe("bowser-jr");
+    expect(matchWorksheetCharacterAsset("角色/马里奥.png")).toBe("mario");
+    expect(matchWorksheetCharacterAsset("角色/路易吉.jpeg")).toBe("luigi");
+    expect(matchWorksheetCharacterAsset("角色/小库巴.png")).toBe("bowser-jr");
+    expect(matchWorksheetCharacterAsset("角色/害羞幽灵.png")).toBe("boo");
+    expect(matchWorksheetCharacterAsset("characters/number-block-20.png")).toBe("number-block-20");
+    expect(matchWorksheetCharacterAsset("numberblocks/10 Better.png")).toBe("number-block-10");
+    expect(matchWorksheetCharacterAsset("数字积木/3.png")).toBe("number-block-3");
+    expect(matchWorksheetCharacterAsset("数字积木/数字积木12.png")).toBe("number-block-12");
+    expect(matchWorksheetCharacterAsset("characters/nb7.png")).toBe("number-block-7");
+    expect(matchWorksheetCharacterAsset("photos/3.png")).toBeNull();
+    expect(matchWorksheetCharacterAsset("numberblocks/21.png")).toBeNull();
+    expect(matchWorksheetCharacterAsset("characters/sprout.png")).toBeNull();
+    expect(matchWorksheetCharacterAsset("notes/toString.png")).toBeNull();
     expect(matchWorksheetCharacterAsset("notes/holiday-photo.png")).toBeNull();
-  });
-
-  it("页眉开场白按角色和当天任务生成", () => {
-    expect(getWorksheetCompanionGreeting("number-block-7", "看图列式与一步应用题")).toBe("今天我是 7，我们来看图列式");
-    expect(getWorksheetCompanionGreeting("mario", "数的组成与分解")).toBe("今天和我一起把一个数拆开");
-    expect(getWorksheetCompanionGreeting("number-block-1", "竖式加法·个位进位")).toBe("今天我是 1，我们来对齐数位再加");
   });
 
 });
@@ -180,8 +184,8 @@ describe("启蒙工具注册表", () => {
       "english-catalog",
     ]);
     expect(new Set(kidsToolDefinitions.map((tool) => tool.href)).size).toBe(kidsToolDefinitions.length);
-    expect(kidsToolDefinitions[0]?.summary).toContain("两个 30 天");
-    expect(kidsToolDefinitions[0]?.summary).toContain("生活数学");
+    expect(kidsToolDefinitions[0]?.summary).toContain("完整场景");
+    expect(kidsToolDefinitions[0]?.description).toContain("100 以内加减");
     expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
     expect(getKidsToolByPath("pinyin-worksheet")?.href).toBe("/kids/pinyin-worksheet");
     expect(getKidsToolByPath("spatial-blocks")?.href).toBe("/kids/spatial-blocks");

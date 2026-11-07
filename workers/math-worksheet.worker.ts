@@ -1,36 +1,89 @@
 /// <reference lib="webworker" />
-
 import {
   generateWorksheetPlan,
-  type MonthTwoConfig,
-  type MonthOneGenerationMode,
-  type ReinforcementConfig,
-  type WorksheetPlan,
+  regenerateWorksheetDay,
+  type NumberSenseDay,
+  type NumberSensePlan,
+  type NumberSenseMonthConfig,
 } from "../lib/tools/math-worksheet";
+import { loadWorksheetFonts } from "../lib/tools/number-sense/fonts";
+import {
+  layoutWorksheetDay,
+  layoutWorksheetDocument,
+  type WorksheetDocument,
+  type WorksheetPage,
+} from "../lib/tools/number-sense/layout";
 
-export interface MathWorksheetPlanGenerateRequest {
-  type: "generate";
-  seed: number;
-  config: ReinforcementConfig;
-  monthTwoConfig: MonthTwoConfig;
-  monthOneMode: MonthOneGenerationMode;
-}
-
+export type MathWorksheetPlanGenerateRequest =
+  | {
+      type: "generate";
+      requestId: number;
+      seed: number;
+      baseUrl: string;
+      config: NumberSenseMonthConfig;
+      excluded?: readonly string[];
+    }
+  | {
+      type: "regenerate-day";
+      requestId: number;
+      seed: number;
+      baseUrl: string;
+      day: number;
+      plan: NumberSensePlan;
+    };
 export type MathWorksheetPlanWorkerResponse =
-  | { type: "complete"; plan: WorksheetPlan }
-  | { type: "error"; message: string };
+  | {
+      type: "complete";
+      requestId: number;
+      plan: NumberSensePlan;
+      document: WorksheetDocument;
+    }
+  | {
+      type: "day-complete";
+      requestId: number;
+      day: NumberSenseDay;
+      pages: readonly [WorksheetPage, WorksheetPage];
+    }
+  | { type: "error"; requestId: number; message: string };
 
 const workerScope = self as DedicatedWorkerGlobalScope;
-
-workerScope.onmessage = (event: MessageEvent<MathWorksheetPlanGenerateRequest>) => {
-  if (event.data.type !== "generate") return;
+workerScope.onmessage = async (
+  event: MessageEvent<MathWorksheetPlanGenerateRequest>,
+) => {
+  const message = event.data;
   try {
-    const plan = generateWorksheetPlan(event.data.seed, event.data.config, event.data.monthTwoConfig, { monthOneMode: event.data.monthOneMode });
-    workerScope.postMessage({ type: "complete", plan } satisfies MathWorksheetPlanWorkerResponse);
+    const fonts = await loadWorksheetFonts(message.baseUrl);
+    if (message.type === "regenerate-day") {
+      const day = regenerateWorksheetDay(
+        message.plan,
+        message.day,
+        message.seed,
+      );
+      workerScope.postMessage({
+        type: "day-complete",
+        requestId: message.requestId,
+        day,
+        pages: layoutWorksheetDay(day, fonts),
+      } satisfies MathWorksheetPlanWorkerResponse);
+    } else {
+      const plan = generateWorksheetPlan(
+        message.seed,
+        message.config,
+        message.excluded,
+      );
+      workerScope.postMessage({
+        type: "complete",
+        requestId: message.requestId,
+        plan,
+        document: layoutWorksheetDocument(plan.days, fonts),
+      } satisfies MathWorksheetPlanWorkerResponse);
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "数学练习计划生成失败";
-    workerScope.postMessage({ type: "error", message } satisfies MathWorksheetPlanWorkerResponse);
+    workerScope.postMessage({
+      type: "error",
+      requestId: message.requestId,
+      message: error instanceof Error ? error.message : "练习生成失败，请重试",
+    } satisfies MathWorksheetPlanWorkerResponse);
   }
 };
-
 export {};
