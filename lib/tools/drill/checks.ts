@@ -5,8 +5,8 @@ export const SPOT_ERROR_LAYOUT = { columns: 2, rowHeight: 18, maxItems: 6 } as c
 export const SPOT_ERROR_TITLE = "找错改正";
 export const SPOT_ERROR_INSTRUCTION = "圈出错处，改在旁边。";
 
-/** 算完检查的排版设置：4 列、每行 17 毫米（一行放两行字）。 */
-export const CHECK_BACK_LAYOUT = { columns: 4, rowHeight: 17, maxItems: 12 } as const;
+/** 算完检查的排版设置：4 列、每行 15 毫米（一行放两行字）。 */
+export const CHECK_BACK_LAYOUT = { columns: 4, rowHeight: 15, maxItems: 12 } as const;
 export const CHECK_BACK_TITLE = "算完检查";
 export const CHECK_BACK_INSTRUCTION = "用另一个算式检查。";
 

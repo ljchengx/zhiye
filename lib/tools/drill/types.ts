@@ -23,7 +23,9 @@ export type DrillData =
   | { kind: "manyWays"; a: number; b: number; operator: "+" | "-" }
   | { kind: "makeTen"; a: number; b: number; up: number; a2: number; b2: number }
   | { kind: "split"; total: number }
-  | { kind: "numberLine"; start: number; jumps: readonly number[] };
+  | { kind: "numberLine"; start: number; jumps: readonly number[] }
+  | { kind: "inOut"; operator: "+" | "-"; step: number; inputs: readonly number[]; outputs: readonly number[] }
+  | { kind: "word"; operator: DrillOperator; a: number; b: number; text: string; value: number };
 export type DrillAnswer =
   | { kind: "oral"; value: number }
   | { kind: "fill"; value: number; blank: 0 | 1 | 2 }
@@ -36,7 +38,9 @@ export type DrillAnswer =
   | { kind: "manyWays"; value: number }
   | { kind: "makeTen"; value: number }
   | { kind: "split"; total: number }
-  | { kind: "numberLine"; value: number };
+  | { kind: "numberLine"; value: number }
+  | { kind: "inOut"; value: number }
+  | { kind: "word"; value: number };
 export type OralData = Extract<DrillData, { kind: "oral" }>;
 export type OralAnswer = Extract<DrillAnswer, { kind: "oral" }>;
 export type FillData = Extract<DrillData, { kind: "fill" }>;
@@ -50,6 +54,8 @@ export type ManyWaysData = Extract<DrillData, { kind: "manyWays" }>;
 export type MakeTenData = Extract<DrillData, { kind: "makeTen" }>;
 export type SplitData = Extract<DrillData, { kind: "split" }>;
 export type NumberLineData = Extract<DrillData, { kind: "numberLine" }>;
+export type InOutData = Extract<DrillData, { kind: "inOut" }>;
+export type WordData = Extract<DrillData, { kind: "word" }>;
 
 export interface DrillItem {
   id: string;

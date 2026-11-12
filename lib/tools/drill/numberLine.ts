@@ -1,7 +1,7 @@
 import type { DrillItem, NumberLineData } from "./types";
 
-/** 数线移动的排版设置：2 列、每行 22 毫米。 */
-export const NUMBER_LINE_LAYOUT = { columns: 2, rowHeight: 22, maxItems: 6 } as const;
+/** 数线移动的排版设置：2 列、每行 20 毫米。 */
+export const NUMBER_LINE_LAYOUT = { columns: 2, rowHeight: 20, maxItems: 6 } as const;
 export const NUMBER_LINE_TITLE = "数线移动";
 export const NUMBER_LINE_INSTRUCTION = "在数线上画一画。";
 

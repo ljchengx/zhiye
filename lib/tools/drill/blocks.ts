@@ -4,6 +4,7 @@ import {
   SPOT_ERROR_INSTRUCTION, SPOT_ERROR_LAYOUT, SPOT_ERROR_TITLE, validateCheckBackItem, validateSpotErrorItem,
 } from "./checks";
 import { createFillItem, validateFillItem } from "./fill";
+import { createInOutItem, IN_OUT_INSTRUCTION, IN_OUT_LAYOUT, IN_OUT_TITLE, validateInOutItem } from "./inOut";
 import { createNumberLineItem, NUMBER_LINE_INSTRUCTION, NUMBER_LINE_LAYOUT, NUMBER_LINE_TITLE, validateNumberLineItem } from "./numberLine";
 import { createOralItem, ORAL_INSTRUCTION, ORAL_LAYOUT, ORAL_TITLE, validateOralItem } from "./oral";
 import {
@@ -16,6 +17,7 @@ import {
   SPLIT_LAYOUT, SPLIT_TITLE, validateMakeTenItem, validateManyWaysItem, validateSplitItem,
 } from "./strategies";
 import { createVerticalItem, validateVerticalItem } from "./vertical";
+import { createWordItem, validateWordItem, WORD_INSTRUCTION, WORD_LAYOUT, WORD_TITLE } from "./word";
 import type { DrillBlock, DrillItem, DrillKind } from "./types";
 
 /** 每份固定 25 题。 */
@@ -58,10 +60,10 @@ export const BLOCK_LAYOUT: Record<DrillKind, BlockLayout> = {
   manyWays: { ...MANY_WAYS_LAYOUT, title: MANY_WAYS_TITLE, instruction: MANY_WAYS_INSTRUCTION },
   operator: { ...OPERATOR_LAYOUT, title: OPERATOR_TITLE, instruction: OPERATOR_INSTRUCTION },
   makeTen: { ...MAKE_TEN_LAYOUT, title: MAKE_TEN_TITLE, instruction: MAKE_TEN_INSTRUCTION },
-  inOut: { columns: 4, rowHeight: 12, maxItems: 12, title: "进几出几", instruction: "把表格补完整。" },
+  inOut: { ...IN_OUT_LAYOUT, title: IN_OUT_TITLE, instruction: IN_OUT_INSTRUCTION },
   numberLine: { ...NUMBER_LINE_LAYOUT, title: NUMBER_LINE_TITLE, instruction: NUMBER_LINE_INSTRUCTION },
   split: { ...SPLIT_LAYOUT, title: SPLIT_TITLE, instruction: SPLIT_INSTRUCTION },
-  word: { columns: 1, rowHeight: 20, maxItems: 4, title: "应用题", instruction: "读一读，列式算出来。" },
+  word: { ...WORD_LAYOUT, title: WORD_TITLE, instruction: WORD_INSTRUCTION },
 };
 
 export function blocksPerSheet(index: number): number {
@@ -127,6 +129,8 @@ export function createItem(kind: DrillKind, random: () => number, id: string): D
   if (kind === "makeTen") return createMakeTenItem(random, id);
   if (kind === "split") return createSplitItem(random, id);
   if (kind === "numberLine") return createNumberLineItem(random, id);
+  if (kind === "inOut") return createInOutItem(random, id);
+  if (kind === "word") return createWordItem(random, id);
   return createOralItem(random, id);
 }
 
@@ -142,6 +146,8 @@ export function validateItem(kind: DrillKind, item: DrillItem): boolean {
   if (kind === "makeTen") return validateMakeTenItem(item);
   if (kind === "split") return validateSplitItem(item);
   if (kind === "numberLine") return validateNumberLineItem(item);
+  if (kind === "inOut") return validateInOutItem(item);
+  if (kind === "word") return validateWordItem(item);
   return validateOralItem(item);
 }
 

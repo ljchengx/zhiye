@@ -6,6 +6,7 @@ import { checkBackText, spotErrorText } from "./checks";
 import { fillText } from "./fill";
 import { compareRightText, compareText } from "./relations";
 import { makeTenText, manyWaysText, splitText } from "./strategies";
+import { wordText } from "./word";
 import { oralText } from "./oral";
 import { verticalLines } from "./vertical";
 import type { DrillBlock, DrillItem, DrillSheet } from "./types";
@@ -145,6 +146,31 @@ function drawNumberLineItem(c: Canvas, item: DrillItem, x: number, y: number) {
   c.line(first + 3, y + 20, right, y + 20, INK.line, 0.4);
 }
 
+/** 进几出几：两行格子，进的数都给出，出的数只给第一个。 */
+function drawInOutItem(c: Canvas, item: DrillItem, x: number, y: number) {
+  if (item.data.kind !== "inOut") return;
+  const { inputs, outputs } = item.data;
+  const labelWidth = 10, cellWidth = 18, cellHeight = 8;
+  c.text("进", x, y, 14, "chineseBold", INK.dark);
+  c.text("出", x, y + cellHeight + 1.5, 14, "chineseBold", INK.dark);
+  inputs.forEach((value, index) => {
+    const cellX = x + labelWidth + index * cellWidth;
+    c.rect(cellX, y - 5, cellWidth, cellHeight, INK.white, INK.line, 0.3);
+    c.text(String(value), cellX + cellWidth / 2, y, 14, "numericBold", INK.dark, "center");
+    c.rect(cellX, y + cellHeight - 5, cellWidth, cellHeight, INK.white, INK.line, 0.3);
+    if (index === 0)
+      c.text(String(outputs[0]), cellX + cellWidth / 2, y + cellHeight + 1.5, 14, "numericBold", INK.dark, "center");
+  });
+}
+
+/** 应用题：一行题面，下面留列式的位置。 */
+function drawWordItem(c: Canvas, item: DrillItem, x: number, y: number) {
+  if (item.data.kind !== "word") return;
+  c.text(wordText(item.data), x, y, 14, "chinese", INK.dark);
+  c.caption("列式：", x, y + 9, 11, "chinese", INK.muted);
+  c.line(x + 18, y + 13.5, x + 88, y + 13.5, INK.line, 0.4);
+}
+
 /** 画一个题块，给出它的高度（毫米）。 */
 function drawBlock(c: Canvas, block: DrillBlock, top: number): number {
   c.text(block.title, CONTENT_LEFT + 2, top, 14, "chineseBold", INK.dark);
@@ -166,6 +192,8 @@ function drawBlock(c: Canvas, block: DrillBlock, top: number): number {
     else if (block.kind === "makeTen") drawMakeTenItem(c, item, x, y);
     else if (block.kind === "split") drawSplitItem(c, item, x, y);
     else if (block.kind === "numberLine") drawNumberLineItem(c, item, x, y);
+    else if (block.kind === "inOut") drawInOutItem(c, item, x, y);
+    else if (block.kind === "word") drawWordItem(c, item, x, y);
     else drawOralItem(c, item, x, y);
   });
   return BLOCK_HEAD + Math.ceil(block.items.length / block.columns) * block.rowHeight;
