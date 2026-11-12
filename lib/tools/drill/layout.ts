@@ -5,6 +5,7 @@ import { chainText } from "./chain";
 import { checkBackText, spotErrorText } from "./checks";
 import { fillText } from "./fill";
 import { compareRightText, compareText } from "./relations";
+import { makeTenText, manyWaysText, splitText } from "./strategies";
 import { oralText } from "./oral";
 import { verticalLines } from "./vertical";
 import type { DrillBlock, DrillItem, DrillSheet } from "./types";
@@ -97,6 +98,53 @@ function drawVerticalItem(c: Canvas, item: DrillItem, x: number, y: number) {
   c.line(x + 2, y + 17.5, right + 1, y + 17.5, INK.dark, 0.5);
 }
 
+/** 一题多解：先写结果，再留两行写不同的算法。 */
+function drawManyWaysItem(c: Canvas, item: DrillItem, x: number, y: number) {
+  if (item.data.kind !== "manyWays") return;
+  const text = manyWaysText(item.data);
+  c.text(text, x, y, 14, "numericBold", INK.dark);
+  const width = c.width(text, "numericBold", 14);
+  c.line(x + width + 3, y + 5, x + width + 26, y + 5, INK.line, 0.4);
+  c.line(x + 2, y + 13, x + 56, y + 13, INK.line, 0.4);
+}
+
+/** 凑整再算：印出补成整十的算式，填减少后的那个加数。 */
+function drawMakeTenItem(c: Canvas, item: DrillItem, x: number, y: number) {
+  if (item.data.kind !== "makeTen") return;
+  const text = makeTenText(item.data);
+  c.text(text, x, y, 14, "numericBold", INK.dark);
+  const width = c.width(text, "numericBold", 14);
+  c.line(x + width + 3, y + 5, x + width + 18, y + 5, INK.line, 0.4);
+}
+
+/** 数的拆分：一个数后面留两处空。 */
+function drawSplitItem(c: Canvas, item: DrillItem, x: number, y: number) {
+  if (item.data.kind !== "split") return;
+  const text = splitText(item.data);
+  c.text(text, x, y, 14, "numericBold", INK.dark);
+  const width = c.width(text, "numericBold", 14);
+  c.line(x + width + 2, y + 5, x + width + 15, y + 5, INK.line, 0.4);
+  c.text("+", x + width + 18, y, 14, "numericBold", INK.dark);
+  c.line(x + width + 24, y + 5, x + width + 37, y + 5, INK.line, 0.4);
+}
+
+/** 数线移动：一条数线，起点标出，两段箭头，终点留空。 */
+function drawNumberLineItem(c: Canvas, item: DrillItem, x: number, y: number) {
+  if (item.data.kind !== "numberLine") return;
+  const { start, jumps } = item.data;
+  const left = x + 4, right = x + 84;
+  const first = left + (right - left) * 0.42;
+  const second = left + (right - left) * 0.72;
+  c.line(left, y + 9, right, y + 9, INK.dark, 0.5);
+  c.circle(left, y + 9, 1.5, INK.dark);
+  c.text(String(start), left, y + 4, 14, "numericBold", INK.dark, "center");
+  c.arrow(left + 3, y + 14, first);
+  c.arrow(first + 3, y + 14, second);
+  c.text(`+${jumps[0]}`, (left + first) / 2, y + 11, 14, "numericBold", INK.muted, "center");
+  c.text(`+${jumps[1]}`, (first + second) / 2, y + 11, 14, "numericBold", INK.muted, "center");
+  c.line(first + 3, y + 20, right, y + 20, INK.line, 0.4);
+}
+
 /** 画一个题块，给出它的高度（毫米）。 */
 function drawBlock(c: Canvas, block: DrillBlock, top: number): number {
   c.text(block.title, CONTENT_LEFT + 2, top, 14, "chineseBold", INK.dark);
@@ -114,6 +162,10 @@ function drawBlock(c: Canvas, block: DrillBlock, top: number): number {
     else if (block.kind === "operator") drawOperatorItem(c, item, x, y);
     else if (block.kind === "spotError") drawSpotErrorItem(c, item, x, y);
     else if (block.kind === "checkBack") drawCheckBackItem(c, item, x, y);
+    else if (block.kind === "manyWays") drawManyWaysItem(c, item, x, y);
+    else if (block.kind === "makeTen") drawMakeTenItem(c, item, x, y);
+    else if (block.kind === "split") drawSplitItem(c, item, x, y);
+    else if (block.kind === "numberLine") drawNumberLineItem(c, item, x, y);
     else drawOralItem(c, item, x, y);
   });
   return BLOCK_HEAD + Math.ceil(block.items.length / block.columns) * block.rowHeight;

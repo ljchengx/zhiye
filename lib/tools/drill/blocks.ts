@@ -4,11 +4,17 @@ import {
   SPOT_ERROR_INSTRUCTION, SPOT_ERROR_LAYOUT, SPOT_ERROR_TITLE, validateCheckBackItem, validateSpotErrorItem,
 } from "./checks";
 import { createFillItem, validateFillItem } from "./fill";
+import { createNumberLineItem, NUMBER_LINE_INSTRUCTION, NUMBER_LINE_LAYOUT, NUMBER_LINE_TITLE, validateNumberLineItem } from "./numberLine";
 import { createOralItem, ORAL_INSTRUCTION, ORAL_LAYOUT, ORAL_TITLE, validateOralItem } from "./oral";
 import {
   COMPARE_INSTRUCTION, COMPARE_LAYOUT, COMPARE_TITLE, createCompareItem, createOperatorItem,
   OPERATOR_INSTRUCTION, OPERATOR_LAYOUT, OPERATOR_TITLE, validateCompareItem, validateOperatorItem,
 } from "./relations";
+import {
+  createMakeTenItem, createManyWaysItem, createSplitItem, MAKE_TEN_INSTRUCTION, MAKE_TEN_LAYOUT,
+  MAKE_TEN_TITLE, MANY_WAYS_INSTRUCTION, MANY_WAYS_LAYOUT, MANY_WAYS_TITLE, SPLIT_INSTRUCTION,
+  SPLIT_LAYOUT, SPLIT_TITLE, validateMakeTenItem, validateManyWaysItem, validateSplitItem,
+} from "./strategies";
 import { createVerticalItem, validateVerticalItem } from "./vertical";
 import type { DrillBlock, DrillItem, DrillKind } from "./types";
 
@@ -49,12 +55,12 @@ export const BLOCK_LAYOUT: Record<DrillKind, BlockLayout> = {
   chain: { ...CHAIN_LAYOUT, title: CHAIN_TITLE, instruction: CHAIN_INSTRUCTION },
   checkBack: { ...CHECK_BACK_LAYOUT, title: CHECK_BACK_TITLE, instruction: CHECK_BACK_INSTRUCTION },
   compare: { ...COMPARE_LAYOUT, title: COMPARE_TITLE, instruction: COMPARE_INSTRUCTION },
-  manyWays: { columns: 2, rowHeight: 18, maxItems: 6, title: "一题多解", instruction: "写出不同的算法。" },
+  manyWays: { ...MANY_WAYS_LAYOUT, title: MANY_WAYS_TITLE, instruction: MANY_WAYS_INSTRUCTION },
   operator: { ...OPERATOR_LAYOUT, title: OPERATOR_TITLE, instruction: OPERATOR_INSTRUCTION },
-  makeTen: { columns: 3, rowHeight: 14, maxItems: 12, title: "凑整再算", instruction: "先补成整十。" },
+  makeTen: { ...MAKE_TEN_LAYOUT, title: MAKE_TEN_TITLE, instruction: MAKE_TEN_INSTRUCTION },
   inOut: { columns: 4, rowHeight: 12, maxItems: 12, title: "进几出几", instruction: "把表格补完整。" },
-  numberLine: { columns: 2, rowHeight: 22, maxItems: 6, title: "数线移动", instruction: "在数线上画一画。" },
-  split: { columns: 4, rowHeight: 11, maxItems: 12, title: "数的拆分", instruction: "把数拆成两部分。" },
+  numberLine: { ...NUMBER_LINE_LAYOUT, title: NUMBER_LINE_TITLE, instruction: NUMBER_LINE_INSTRUCTION },
+  split: { ...SPLIT_LAYOUT, title: SPLIT_TITLE, instruction: SPLIT_INSTRUCTION },
   word: { columns: 1, rowHeight: 20, maxItems: 4, title: "应用题", instruction: "读一读，列式算出来。" },
 };
 
@@ -117,6 +123,10 @@ export function createItem(kind: DrillKind, random: () => number, id: string): D
   if (kind === "operator") return createOperatorItem(random, id);
   if (kind === "spotError") return createSpotErrorItem(random, id);
   if (kind === "checkBack") return createCheckBackItem(random, id);
+  if (kind === "manyWays") return createManyWaysItem(random, id);
+  if (kind === "makeTen") return createMakeTenItem(random, id);
+  if (kind === "split") return createSplitItem(random, id);
+  if (kind === "numberLine") return createNumberLineItem(random, id);
   return createOralItem(random, id);
 }
 
@@ -128,6 +138,10 @@ export function validateItem(kind: DrillKind, item: DrillItem): boolean {
   if (kind === "operator") return validateOperatorItem(item);
   if (kind === "spotError") return validateSpotErrorItem(item);
   if (kind === "checkBack") return validateCheckBackItem(item);
+  if (kind === "manyWays") return validateManyWaysItem(item);
+  if (kind === "makeTen") return validateMakeTenItem(item);
+  if (kind === "split") return validateSplitItem(item);
+  if (kind === "numberLine") return validateNumberLineItem(item);
   return validateOralItem(item);
 }
 
