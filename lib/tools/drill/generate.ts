@@ -6,12 +6,15 @@ import type { DrillBlock, DrillItem, DrillMonthConfig, DrillPage, DrillPlan, Dri
 /** 确定性的取数：同一份同一种子每次都生成同一张纸。 */
 export function createDrillRandom(seed: number): () => number {
   let state = (seed >>> 0) || 0x9e3779b9;
-  return () => {
+  const next = () => {
     state ^= state << 13; state >>>= 0;
     state ^= state >>> 17;
     state ^= state << 5; state >>>= 0;
-    return state / 0x100000000;
+    return state;
   };
+  // 小种子的头几个数偏小，先空跑几次再取数。
+  for (let i = 0; i < 5; i += 1) next();
+  return () => next() / 0x100000000;
 }
 
 /** 按实际年月取 28～31 份，否则用给定份数。 */

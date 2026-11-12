@@ -9,11 +9,35 @@ export type DrillKind =
   | "operator" | "makeTen" | "inOut" | "numberLine"
   | "split" | "word";
 
-/** 小题数据按题型判别；批次 1 先实现 oral。 */
-export type DrillData = { kind: "oral"; terms: readonly number[]; operators: readonly DrillOperator[] };
-export type DrillAnswer = { kind: "oral"; value: number };
+/** 小题数据按题型判别。 */
+export type DrillSign = "<" | ">" | "=";
+export type DrillData =
+  | { kind: "oral"; terms: readonly number[]; operators: readonly DrillOperator[] }
+  | { kind: "fill"; a: number | null; b: number | null; result: number | null; operator: DrillOperator }
+  | { kind: "vertical"; a: number; b: number; operator: "+" | "-" | "×" }
+  | { kind: "chain"; terms: readonly number[]; operators: readonly DrillOperator[] }
+  | { kind: "compare"; left: readonly number[]; right: readonly number[]; operator: DrillOperator }
+  | { kind: "operator"; a: number; b: number; result: number }
+  | { kind: "spotError"; a: number; b: number; operator: DrillOperator; shown: number }
+  | { kind: "checkBack"; a: number; b: number; operator: "+" | "-" };
+export type DrillAnswer =
+  | { kind: "oral"; value: number }
+  | { kind: "fill"; value: number; blank: 0 | 1 | 2 }
+  | { kind: "vertical"; value: number }
+  | { kind: "chain"; value: number }
+  | { kind: "compare"; sign: DrillSign }
+  | { kind: "operator"; value: DrillOperator }
+  | { kind: "spotError"; value: number }
+  | { kind: "checkBack"; value: number };
 export type OralData = Extract<DrillData, { kind: "oral" }>;
 export type OralAnswer = Extract<DrillAnswer, { kind: "oral" }>;
+export type FillData = Extract<DrillData, { kind: "fill" }>;
+export type VerticalData = Extract<DrillData, { kind: "vertical" }>;
+export type ChainData = Extract<DrillData, { kind: "chain" }>;
+export type CompareData = Extract<DrillData, { kind: "compare" }>;
+export type OperatorData = Extract<DrillData, { kind: "operator" }>;
+export type SpotErrorData = Extract<DrillData, { kind: "spotError" }>;
+export type CheckBackData = Extract<DrillData, { kind: "checkBack" }>;
 
 export interface DrillItem {
   id: string;

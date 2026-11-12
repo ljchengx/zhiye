@@ -1,4 +1,15 @@
+import { CHAIN_INSTRUCTION, CHAIN_LAYOUT, CHAIN_TITLE, createChainItem, validateChainItem } from "./chain";
+import {
+  CHECK_BACK_INSTRUCTION, CHECK_BACK_LAYOUT, CHECK_BACK_TITLE, createCheckBackItem, createSpotErrorItem,
+  SPOT_ERROR_INSTRUCTION, SPOT_ERROR_LAYOUT, SPOT_ERROR_TITLE, validateCheckBackItem, validateSpotErrorItem,
+} from "./checks";
+import { createFillItem, validateFillItem } from "./fill";
 import { createOralItem, ORAL_INSTRUCTION, ORAL_LAYOUT, ORAL_TITLE, validateOralItem } from "./oral";
+import {
+  COMPARE_INSTRUCTION, COMPARE_LAYOUT, COMPARE_TITLE, createCompareItem, createOperatorItem,
+  OPERATOR_INSTRUCTION, OPERATOR_LAYOUT, OPERATOR_TITLE, validateCompareItem, validateOperatorItem,
+} from "./relations";
+import { createVerticalItem, validateVerticalItem } from "./vertical";
 import type { DrillBlock, DrillItem, DrillKind } from "./types";
 
 /** 每份固定 25 题。 */
@@ -34,12 +45,12 @@ export const BLOCK_LAYOUT: Record<DrillKind, BlockLayout> = {
   oral: { ...ORAL_LAYOUT, maxItems: 24, title: ORAL_TITLE, instruction: ORAL_INSTRUCTION },
   vertical: { columns: 4, rowHeight: 30, maxItems: 8, title: "列式计算", instruction: "一步一步算。" },
   fill: { columns: 4, rowHeight: 10, maxItems: 16, title: "填空", instruction: "把缺的数填上。" },
-  spotError: { columns: 2, rowHeight: 18, maxItems: 6, title: "找错改正", instruction: "圈出错处，改在旁边。" },
-  chain: { columns: 3, rowHeight: 11, maxItems: 12, title: "连加连减", instruction: "按顺序算。" },
-  checkBack: { columns: 4, rowHeight: 12, maxItems: 12, title: "算完检查", instruction: "用另一个算式检查。" },
-  compare: { columns: 4, rowHeight: 10, maxItems: 16, title: "比大小", instruction: "填上 > < 或 =。" },
+  spotError: { ...SPOT_ERROR_LAYOUT, title: SPOT_ERROR_TITLE, instruction: SPOT_ERROR_INSTRUCTION },
+  chain: { ...CHAIN_LAYOUT, title: CHAIN_TITLE, instruction: CHAIN_INSTRUCTION },
+  checkBack: { ...CHECK_BACK_LAYOUT, title: CHECK_BACK_TITLE, instruction: CHECK_BACK_INSTRUCTION },
+  compare: { ...COMPARE_LAYOUT, title: COMPARE_TITLE, instruction: COMPARE_INSTRUCTION },
   manyWays: { columns: 2, rowHeight: 18, maxItems: 6, title: "一题多解", instruction: "写出不同的算法。" },
-  operator: { columns: 4, rowHeight: 10, maxItems: 16, title: "填符号", instruction: "填上合适的符号。" },
+  operator: { ...OPERATOR_LAYOUT, title: OPERATOR_TITLE, instruction: OPERATOR_INSTRUCTION },
   makeTen: { columns: 3, rowHeight: 14, maxItems: 12, title: "凑整再算", instruction: "先补成整十。" },
   inOut: { columns: 4, rowHeight: 12, maxItems: 12, title: "进几出几", instruction: "把表格补完整。" },
   numberLine: { columns: 2, rowHeight: 22, maxItems: 6, title: "数线移动", instruction: "在数线上画一画。" },
@@ -97,14 +108,26 @@ export function allocateCounts(kinds: readonly DrillKind[]): number[] {
   return counts;
 }
 
-/** 生成一道小题；批次 1 所有题型都先用加减题占位，后续批次逐个替换。 */
+/** 生成一道小题；尚未接通的题型先用加减题占位，后续批次逐个替换。 */
 export function createItem(kind: DrillKind, random: () => number, id: string): DrillItem {
-  if (kind === "oral") return createOralItem(random, id);
+  if (kind === "fill") return createFillItem(random, id);
+  if (kind === "vertical") return createVerticalItem(random, id);
+  if (kind === "chain") return createChainItem(random, id);
+  if (kind === "compare") return createCompareItem(random, id);
+  if (kind === "operator") return createOperatorItem(random, id);
+  if (kind === "spotError") return createSpotErrorItem(random, id);
+  if (kind === "checkBack") return createCheckBackItem(random, id);
   return createOralItem(random, id);
 }
 
 export function validateItem(kind: DrillKind, item: DrillItem): boolean {
-  if (kind === "oral") return validateOralItem(item);
+  if (kind === "fill") return validateFillItem(item);
+  if (kind === "vertical") return validateVerticalItem(item);
+  if (kind === "chain") return validateChainItem(item);
+  if (kind === "compare") return validateCompareItem(item);
+  if (kind === "operator") return validateOperatorItem(item);
+  if (kind === "spotError") return validateSpotErrorItem(item);
+  if (kind === "checkBack") return validateCheckBackItem(item);
   return validateOralItem(item);
 }
 
