@@ -1,4 +1,4 @@
-import type { WorksheetIconKey } from "./math-worksheet";
+import type { WorksheetIconKey } from "./number-sense/drawing";
 
 export type MathPdfObjectAsset = WorksheetIconKey | "one-stick" | "ten-rod";
 

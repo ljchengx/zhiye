@@ -6,7 +6,7 @@ import {
   worksheetImageSource,
   type WorksheetImageAsset,
 } from "./number-sense/drawing";
-import type { WorksheetExportSelection } from "./number-sense/types";
+import type { WorksheetExportSelection } from "./drill/types";
 import {
   loadWorksheetFonts,
   MM_PER_POINT,
@@ -14,7 +14,7 @@ import {
 } from "./number-sense/fonts";
 import { pageNodes, type WorksheetDocument } from "./number-sense/layout";
 
-export const MATH_FULL_PDF_FILENAME = "一程一成长-月度数感双面练习.pdf";
+export const MATH_FULL_PDF_FILENAME = "一程一成长-月度计算练习.pdf";
 export type MathPdfExternalCharacterMimeType = "image/png" | "image/jpeg";
 export interface MathPdfExternalCharacterAsset {
   bytes: ArrayBuffer;
@@ -38,9 +38,9 @@ export function getMathBulkPdfFilename(
   selection: WorksheetExportSelection,
 ): string {
   if (selection.kind === "day")
-    return `一程一成长-数感练习-第${selection.day}份-双面.pdf`;
+    return `一程一成长-计算练习-第${selection.day}份-双面.pdf`;
   if (selection.kind === "range")
-    return `一程一成长-数感练习-第${Math.min(selection.from, selection.to)}至${Math.max(selection.from, selection.to)}份-双面.pdf`;
+    return `一程一成长-计算练习-第${Math.min(selection.from, selection.to)}至${Math.max(selection.from, selection.to)}份-双面.pdf`;
   return MATH_FULL_PDF_FILENAME;
 }
 
@@ -91,9 +91,9 @@ export async function generateMathWorkbookPdf(
     images.set(asset, image);
     return image;
   };
-  pdf.setTitle("一程一成长 · 数感练习");
+  pdf.setTitle("一程一成长 · 计算练习");
   pdf.setAuthor("一程一成长");
-  pdf.setSubject("月度混合数感 · 数量、关系与创造");
+  pdf.setSubject("月度计算 · 100 以内加减与九九表");
   for (const [index, sheet] of document.pages.entries()) {
     const page = pdf.addPage([pt(document.width), pt(document.height)]);
     // 所有坐标、字号、换行直接来自共享文档，导出时不进行第二次排版。

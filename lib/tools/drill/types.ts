@@ -98,6 +98,12 @@ export interface DrillSheet {
   pages: DrillPagePair;
 }
 
+export type WorksheetSide = "front" | "back";
+export type WorksheetExportSelection =
+  | { kind: "day"; day: number }
+  | { kind: "range"; from: number; to: number }
+  | { kind: "all" };
+
 export type DrillMonthConfig = { count: number } | { year: number; month: number };
 export interface DrillPlan {
   seed: number;

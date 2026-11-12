@@ -1,18 +1,15 @@
 /// <reference lib="webworker" />
 import {
-  generateWorksheetPlan,
-  regenerateWorksheetDay,
-  type NumberSenseDay,
-  type NumberSensePlan,
-  type NumberSenseMonthConfig,
+  generateDrillPlan,
+  layoutDrillPlan,
+  layoutDrillSheet,
+  regenerateDrillSheet,
+  type DrillMonthConfig,
+  type DrillPlan,
+  type DrillSheet,
 } from "../lib/tools/math-worksheet";
 import { loadWorksheetFonts } from "../lib/tools/number-sense/fonts";
-import {
-  layoutWorksheetDay,
-  layoutWorksheetDocument,
-  type WorksheetDocument,
-  type WorksheetPage,
-} from "../lib/tools/number-sense/layout";
+import type { WorksheetDocument, WorksheetPage } from "../lib/tools/number-sense/layout";
 
 export type MathWorksheetPlanGenerateRequest =
   | {
@@ -20,7 +17,8 @@ export type MathWorksheetPlanGenerateRequest =
       requestId: number;
       seed: number;
       baseUrl: string;
-      config: NumberSenseMonthConfig;
+      config: DrillMonthConfig;
+      /** 保留字段：本册按份生成，同种子可复现，不再逐份排除原来的题。 */
       excluded?: readonly string[];
     }
   | {
@@ -29,19 +27,19 @@ export type MathWorksheetPlanGenerateRequest =
       seed: number;
       baseUrl: string;
       day: number;
-      plan: NumberSensePlan;
+      plan: DrillPlan;
     };
 export type MathWorksheetPlanWorkerResponse =
   | {
       type: "complete";
       requestId: number;
-      plan: NumberSensePlan;
+      plan: DrillPlan;
       document: WorksheetDocument;
     }
   | {
       type: "day-complete";
       requestId: number;
-      day: NumberSenseDay;
+      day: DrillSheet;
       pages: readonly [WorksheetPage, WorksheetPage];
     }
   | { type: "error"; requestId: number; message: string };
@@ -54,28 +52,20 @@ workerScope.onmessage = async (
   try {
     const fonts = await loadWorksheetFonts(message.baseUrl);
     if (message.type === "regenerate-day") {
-      const day = regenerateWorksheetDay(
-        message.plan,
-        message.day,
-        message.seed,
-      );
+      const sheet = regenerateDrillSheet(message.plan, message.day, message.seed);
       workerScope.postMessage({
         type: "day-complete",
         requestId: message.requestId,
-        day,
-        pages: layoutWorksheetDay(day, fonts),
+        day: sheet,
+        pages: layoutDrillSheet(sheet, fonts),
       } satisfies MathWorksheetPlanWorkerResponse);
     } else {
-      const plan = generateWorksheetPlan(
-        message.seed,
-        message.config,
-        message.excluded,
-      );
+      const plan = generateDrillPlan(message.seed, message.config);
       workerScope.postMessage({
         type: "complete",
         requestId: message.requestId,
         plan,
-        document: layoutWorksheetDocument(plan.days, fonts),
+        document: layoutDrillPlan(plan.sheets, fonts),
       } satisfies MathWorksheetPlanWorkerResponse);
     }
   } catch (error) {

@@ -5,7 +5,7 @@ import {
   type MathPdfObjectAsset,
 } from "../math-picture-assets";
 import { MM_PER_POINT, type WorksheetFont, type WorksheetFonts } from "./fonts";
-import type { Expression } from "./types";
+
 
 export const INK = {
   dark: "#354243",
@@ -268,3 +268,12 @@ export class Canvas {
     });
   }
 }
+
+export type Operator = "+" | "-";
+/** 纸面上的加减算式，只表达关系，不用算出得数。 */
+export interface Expression { terms: readonly number[]; operators: readonly Operator[] }
+
+/** 纸面可用的图形名，给素材表与 PDF 使用。 */
+export type WorksheetIconKey =
+  | "apple" | "pineapple" | "heart" | "star" | "fish" | "mushroom"
+  | "coin" | "flower" | "block" | "ball" | "book" | "cookie" | "balloon";

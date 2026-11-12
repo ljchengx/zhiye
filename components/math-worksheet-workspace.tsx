@@ -22,19 +22,15 @@ import {
 } from "react";
 import type { KidsToolDefinition } from "@/lib/tools/kids-registry";
 import {
-  NUMBER_SENSE_PARENT_USAGE,
-  SKILL_LABELS,
-} from "@/lib/tools/number-sense/curriculum";
-import {
+  DRILL_PARENT_USAGE,
+  DRILL_TITLES,
   getExportDays,
-  taskSignature,
-} from "@/lib/tools/number-sense/generate";
-import type {
-  NumberSensePlan,
-  NumberSenseMonthConfig,
-  WorksheetSide,
-  WorksheetExportSelection,
-} from "@/lib/tools/number-sense/types";
+  sheetSignatures,
+  type DrillMonthConfig,
+  type DrillPlan,
+  type WorksheetExportSelection,
+  type WorksheetSide,
+} from "@/lib/tools/math-worksheet";
 import {
   getMathBulkPdfFilename,
   type MathPdfExternalCharacterAssets,
@@ -66,13 +62,13 @@ type Action =
   | {
       kind: "plan";
       seed: number;
-      config?: NumberSenseMonthConfig;
+      config?: DrillMonthConfig;
       reset?: boolean;
     }
   | { kind: "day"; seed: number; day: number };
 type RetryAction = Action | { kind: "export" | "print" | "characters" };
 interface Workbook {
-  plan: NumberSensePlan;
+  plan: DrillPlan;
   document: WorksheetDocument;
 }
 
@@ -183,12 +179,12 @@ function MathWorksheetContent({
     folderInput = useRef<HTMLInputElement>(null),
     printPack = useRef<HTMLDivElement>(null),
     mounted = useRef(false);
-  const day = workbook?.plan.days[selectedDay - 1];
-  const activity = day?.pages.find((item) => item.side === selectedSide)?.activity;
+  const day = workbook?.plan.sheets[selectedDay - 1];
+  const content = day?.pages.find((item) => item.side === selectedSide);
   const pages =
     workbook?.document.pages.filter((item) => item.day === selectedDay) ?? [];
   const page = pages.find((item) => item.side === selectedSide);
-  const total = workbook?.plan.days.length ?? 30;
+  const total = workbook?.plan.sheets.length ?? 30;
   const locked = busy || printPending || progress !== null;
   const selection: WorksheetExportSelection =
     exportRange === "day"
@@ -251,26 +247,26 @@ function MathWorksheetContent({
           if (message.type === "complete") {
             setWorkbook({ plan: message.plan, document: message.document });
             setSelectedDay((value) =>
-              Math.min(value, message.plan.days.length),
+              Math.min(value, message.plan.sheets.length),
             );
-            setRangeFrom((value) => Math.min(value, message.plan.days.length));
-            setRangeTo((value) => Math.min(value, message.plan.days.length));
-            setStatus(`${message.plan.days.length} 份双面练习已准备好`);
+            setRangeFrom((value) => Math.min(value, message.plan.sheets.length));
+            setRangeTo((value) => Math.min(value, message.plan.sheets.length));
+            setStatus(`${message.plan.sheets.length} 份双面练习已准备好`);
           } else {
             setWorkbook((previous) =>
               previous
                 ? {
                     plan: {
                       ...previous.plan,
-                      days: previous.plan.days.map((item) =>
-                        item.day === message.day.day ? message.day : item,
+                      sheets: previous.plan.sheets.map((item) =>
+                        item.sheet === message.day.sheet ? message.day : item,
                       ),
                     },
                     document: {
                       ...previous.document,
                       // 两面在一次状态提交中替换，预览、打印和导出共用这份文档。
                       pages: previous.document.pages.flatMap((item) =>
-                        item.day === message.day.day
+                        item.day === message.day.sheet
                           ? item.side === "front"
                             ? message.pages
                             : []
@@ -280,7 +276,7 @@ function MathWorksheetContent({
                   }
                 : previous,
             );
-            setStatus(`第 ${message.day.day} 份正反面已更新`);
+            setStatus(`第 ${message.day.sheet} 份正反面已更新`);
           }
         };
         worker.onerror = () => {
@@ -314,9 +310,7 @@ function MathWorksheetContent({
               : { count: 30 },
           excluded:
             action.kind === "plan" && !action.reset
-              ? workbook?.plan.days.flatMap((item) =>
-                  item.pages.map((itemPage) => taskSignature(itemPage.activity)),
-                )
+              ? workbook?.plan.sheets.flatMap((item) => sheetSignatures(item))
               : undefined,
         } satisfies MathWorksheetPlanGenerateRequest);
     } catch {
@@ -537,8 +531,8 @@ function MathWorksheetContent({
       aria-labelledby="tool-title"
     >
       <header className={styles.intro}>
-        <span className={styles.eyebrow}>一程一成长 / 数感练习</span>
-        <h1 id="tool-title">数学图画活动册</h1>
+        <span className={styles.eyebrow}>一程一成长 / 计算练习</span>
+        <h1 id="tool-title">计算练习册</h1>
         <p>
           逛商店、分点心、找路线，在图画里发现数学。一张 A4，正反两场活动。
         </p>
@@ -586,7 +580,7 @@ function MathWorksheetContent({
               ))}
             </div>
             <div className={styles.skillList} aria-label="本月练习内容">
-              {Object.values(SKILL_LABELS).map((label) => (
+              {DRILL_TITLES.map((label) => (
                 <span key={label}>{label}</span>
               ))}
             </div>
@@ -675,8 +669,8 @@ function MathWorksheetContent({
               <span className={styles.todayLabel}>
                 第 {selectedDay} 份 / 共 {total} 份
               </span>
-              <h2>{activity?.title ?? "准备本份练习"}</h2>
-              <p>{activity?.prompt ?? "正在准备活动场景…"}</p>
+              <h2>{content?.title ?? "准备本份练习"}</h2>
+              <p>{content?.prompt ?? "正在准备本份练习…"}</p>
             </div>
             <div className={styles.primaryActions}>
               <button
@@ -867,7 +861,7 @@ function MathWorksheetContent({
               )}
             </div>
           </section>
-          <p className={styles.usage}>{NUMBER_SENSE_PARENT_USAGE}</p>
+          <p className={styles.usage}>{DRILL_PARENT_USAGE}</p>
         </section>
       </div>
       <div

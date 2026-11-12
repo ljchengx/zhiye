@@ -54,7 +54,7 @@ export function validateWordItem(item: DrillItem): boolean {
   if (data.operator === "×" && (data.a < 3 || data.a > 9 || data.b < 3 || data.b > 9)) return false;
   if (data.operator === "÷" && (data.b < 3 || data.b > 9 || data.a % data.b !== 0)) return false;
   if (evaluateWord(data) !== data.value) return false;
-  // 题面必须与算式对得上，也不能写太长。
+  // 题面必须与算式对得上，字数也要少。
   const expected = buildText(data.operator, data.a, data.b);
   return data.text === expected && answer.value === data.value && data.text.length <= 24;
 }

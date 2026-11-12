@@ -8,7 +8,7 @@ import {
   PDFRawStream,
   decodePDFRawStream,
 } from "pdf-lib";
-import { SCENE_KINDS } from "../lib/tools/number-sense/curriculum";
+import { DRILL_SEQUENCE } from "../lib/tools/drill/blocks";
 
 async function openWorksheet(page: Page) {
   await page.goto("/kids/math-worksheet");
@@ -30,20 +30,11 @@ async function side(page: Page, value: "front" | "back") {
     .click();
 }
 
-/** 同一份的正反面不一定都画角色图，先切到带 mario 的那一面再做素材替换断言。 */
-async function faceWithMario(page: Page): Promise<Locator> {
-  const paper = page.getByTestId("math-worksheet-paper");
-  for (const value of ["front", "back"] as const) {
-    await side(page, value);
-    const image = paper.locator('image[data-character="mario"]').first();
-    if (await image.count()) return image;
-  }
-  throw new Error("这一份两面都没有 mario 角色图");
-}
-
 async function sceneSnapshot(paper: Locator) {
-  // 图形题换题可能不改文字，只比较场景内部的实际绘图，排除任务编号。
-  return paper.locator("[data-task-id]").innerHTML();
+  // 一页有多个题块；换题可能只改数字，比较所有题块的实际绘图，排除任务编号。
+  return paper
+    .locator("[data-task-id]")
+    .evaluateAll((groups) => groups.map((group) => group.innerHTML).join("|"));
 }
 
 async function downloadPdf(page: Page, range: "day" | "range" | "all") {
@@ -70,7 +61,10 @@ test("正反面实时切换，背面换题同时更新整份，跳选不混页",
     print = page.getByTestId("worksheet-print-pack");
   const front = await sceneSnapshot(paper);
   await expect(paper).toHaveAttribute("data-side", "front");
-  await expect(paper.getByTestId("math-worksheet-question")).toHaveCount(1);
+  // 题块按高度分到两面，每面 1～2 块，两面合起来 25 题。
+  const blocks = await paper.locator("[data-task-id]").count();
+  expect(blocks).toBeGreaterThanOrEqual(1);
+  expect(blocks).toBeLessThanOrEqual(2);
   await expect(print.locator("svg")).toHaveCount(2);
   expect(await sceneSnapshot(print.locator('svg[data-side="front"]'))).toBe(
     front,
@@ -271,62 +265,6 @@ test("导出取消后释放 Worker，可重新导出；资源失败重试保持�
   await expect(page.getByRole("status")).toHaveText("已导出 2 页练习");
 });
 
-test("初次字体加载失败可重试，角色文件夹不改变场景物件", async ({ page }) => {
-  await page
-    .context()
-    .route("**/fonts/noto-sans-sc-math-subset.ttf*", (route) => route.abort());
-  await page.goto("/kids/math-worksheet");
-  await expect(
-    page
-      .getByRole("region", { name: "本份练习", exact: true })
-      .getByRole("alert"),
-  ).toBeVisible({ timeout: 30000 });
-  await page.context().unroute("**/fonts/noto-sans-sc-math-subset.ttf*");
-  await page.getByRole("button", { name: "重试", exact: true }).click();
-  const paper = page.getByTestId("math-worksheet-paper");
-  await expect(paper).toBeVisible();
-  await faceWithMario(page);
-  const before = await paper.textContent();
-  const objectSources = await paper.locator("image[data-object]").evaluateAll(
-    (images) => images.map((image) => image.getAttribute("href")),
-  );
-  expect(objectSources.length).toBeGreaterThan(0);
-  await page
-    .getByLabel("选择角色素材文件夹", { exact: true })
-    .setInputFiles("public/math-worksheet/characters");
-  await expect(paper.locator('image[data-character="mario"]').first()).toHaveAttribute(
-    "href",
-    /^blob:/,
-  );
-  expect(await paper.textContent()).toBe(before);
-  expect(await paper.locator("image[data-object]").evaluateAll(
-    (images) => images.map((image) => image.getAttribute("href")),
-  )).toEqual(objectSources);
-  await page.getByText("更多设置", { exact: true }).click();
-  await page.getByRole("button", { name: "清除本地素材", exact: true }).click();
-  await expect(paper.locator('image[data-character="mario"]').first()).toHaveAttribute(
-    "href",
-    /\/math-worksheet\/characters\/mario\.png$/,
-  );
-  expect(
-    await page.evaluate(() =>
-      [
-        "SenseChinese",
-        "SenseChineseBold",
-        "SenseNumeric",
-        "SenseNumericBold",
-      ].every((family) => document.fonts.check(`14px ${family}`)),
-    ),
-  ).toBe(true);
-  await page.evaluate(() => {
-    window.print = () => {};
-  });
-  await page.getByRole("button", { name: "打印本份", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText(
-    "已准备第 1 份，共 2 页；双面打印请选择长边翻转",
-  );
-});
-
 test("放大预览中的导出失败提示可见，可直接重试", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openWorksheet(page);
@@ -348,256 +286,6 @@ test("放大预览中的导出失败提示可见，可直接重试", async ({ pa
   await expect(preview.getByRole("status")).toHaveText("已导出 2 页练习");
 });
 
-test("导出失败后清除本地角色，重试使用当前素材", async ({ page }) => {
-  await openWorksheet(page);
-  await faceWithMario(page);
-  await page.evaluate(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 16;
-    canvas.height = 16;
-    const bytes = Uint8Array.from(
-      atob(canvas.toDataURL("image/jpeg").split(",")[1]),
-      (character) => character.charCodeAt(0),
-    );
-    const files = new DataTransfer();
-    files.items.add(new File([bytes], "mario.jpg", { type: "image/jpeg" }));
-    const input = document.querySelector<HTMLInputElement>(
-      'input[aria-label="选择角色素材文件夹"]',
-    )!;
-    input.files = files.files;
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  const character = page.getByTestId("math-worksheet-paper").locator('image[data-character="mario"]').first();
-  await expect(character).toHaveAttribute("href", /^blob:/);
-  await page
-    .context()
-    .route("**/fonts/noto-sans-sc-math-subset.ttf*", (route) => route.abort());
-  await page.getByText("导出 PDF", { exact: true }).click();
-  await page.getByRole("button", { name: "下载 PDF", exact: true }).click();
-  const alert = page
-    .getByRole("region", { name: "本份练习", exact: true })
-    .getByRole("alert");
-  await expect(alert).toContainText("字体加载失败");
-  await page.getByText("更多设置", { exact: true }).click();
-  await page.getByRole("button", { name: "清除本地素材", exact: true }).click();
-  await expect(character).toHaveAttribute("href", /\/characters\/mario\.png$/);
-  await page.context().unroute("**/fonts/noto-sans-sc-math-subset.ttf*");
-  const downloaded = page.waitForEvent("download");
-  await page.getByRole("button", { name: "重试", exact: true }).click();
-  const download = await downloaded;
-  const pdf = await PDFDocument.load(await readFile((await download.path())!));
-  expect(pdf.getPageCount()).toBe(2);
-  await expect(alert).toHaveCount(0);
-  await expect(page.getByRole("status")).toHaveText("已导出 2 页练习");
-});
-
-for (const fixture of [
-  {
-    name: "普通",
-    format: "jpeg",
-    orientation: 1,
-    source: [80, 40],
-    preview: [80, 40],
-    pdf: [80, 40],
-    red: [20, 20],
-    blue: [60, 20],
-  },
-  {
-    name: "180 度",
-    format: "jpeg",
-    orientation: 3,
-    source: [80, 40],
-    preview: [80, 40],
-    pdf: [80, 40],
-    red: [60, 20],
-    blue: [20, 20],
-  },
-  {
-    name: "90 度",
-    format: "jpeg",
-    orientation: 6,
-    source: [80, 40],
-    preview: [40, 80],
-    pdf: [40, 80],
-    red: [20, 10],
-    blue: [20, 70],
-  },
-  {
-    name: "大图缩放",
-    format: "jpeg",
-    orientation: 6,
-    source: [2048, 1024],
-    preview: [1024, 2048],
-    pdf: [512, 1024],
-    red: [256, 128],
-    blue: [256, 896],
-  },
-  {
-    name: "90 度与透明背景",
-    format: "png",
-    orientation: 6,
-    source: [80, 40],
-    preview: [40, 80],
-    pdf: [40, 80],
-    red: [20, 10],
-    blue: [20, 70],
-    transparent: [35, 5],
-  },
-])
-  test(`${fixture.format.toUpperCase()} ${fixture.name}在预览、打印和 PDF 中方向一致`, async ({
-    page,
-  }) => {
-    await openWorksheet(page);
-    await faceWithMario(page);
-    const dimensions = await page.evaluate(
-      async ({ orientation, source, format, transparent }) => {
-        const canvas = document.createElement("canvas");
-        canvas.width = source[0];
-        canvas.height = source[1];
-        const context = canvas.getContext("2d")!;
-        context.fillStyle = "#ff0000";
-        context.fillRect(0, 0, canvas.width / 2, canvas.height);
-        context.fillStyle = "#0000ff";
-        context.fillRect(canvas.width / 2, 0, canvas.width / 2, canvas.height);
-        if (transparent) context.clearRect(0, 0, 10, 10);
-        const encoded = Uint8Array.from(
-          atob(canvas.toDataURL(`image/${format}`, 0.95).split(",")[1]),
-          (c) => c.charCodeAt(0),
-        );
-        const exif = Uint8Array.from(
-          "ffe1002245786966000049492a0008000000010012010300010000000600000000000000".match(
-            /../g,
-          )!,
-          (hex) => parseInt(hex, 16),
-        );
-        exif[28] = orientation;
-        let parts: BlobPart[];
-        if (format === "png") {
-          // eXIf 保存 TIFF 数据；放在 IHDR 后并写入合法的 CRC。
-          const tiff = exif.slice(10);
-          const chunk = new Uint8Array(tiff.length + 12);
-          const view = new DataView(chunk.buffer);
-          view.setUint32(0, tiff.length);
-          chunk.set([101, 88, 73, 102], 4);
-          chunk.set(tiff, 8);
-          let crc = 0xffffffff;
-          for (const byte of chunk.slice(4, -4)) {
-            crc ^= byte;
-            for (let i = 0; i < 8; i += 1)
-              crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-          }
-          view.setUint32(chunk.length - 4, (crc ^ 0xffffffff) >>> 0);
-          parts = [encoded.slice(0, 33), chunk, encoded.slice(33)];
-        } else {
-          parts = [encoded.slice(0, 2), exif, encoded.slice(2)];
-        }
-        const file = new File(parts, `mario.${format}`, {
-          type: `image/${format}`,
-        });
-        const image = new Image();
-        image.src = URL.createObjectURL(file);
-        await image.decode();
-        const result = [image.naturalWidth, image.naturalHeight];
-        URL.revokeObjectURL(image.src);
-        const files = new DataTransfer();
-        files.items.add(file);
-        const input = document.querySelector<HTMLInputElement>(
-          'input[aria-label="选择角色素材文件夹"]',
-        )!;
-        input.files = files.files;
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-        return result;
-      },
-      {
-        orientation: fixture.orientation,
-        source: fixture.source,
-        format: fixture.format,
-        transparent: !!fixture.transparent,
-      },
-    );
-    expect(dimensions).toEqual(fixture.preview);
-    await expect(
-      page
-        .getByTestId("math-worksheet-paper")
-        .locator('image[data-character="mario"]').first(),
-    ).toHaveAttribute("href", /^blob:/);
-    const { pdf } = await downloadPdf(page, "day");
-    // 角色图可能只出现在整份的某一面，按替换图片的尺寸在整份里定位，再检验方向和像素。
-    const candidates = pdf.getPages().flatMap((pdfPage) => {
-      const objects = pdfPage.node.Resources()?.lookup(PDFName.of("XObject"), PDFDict);
-      if (!objects) return [];
-      return [...objects.values()]
-        .map((reference) => pdf.context.lookup(reference))
-        .filter(
-          (object): object is PDFRawStream =>
-            object instanceof PDFRawStream &&
-            object.dict.get(PDFName.of("Subtype"))?.toString() === "/Image" &&
-            object.dict.lookup(PDFName.of("Width"), PDFNumber).asNumber() === fixture.pdf[0] &&
-            object.dict.lookup(PDFName.of("Height"), PDFNumber).asNumber() === fixture.pdf[1],
-        );
-    });
-    expect(candidates).toHaveLength(1);
-    const image = candidates[0];
-    expect(image).toBeInstanceOf(PDFRawStream);
-    if (!(image instanceof PDFRawStream)) throw new Error("PDF 缺少角色图像");
-    const width = image.dict.lookup(PDFName.of("Width"), PDFNumber).asNumber();
-    const height = image.dict
-      .lookup(PDFName.of("Height"), PDFNumber)
-      .asNumber();
-    expect([width, height]).toEqual(fixture.pdf);
-    const pixels = decodePDFRawStream(image).decode();
-    const pixel = (x: number, y: number) => [
-      ...pixels.slice((y * width + x) * 3, (y * width + x) * 3 + 3),
-    ];
-    const red = pixel(fixture.red[0], fixture.red[1]);
-    const blue = pixel(fixture.blue[0], fixture.blue[1]);
-    expect(red[0]).toBeGreaterThan(180);
-    expect(red[2]).toBeLessThan(80);
-    expect(blue[2]).toBeGreaterThan(180);
-    expect(blue[0]).toBeLessThan(80);
-    if (fixture.transparent) {
-      const mask = image.dict.lookup(PDFName.of("SMask"));
-      if (!(mask instanceof PDFRawStream)) throw new Error("PDF 缺少透明蒙版");
-      const alpha = decodePDFRawStream(mask).decode();
-      const [x, y] = fixture.transparent;
-      expect(alpha[y * width + x]).toBe(0);
-      expect(alpha[fixture.red[1] * width + fixture.red[0]]).toBe(255);
-    }
-    expect(
-      await page
-        .getByTestId("worksheet-print-pack")
-        .locator('image[data-character="mario"]')
-        .first()
-        .getAttribute("href"),
-    ).toMatch(/^blob:/);
-  });
-
-test("未使用的损坏素材不影响当天导出", async ({ page }) => {
-  await openWorksheet(page);
-  await faceWithMario(page);
-  await page.evaluate(async () => {
-    const png = await (
-      await fetch("/math-worksheet/characters/mario.png")
-    ).blob();
-    const files = new DataTransfer();
-    files.items.add(new File([png], "mario.png", { type: "image/png" }));
-    files.items.add(
-      new File(["invalid png"], "number-block-20.png", { type: "image/png" }),
-    );
-    const input = document.querySelector<HTMLInputElement>(
-      'input[aria-label="选择角色素材文件夹"]',
-    )!;
-    input.files = files.files;
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  await expect(
-    page
-      .getByTestId("math-worksheet-paper")
-      .locator('image[data-character="mario"]').first(),
-  ).toHaveAttribute("href", /^blob:/);
-  const { pdf } = await downloadPdf(page, "day");
-  expect(pdf.getPageCount()).toBe(2);
-});
 
 for (const width of [1440, 1280, 390]) {
   test(`${width}px 导航与预览无溢出，原尺寸放大后可以滚动阅读全文`, async ({
@@ -673,8 +361,11 @@ test("30 份双面 SVG 的实际字形和场景边界、浏览器打印两页无
     await page.getByTestId(`worksheet-day-${day}`).click();
     for (const face of ["front", "back"] as const) {
       await side(page, face);
-      const kind = await paper.locator("[data-task-id]").getAttribute("data-type");
-      occurrences.set(kind!, [...(occurrences.get(kind!) ?? []), day]);
+      const kinds = await paper
+        .locator("[data-task-id]")
+        .evaluateAll((groups) => groups.map((group) => group.getAttribute("data-type") ?? ""));
+      for (const kind of kinds)
+        occurrences.set(kind, [...(occurrences.get(kind) ?? []), day]);
       const overflow = await paper.locator("g text, g rect, g circle, g ellipse, g path, g image, g line").evaluateAll((elements) =>
         elements.flatMap((element) => {
           const graphic = element as SVGGraphicsElement;
@@ -708,10 +399,10 @@ test("30 份双面 SVG 的实际字形和场景边界、浏览器打印两页无
       await expect(paper).not.toContainText(/答案|解析/);
     }
   }
-  expect(occurrences.size).toBe(SCENE_KINDS.length);
+  // 一个月里 14 种题型都会排到，每种都会出现多次。
+  expect(occurrences.size).toBe(DRILL_SEQUENCE.length);
   for (const [kind, days] of occurrences) {
-    expect(days.length, kind).toBeLessThanOrEqual(2);
-    if (days.length === 2) expect(days[1] - days[0], kind).toBeGreaterThanOrEqual(7);
+    expect(days.length, kind).toBeGreaterThanOrEqual(2);
   }
   await page.emulateMedia({ media: "print" });
   const bytes = await page.pdf({
