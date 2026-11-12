@@ -50,7 +50,7 @@ const FALLBACK = THEME.oral;
 /** 各题型内容本身占的高度（毫米）：缩放不能超过它，否则会超出题块。 */
 const CONTENT_HEIGHT: Partial<Record<string, number>> = {
   vertical: 30, spotError: 18, checkBack: 17, manyWays: 17, numberLine: 25, inOut: 22,
-  numberTower: 30, dotCount: 26, matchLine: 30, circleOut: 26,
+  numberTower: 34, dotCount: 26, matchLine: 30, circleOut: 26,
 };
 
 type Theme = (typeof THEME)[string];
@@ -230,11 +230,13 @@ function drawWordItem(c: Canvas, item: DrillItem, x: number, y: number, columnWi
 }
 
 /** 加一加：最下面给三个数，往上相邻两数相加，空位填数。 */
-function drawTowerItem(c: Canvas, item: DrillItem, x: number, y: number, scale: number, theme: Theme) {
+function drawTowerItem(c: Canvas, item: DrillItem, x: number, y: number, rowHeight: number, scale: number, theme: Theme) {
   if (item.data.kind !== "numberTower") return;
   const step = 19 * scale;
   const rise = 8.5 * scale;
-  const baseY = y + 9 * scale;
+  // 上面两个方框都留在行里，上下摆正。
+  const towerHeight = rise * 2 + 10;
+  const baseY = y + Math.max(0, (rowHeight - towerHeight) / 2) + towerHeight - 5;
   const box = (bx: number, by: number, text: string | null) => {
     c.roundRect(bx - 7, by - 7, 14, 10, 2.5, text === null ? INK.white : theme.bg, theme.line, 0.7);
     if (text !== null) c.text(text, bx, by, 14, "numericBold", INK.dark, "center");
@@ -330,7 +332,7 @@ function drawBlock(c: Canvas, block: DrillBlock, top: number, rowHeight: number,
     else if (block.kind === "numberLine") drawNumberLineItem(c, item, x, y, columnWidth, scale, theme);
     else if (block.kind === "inOut") drawInOutItem(c, item, x, y, scale, theme);
     else if (block.kind === "word") drawWordItem(c, item, x, y, columnWidth, theme);
-    else if (block.kind === "numberTower") drawTowerItem(c, item, x, y, scale, theme);
+    else if (block.kind === "numberTower") drawTowerItem(c, item, x, y, rowHeight, scale, theme);
     else if (block.kind === "dotCount") drawDotCountItem(c, item, x, y, rowHeight, theme);
     else if (block.kind === "matchLine") drawMatchItem(c, item, x, y, rowHeight, theme);
     else if (block.kind === "circleOut") drawCircleOutItem(c, item, x, y, rowHeight, theme);
