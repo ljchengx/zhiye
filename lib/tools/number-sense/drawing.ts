@@ -116,9 +116,10 @@ export class Canvas {
 
   runs(text: string, font: WorksheetFont) {
     if (font === "numeric" || font === "numericBold") return [{ text, font }];
-    return text.split(/([0-9]+)/).filter(Boolean).map((part) => ({
+    // 除号不在中文字体里，和数字一起交给数字字体。
+    return text.split(/([0-9]+|÷)/).filter(Boolean).map((part) => ({
       text: part,
-      font: (/^[0-9]+$/.test(part)
+      font: (/^(?:[0-9]+|÷)$/.test(part)
         ? font === "chineseBold" ? "numericBold" : "numeric"
         : font) as WorksheetFont,
     }));

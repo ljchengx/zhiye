@@ -8,3 +8,5 @@ test-results/
 .codex-*
 .ace-tool/
 tmp/
+# 参考资料不进仓库
+docs/*.pdf
