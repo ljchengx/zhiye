@@ -24,10 +24,9 @@ import type { DrillBlock, DrillItem, DrillKind } from "./types";
 export const ITEMS_PER_SHEET = 25;
 /** 块数按 4-3-4-3 轮换，各段首尾相接，四份刚好走完 14 种题型。 */
 export const BLOCK_PATTERN = [4, 3, 4, 3] as const;
+/** 单个题块最多几题，避免一类题写很多。 */
+export const MAX_PER_BLOCK = 10;
 
-/** 题块内容的可用高度（毫米）：4 块与 3 块的预留标题、间距不同。 */
-export const BLOCK_BUDGET_4 = 151;
-export const BLOCK_BUDGET_3 = 170;
 
 /**
  * 14 种题型的轮换顺序：占地题型落在位置 0、2、5、8、11，
@@ -50,20 +49,20 @@ export interface BlockLayout {
 
 /** 排版设置与标题；批次 1 只有 oral 接通生成，其余暂时沿用占位设置。 */
 export const BLOCK_LAYOUT: Record<DrillKind, BlockLayout> = {
-  oral: { ...ORAL_LAYOUT, maxItems: 24, title: ORAL_TITLE, instruction: ORAL_INSTRUCTION },
-  vertical: { columns: 4, rowHeight: 30, maxItems: 8, title: "列式计算", instruction: "一步一步算。" },
-  fill: { columns: 4, rowHeight: 10, maxItems: 16, title: "填空", instruction: "把缺的数填上。" },
-  spotError: { ...SPOT_ERROR_LAYOUT, title: SPOT_ERROR_TITLE, instruction: SPOT_ERROR_INSTRUCTION },
-  chain: { ...CHAIN_LAYOUT, title: CHAIN_TITLE, instruction: CHAIN_INSTRUCTION },
-  checkBack: { ...CHECK_BACK_LAYOUT, title: CHECK_BACK_TITLE, instruction: CHECK_BACK_INSTRUCTION },
-  compare: { ...COMPARE_LAYOUT, title: COMPARE_TITLE, instruction: COMPARE_INSTRUCTION },
-  manyWays: { ...MANY_WAYS_LAYOUT, title: MANY_WAYS_TITLE, instruction: MANY_WAYS_INSTRUCTION },
-  operator: { ...OPERATOR_LAYOUT, title: OPERATOR_TITLE, instruction: OPERATOR_INSTRUCTION },
-  makeTen: { ...MAKE_TEN_LAYOUT, title: MAKE_TEN_TITLE, instruction: MAKE_TEN_INSTRUCTION },
-  inOut: { ...IN_OUT_LAYOUT, title: IN_OUT_TITLE, instruction: IN_OUT_INSTRUCTION },
-  numberLine: { ...NUMBER_LINE_LAYOUT, title: NUMBER_LINE_TITLE, instruction: NUMBER_LINE_INSTRUCTION },
-  split: { ...SPLIT_LAYOUT, title: SPLIT_TITLE, instruction: SPLIT_INSTRUCTION },
-  word: { ...WORD_LAYOUT, title: WORD_TITLE, instruction: WORD_INSTRUCTION },
+  oral: { ...ORAL_LAYOUT, columns: 3, rowHeight: 11, maxItems: 10, title: ORAL_TITLE, instruction: ORAL_INSTRUCTION },
+  vertical: { columns: 3, rowHeight: 34, maxItems: 8, title: "列式计算", instruction: "一步一步算。" },
+  fill: { columns: 3, rowHeight: 11, maxItems: 10, title: "填空", instruction: "把缺的数填上。" },
+  spotError: { ...SPOT_ERROR_LAYOUT, columns: 2, rowHeight: 22, maxItems: 6, title: SPOT_ERROR_TITLE, instruction: SPOT_ERROR_INSTRUCTION },
+  chain: { ...CHAIN_LAYOUT, columns: 2, rowHeight: 12, maxItems: 10, title: CHAIN_TITLE, instruction: CHAIN_INSTRUCTION },
+  checkBack: { ...CHECK_BACK_LAYOUT, columns: 3, rowHeight: 20, maxItems: 10, title: CHECK_BACK_TITLE, instruction: CHECK_BACK_INSTRUCTION },
+  compare: { ...COMPARE_LAYOUT, columns: 2, rowHeight: 11, maxItems: 10, title: COMPARE_TITLE, instruction: COMPARE_INSTRUCTION },
+  manyWays: { ...MANY_WAYS_LAYOUT, columns: 2, rowHeight: 24, maxItems: 6, title: MANY_WAYS_TITLE, instruction: MANY_WAYS_INSTRUCTION },
+  operator: { ...OPERATOR_LAYOUT, columns: 3, rowHeight: 11, maxItems: 10, title: OPERATOR_TITLE, instruction: OPERATOR_INSTRUCTION },
+  makeTen: { ...MAKE_TEN_LAYOUT, columns: 2, rowHeight: 18, maxItems: 10, title: MAKE_TEN_TITLE, instruction: MAKE_TEN_INSTRUCTION },
+  inOut: { ...IN_OUT_LAYOUT, columns: 2, rowHeight: 22, maxItems: 8, title: IN_OUT_TITLE, instruction: IN_OUT_INSTRUCTION },
+  numberLine: { ...NUMBER_LINE_LAYOUT, columns: 2, rowHeight: 26, maxItems: 6, title: NUMBER_LINE_TITLE, instruction: NUMBER_LINE_INSTRUCTION },
+  split: { ...SPLIT_LAYOUT, columns: 3, rowHeight: 11, maxItems: 10, title: SPLIT_TITLE, instruction: SPLIT_INSTRUCTION },
+  word: { ...WORD_LAYOUT, columns: 1, rowHeight: 26, maxItems: 6, title: WORD_TITLE, instruction: WORD_INSTRUCTION },
 };
 
 export function blocksPerSheet(index: number): number {
@@ -91,23 +90,14 @@ export function blockKindsForSheet(index: number): readonly DrillKind[] {
  */
 export function allocateCounts(kinds: readonly DrillKind[]): number[] {
   const layouts = kinds.map((kind) => BLOCK_LAYOUT[kind]);
-  const budget = kinds.length <= 3 ? BLOCK_BUDGET_3 : BLOCK_BUDGET_4;
-  const counts = layouts.map(() => 2);
-  const height = () => layouts.reduce(
-    (sum, layout, i) => sum + Math.ceil(counts[i] / layout.columns) * layout.rowHeight, 0);
-  let total = counts.reduce((a, b) => a + b, 0);
+  const counts = layouts.map(() => 0);
+  let total = 0;
+  // 每次给题量最少的块加一题：各块题量平均，单块不会到十几题。
   while (total < ITEMS_PER_SHEET) {
-    let best = -1, bestCost = Infinity;
-    layouts.forEach((layout, i) => {
-      if (counts[i] >= layout.maxItems) return;
-      const before = Math.ceil(counts[i] / layout.columns);
-      const after = Math.ceil((counts[i] + 1) / layout.columns);
-      const cost = (after - before) * layout.rowHeight;
-      if (height() + cost > budget) return;
-      // 代价相同时给题量最少的块，避免一块独大。
-      if (cost < bestCost || (cost === bestCost && best >= 0 && counts[i] < counts[best])) {
-        best = i; bestCost = cost;
-      }
+    let best = -1;
+    layouts.forEach((layout, index) => {
+      if (counts[index] >= Math.min(layout.maxItems, MAX_PER_BLOCK)) return;
+      if (best < 0 || counts[index] < counts[best]) best = index;
     });
     if (best < 0) break;
     counts[best] += 1;

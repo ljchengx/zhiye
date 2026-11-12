@@ -2,7 +2,9 @@ import {
   MATH_PDF_CHARACTER_SOURCES,
   MATH_PDF_OBJECT_SOURCES,
   type MathPdfCharacterAsset,
+  type MathPdfHeaderCharacter,
   type MathPdfObjectAsset,
+  MATH_PDF_HEADER_SOURCES,
 } from "../math-picture-assets";
 import { MM_PER_POINT, type WorksheetFont, type WorksheetFonts } from "./fonts";
 
@@ -21,7 +23,7 @@ export const INK = {
   lavender: "#E9E3F6",
 } as const;
 
-export type WorksheetImageAsset = MathPdfCharacterAsset | MathPdfObjectAsset;
+export type WorksheetImageAsset = MathPdfCharacterAsset | MathPdfObjectAsset | MathPdfHeaderCharacter;
 
 export function isWorksheetCharacterAsset(
   asset: WorksheetImageAsset,
@@ -29,10 +31,16 @@ export function isWorksheetCharacterAsset(
   return Object.prototype.hasOwnProperty.call(MATH_PDF_CHARACTER_SOURCES, asset);
 }
 
+export function isWorksheetHeaderCharacter(
+  asset: WorksheetImageAsset,
+): asset is MathPdfHeaderCharacter {
+  return Object.prototype.hasOwnProperty.call(MATH_PDF_HEADER_SOURCES, asset);
+}
+
 export function worksheetImageSource(asset: WorksheetImageAsset): string {
-  return isWorksheetCharacterAsset(asset)
-    ? MATH_PDF_CHARACTER_SOURCES[asset]
-    : MATH_PDF_OBJECT_SOURCES[asset];
+  if (isWorksheetCharacterAsset(asset)) return MATH_PDF_CHARACTER_SOURCES[asset];
+  if (isWorksheetHeaderCharacter(asset)) return MATH_PDF_HEADER_SOURCES[asset];
+  return MATH_PDF_OBJECT_SOURCES[asset as MathPdfObjectAsset];
 }
 
 export type WorksheetNode =

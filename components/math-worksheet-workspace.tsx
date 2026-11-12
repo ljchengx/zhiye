@@ -534,7 +534,7 @@ function MathWorksheetContent({
         <span className={styles.eyebrow}>一程一成长 / 计算练习</span>
         <h1 id="tool-title">计算练习册</h1>
         <p>
-          逛商店、分点心、找路线，在图画里发现数学。一张 A4，正反两场活动。
+          每份 25 题，加减在 100 以内、乘除用九九表。一张 A4 双面，14 种题型轮换。
         </p>
       </header>
       <div className={styles.layout}>
@@ -556,7 +556,7 @@ function MathWorksheetContent({
             className={`${styles.navigationContent} ${navigationOpen ? styles.navigationOpen : ""}`}
           >
             <div className={styles.navHeading}>
-              <span>本月的 {total} 份发现</span>
+              <span>本月的 {total} 份练习</span>
               <small>每份独立，可以任意抽取</small>
             </div>
             <div className={styles.dayHeading}>
@@ -707,7 +707,7 @@ function MathWorksheetContent({
           >
             <header className={styles.previewBar}>
               <span>
-                A4 双面练习<small>看图 · 圈画 · 想一想</small>
+                A4 双面练习<small>25 题 · 14 种题型轮换</small>
               </span>
               <div>
                 {progress ? (

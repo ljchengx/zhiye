@@ -10,3 +10,5 @@ test-results/
 tmp/
 # 参考资料不进仓库
 docs/*.pdf
+# 表头素材原图留在本地，仓库只存压缩版
+public/math-worksheet/characters/images/

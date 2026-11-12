@@ -7,14 +7,16 @@ import { layoutDrillSheet } from "../lib/tools/drill/layout";
 import { assertWorksheetPageBounds, pageNodes } from "../lib/tools/number-sense/layout";
 import { testWorksheetFonts } from "./number-sense-test-fonts";
 
-/** 纸面文案可能来自这些文件，注释里的中文同样受字体约束。 */
+/**
+ * 会印到练习纸上的文案可能来自这些文件，注释里的中文同样受字体约束。
+ * 页面界面（工作区）用系统字体渲染，不在此列。
+ */
 const SOURCE_FILES = [
   ...fs.readdirSync("lib/tools/drill").filter((name) => name.endsWith(".ts")).map((name) => `lib/tools/drill/${name}`),
   "lib/tools/number-sense/drawing.ts",
   "lib/tools/number-sense/layout.ts",
   "lib/tools/math-pdf.ts",
   "components/number-sense-paper.tsx",
-  "components/math-worksheet-workspace.tsx",
   "workers/math-worksheet.worker.ts",
   "workers/math-pdf.worker.ts",
 ];
