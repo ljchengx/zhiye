@@ -1,4 +1,4 @@
-import { getMathHeaderCharacters } from "../math-picture-assets";
+import { getMathHeaderCharacters, MATH_WORKSHEET_HEADER_ASSETS } from "../math-picture-assets";
 import { Canvas, INK, type WorksheetIconKey } from "../number-sense/drawing";
 import type { WorksheetFonts } from "../number-sense/fonts";
 import type { WorksheetPage, WorksheetTaskRegion } from "../number-sense/layout";
@@ -7,6 +7,7 @@ import { chainText } from "./chain";
 import { checkBackText, spotErrorText } from "./checks";
 import { fillText } from "./fill";
 import { compareRightText, compareText } from "./relations";
+import { circleOutText } from "./circleOut";
 import { makeTenText, manyWaysText, splitText } from "./strategies";
 import type { DrillBlock, DrillItem, DrillPage, DrillSheet } from "./types";
 import { wordText } from "./word";
@@ -39,12 +40,17 @@ const THEME: Record<string, { bg: string; line: string; ink: string; icon: Works
   numberLine: { bg: "#EEFAF0", line: "#9BD9A6", ink: "#227A3A", icon: "flower" },
   split: { bg: "#FFF0ED", line: "#F0A99C", ink: "#B34733", icon: "heart" },
   word: { bg: "#FFF7DE", line: "#EDCB80", ink: "#96690C", icon: "balloon" },
+  numberTower: { bg: "#EAF3FF", line: "#93B8EE", ink: "#2A55A8", icon: "block" },
+  dotCount: { bg: "#EFFAF3", line: "#93D8AE", ink: "#1F7A47", icon: "apple" },
+  matchLine: { bg: "#F1EEFF", line: "#B3A6EE", ink: "#4B39A8", icon: "star" },
+  circleOut: { bg: "#FFF0F4", line: "#EFA6BC", ink: "#A82F55", icon: "heart" },
 };
 const FALLBACK = THEME.oral;
 
 /** 各题型内容本身占的高度（毫米）：缩放不能超过它，否则会超出题块。 */
 const CONTENT_HEIGHT: Partial<Record<string, number>> = {
   vertical: 30, spotError: 18, checkBack: 17, manyWays: 17, numberLine: 25, inOut: 22,
+  numberTower: 30, dotCount: 26, matchLine: 30, circleOut: 26,
 };
 
 type Theme = (typeof THEME)[string];
@@ -223,6 +229,70 @@ function drawWordItem(c: Canvas, item: DrillItem, x: number, y: number, columnWi
   c.line(x + 39, y + 16, x + Math.min(columnWidth - 8, 168), y + 16, theme.line, 0.8, true);
 }
 
+/** 加一加：最下面给三个数，往上相邻两数相加，空位填数。 */
+function drawTowerItem(c: Canvas, item: DrillItem, x: number, y: number, scale: number, theme: Theme) {
+  if (item.data.kind !== "numberTower") return;
+  const step = 19 * scale;
+  const rise = 8.5 * scale;
+  const baseY = y + 9 * scale;
+  const box = (bx: number, by: number, text: string | null) => {
+    c.roundRect(bx - 7, by - 7, 14, 10, 2.5, text === null ? INK.white : theme.bg, theme.line, 0.7);
+    if (text !== null) c.text(text, bx, by, 14, "numericBold", INK.dark, "center");
+  };
+  box(x + 14, baseY, String(item.data.base[0]));
+  box(x + 14 + step, baseY, String(item.data.base[1]));
+  box(x + 14 + step * 2, baseY, String(item.data.base[2]));
+  box(x + 14 + step / 2, baseY - rise, null);
+  box(x + 14 + step * 1.5, baseY - rise, null);
+  box(x + 14 + step, baseY - rise * 2, null);
+}
+
+/** 数一数：用素材库的角色排成几行，按行数出一共多少个。 */
+function drawDotCountItem(c: Canvas, item: DrillItem, x: number, y: number, rowHeight: number, theme: Theme) {
+  if (item.data.kind !== "dotCount") return;
+  const { rows, columns } = item.data;
+  const asset = MATH_WORKSHEET_HEADER_ASSETS[item.data.assetIndex % MATH_WORKSHEET_HEADER_ASSETS.length].name;
+  // 图标格距由行高反推，几行都装得下。
+  const pitch = Math.max(4.5, (rowHeight - 21) / rows);
+  const size = Math.min(pitch - 1.2, 46 / columns);
+  for (let row = 0; row < rows; row += 1) for (let column = 0; column < columns; column += 1) {
+    c.image(asset, x + 16 + column * pitch, y - 5 + row * pitch, size, size);
+  }
+  const after = y - 5 + rows * pitch + 2;
+  c.text(`${rows} 行，每行 ${columns} 个`, x + 16, after, 14, "chinese", theme.ink);
+  c.text("一共", x + 16, after + 8, 15, "chinese", INK.dark);
+  c.line(x + 34, after + 8.5, x + 56, after + 8.5, theme.line, 0.8, true);
+  c.text("个", x + 59, after + 8, 15, "chinese", INK.dark);
+}
+
+/** 连一连：左边算式、右边得数，中间留出连线的空间。 */
+function drawMatchItem(c: Canvas, item: DrillItem, x: number, y: number, rowHeight: number, theme: Theme) {
+  if (item.data.kind !== "matchLine") return;
+  const data = item.data;
+  const rowGap = Math.max(6, (rowHeight - 6) / data.expressions.length);
+  data.expressions.forEach((text, index) => {
+    const top = y + index * rowGap;
+    c.circle(x + 26, top - 1.5, 2.6, INK.white, theme.line, 0.8);
+    c.text(text, x + 2, top, 15, "numericBold", INK.dark);
+    c.circle(x + 62, top - 1.5, 2.6, INK.white, theme.line, 0.8);
+    c.text(String(data.right[index]), x + 67, top, 15, "numericBold", theme.ink);
+  });
+}
+
+/** 圈一圈：一组六个算式，组里先写清条件，每个算式前留一个可以圈的圈。 */
+function drawCircleOutItem(c: Canvas, item: DrillItem, x: number, y: number, rowHeight: number, theme: Theme) {
+  if (item.data.kind !== "circleOut") return;
+  c.caption(circleOutText(item.data), x + 2, y - 4, 11, "chinese", theme.ink);
+  const columnWidth = 56;
+  const rowGap = Math.max(7, (rowHeight - 10) / 2);
+  item.data.expressions.forEach((text, index) => {
+    const cx = x + (index % 3) * columnWidth;
+    const cy = y + 4 + Math.floor(index / 3) * rowGap;
+    c.circle(cx + 3, cy - 2, 3.4, INK.white, theme.line, 0.8);
+    c.text(text, cx + 9, cy, 15, "numericBold", INK.dark);
+  });
+}
+
 /** 画一个题块；行高由页面按可用空间算好后给出。 */
 function drawBlock(c: Canvas, block: DrillBlock, top: number, rowHeight: number, index: number): number {
   const theme = THEME[block.kind] ?? FALLBACK;
@@ -260,6 +330,10 @@ function drawBlock(c: Canvas, block: DrillBlock, top: number, rowHeight: number,
     else if (block.kind === "numberLine") drawNumberLineItem(c, item, x, y, columnWidth, scale, theme);
     else if (block.kind === "inOut") drawInOutItem(c, item, x, y, scale, theme);
     else if (block.kind === "word") drawWordItem(c, item, x, y, columnWidth, theme);
+    else if (block.kind === "numberTower") drawTowerItem(c, item, x, y, scale, theme);
+    else if (block.kind === "dotCount") drawDotCountItem(c, item, x, y, rowHeight, theme);
+    else if (block.kind === "matchLine") drawMatchItem(c, item, x, y, rowHeight, theme);
+    else if (block.kind === "circleOut") drawCircleOutItem(c, item, x, y, rowHeight, theme);
     else drawOralItem(c, item, x, y, columnWidth, theme);
   });
   return height;

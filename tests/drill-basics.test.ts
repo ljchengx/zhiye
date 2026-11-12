@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  BLOCKS_PER_SHEET, blockKindsForSheet, DRILL_SEQUENCE, ITEMS_PER_SHEET, itemSignature,
-  ROTATING_PER_SHEET, validateItem,
+  BLOCKS_PER_SHEET, blockKindsForSheet, CLASSIC_KINDS, DRILL_SEQUENCE, GRAPHIC_KINDS,
+  ITEMS_PER_SHEET, itemSignature, ROTATING_PER_SHEET, validateItem,
 } from "../lib/tools/drill/blocks";
 import {
   drillSheetSignature, generateDrillPlan, regenerateDrillSheet, sheetBlockKinds, sheetItemCount,
@@ -38,13 +38,14 @@ describe("计算练习册题组", () => {
     expect(firstFour.size).toBeLessThan(DRILL_SEQUENCE.length);
   });
 
-  it("题型组合按窗口滚动，每份末尾都是应用题", () => {
-    for (let index = 0; index < 4; index += 1) {
+  it("每份两个算式题型、一个图形题，末尾是应用题", () => {
+    for (let index = 0; index < 8; index += 1) {
       const kinds = blockKindsForSheet(index);
       expect(kinds).toHaveLength(BLOCKS_PER_SHEET);
       expect(kinds[kinds.length - 1]).toBe("word");
-      expect(kinds.slice(0, ROTATING_PER_SHEET))
-        .toEqual(DRILL_SEQUENCE.slice(index * ROTATING_PER_SHEET, (index + 1) * ROTATING_PER_SHEET));
+      expect(GRAPHIC_KINDS).toContain(kinds[BLOCKS_PER_SHEET - 2]);
+      for (const kind of kinds.slice(0, ROTATING_PER_SHEET - 1))
+        expect(CLASSIC_KINDS).toContain(kind);
     }
   });
 

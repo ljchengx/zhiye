@@ -7,7 +7,8 @@ export type DrillKind =
   | "oral" | "vertical" | "fill" | "spotError"
   | "chain" | "checkBack" | "compare" | "manyWays"
   | "operator" | "makeTen" | "inOut" | "numberLine"
-  | "split" | "word";
+  | "split" | "word"
+  | "numberTower" | "dotCount" | "matchLine" | "circleOut";
 
 /** 小题数据按题型判别。 */
 export type DrillSign = "<" | ">" | "=";
@@ -25,7 +26,11 @@ export type DrillData =
   | { kind: "split"; total: number }
   | { kind: "numberLine"; start: number; jumps: readonly number[] }
   | { kind: "inOut"; operator: "+" | "-"; step: number; inputs: readonly number[]; outputs: readonly number[] }
-  | { kind: "word"; operator: DrillOperator; a: number; b: number; text: string; value: number };
+  | { kind: "word"; operator: DrillOperator; a: number; b: number; text: string; value: number }
+  | { kind: "numberTower"; base: readonly number[] }
+  | { kind: "dotCount"; rows: number; columns: number; assetIndex: number }
+  | { kind: "matchLine"; expressions: readonly string[]; right: readonly number[] }
+  | { kind: "circleOut"; expressions: readonly string[]; values: readonly number[]; threshold: number; above: boolean };
 export type DrillAnswer =
   | { kind: "oral"; value: number }
   | { kind: "fill"; value: number; blank: 0 | 1 | 2 }
@@ -40,7 +45,11 @@ export type DrillAnswer =
   | { kind: "split"; total: number }
   | { kind: "numberLine"; value: number }
   | { kind: "inOut"; value: number }
-  | { kind: "word"; value: number };
+  | { kind: "word"; value: number }
+  | { kind: "numberTower"; values: readonly number[] }
+  | { kind: "dotCount"; value: number }
+  | { kind: "matchLine"; pairs: readonly number[] }
+  | { kind: "circleOut"; indices: readonly number[] };
 export type OralData = Extract<DrillData, { kind: "oral" }>;
 export type OralAnswer = Extract<DrillAnswer, { kind: "oral" }>;
 export type FillData = Extract<DrillData, { kind: "fill" }>;
@@ -56,6 +65,10 @@ export type SplitData = Extract<DrillData, { kind: "split" }>;
 export type NumberLineData = Extract<DrillData, { kind: "numberLine" }>;
 export type InOutData = Extract<DrillData, { kind: "inOut" }>;
 export type WordData = Extract<DrillData, { kind: "word" }>;
+export type TowerData = Extract<DrillData, { kind: "numberTower" }>;
+export type DotCountData = Extract<DrillData, { kind: "dotCount" }>;
+export type MatchData = Extract<DrillData, { kind: "matchLine" }>;
+export type CircleOutData = Extract<DrillData, { kind: "circleOut" }>;
 
 export interface DrillItem {
   id: string;
