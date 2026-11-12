@@ -22,20 +22,25 @@ import type { DrillBlock, DrillItem, DrillKind } from "./types";
 
 /** 每份固定 25 题。 */
 export const ITEMS_PER_SHEET = 25;
-/** 块数按 4-3-4-3 轮换，各段首尾相接，四份刚好走完 14 种题型。 */
-export const BLOCK_PATTERN = [4, 3, 4, 3] as const;
+/** 每份 4 块：3 块轮换题型，最后一块固定是生活应用题。 */
+export const BLOCKS_PER_SHEET = 4;
+/** 用来轮换的块数。 */
+export const ROTATING_PER_SHEET = BLOCKS_PER_SHEET - 1;
 /** 单个题块最多几题，避免一类题写很多。 */
 export const MAX_PER_BLOCK = 10;
+/** 每份固定的生活应用题题量。 */
+export const WORD_ITEMS_PER_SHEET = 2;
 
 
 /**
- * 14 种题型的轮换顺序：占地题型落在位置 0、2、5、8、11，
+ * 用来轮换的 13 种题型：占地题型落在位置 0、2、5、8、11，
  * 这样每一段都有两个以上能放较多题目的短题型，25 题才排得下。
+ * 应用题不放进轮换，每份固定一块。
  */
 export const DRILL_SEQUENCE: readonly DrillKind[] = [
   "vertical", "oral", "spotError", "fill",
   "compare", "manyWays", "operator", "chain",
-  "numberLine", "checkBack", "inOut", "word",
+  "numberLine", "checkBack", "inOut",
   "split", "makeTen",
 ];
 
@@ -65,8 +70,8 @@ export const BLOCK_LAYOUT: Record<DrillKind, BlockLayout> = {
   word: { ...WORD_LAYOUT, columns: 1, rowHeight: 26, maxItems: 6, title: WORD_TITLE, instruction: WORD_INSTRUCTION },
 };
 
-export function blocksPerSheet(index: number): number {
-  return BLOCK_PATTERN[index % BLOCK_PATTERN.length];
+export function blocksPerSheet(): number {
+  return BLOCKS_PER_SHEET;
 }
 
 /**
@@ -74,14 +79,12 @@ export function blocksPerSheet(index: number): number {
  * 连续四份正好走完全部 14 种题型，四份之内不重复。
  */
 export function blockKindsForSheet(index: number): readonly DrillKind[] {
-  const period = BLOCK_PATTERN.reduce((a, b) => a + b, 0);
-  const laps = Math.floor(index / BLOCK_PATTERN.length);
-  const step = index % BLOCK_PATTERN.length;
-  let offset = laps * period;
-  for (let i = 0; i < step; i += 1) offset += BLOCK_PATTERN[i];
-  const size = BLOCK_PATTERN[step];
-  return Array.from({ length: size }, (_, i) =>
+  // 每份往后走 3 个位置：连续四份不重样，第五份才开始回收。
+  const offset = (index * ROTATING_PER_SHEET) % DRILL_SEQUENCE.length;
+  const rotating = Array.from({ length: ROTATING_PER_SHEET }, (_, i) =>
     DRILL_SEQUENCE[(offset + i) % DRILL_SEQUENCE.length]);
+  // 应用题排在最后，作为每份的收尾。
+  return [...rotating, "word"];
 }
 
 /**
@@ -90,12 +93,13 @@ export function blockKindsForSheet(index: number): readonly DrillKind[] {
  */
 export function allocateCounts(kinds: readonly DrillKind[]): number[] {
   const layouts = kinds.map((kind) => BLOCK_LAYOUT[kind]);
-  const counts = layouts.map(() => 0);
-  let total = 0;
-  // 每次给题量最少的块加一题：各块题量平均，单块不会到十几题。
+  // 应用题每份固定两题，其余题量在别的题块间平均。
+  const counts: number[] = kinds.map((kind) => (kind === "word" ? WORD_ITEMS_PER_SHEET : 0));
+  let total = counts.reduce((sum, count) => sum + count, 0);
   while (total < ITEMS_PER_SHEET) {
     let best = -1;
     layouts.forEach((layout, index) => {
+      if (kinds[index] === "word") return;
       if (counts[index] >= Math.min(layout.maxItems, MAX_PER_BLOCK)) return;
       if (best < 0 || counts[index] < counts[best]) best = index;
     });

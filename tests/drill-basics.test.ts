@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  BLOCK_PATTERN, blockKindsForSheet, DRILL_SEQUENCE, ITEMS_PER_SHEET, itemSignature, validateItem,
+  BLOCKS_PER_SHEET, blockKindsForSheet, DRILL_SEQUENCE, ITEMS_PER_SHEET, itemSignature,
+  ROTATING_PER_SHEET, validateItem,
 } from "../lib/tools/drill/blocks";
 import {
   drillSheetSignature, generateDrillPlan, regenerateDrillSheet, sheetBlockKinds, sheetItemCount,
@@ -10,34 +11,41 @@ import { assertWorksheetPageBounds, pageNodes } from "../lib/tools/number-sense/
 import { testWorksheetFonts } from "./number-sense-test-fonts";
 
 describe("计算练习册题组", () => {
-  it("每份恰好 25 题，块数按 4-3-4-3 循环", () => {
+  it("每份恰好 25 题，其中一节固定是应用题", () => {
     const plan = generateDrillPlan(7, { count: 30 });
-    plan.sheets.forEach((sheet, index) => {
+    plan.sheets.forEach((sheet) => {
       expect(sheetItemCount(sheet), `第 ${sheet.sheet} 份题量`).toBe(ITEMS_PER_SHEET);
-      expect(sheet.pages.flatMap((page) => page.blocks), `第 ${sheet.sheet} 份块数`)
-        .toHaveLength(BLOCK_PATTERN[index % BLOCK_PATTERN.length]);
+      const kinds = sheetBlockKinds(sheet);
+      expect(kinds, `第 ${sheet.sheet} 份块数`).toHaveLength(BLOCKS_PER_SHEET);
+      // 每份都有一节生活应用题。
+      expect(kinds.filter((kind) => kind === "word"), `第 ${sheet.sheet} 份应用题`).toHaveLength(1);
     });
   });
 
-  it("相邻两份与间隔两份都不重复，前四份覆盖全部题型", () => {
+  it("轮换题型连续四份不重复，四份覆盖 12 种", () => {
     const plan = generateDrillPlan(7, { count: 8 });
-    const sets = plan.sheets.map((sheet) => new Set(sheetBlockKinds(sheet)));
-    for (let i = 0; i < sets.length; i += 1) for (let gap = 1; gap <= 2; gap += 1) {
-      const other = sets[i + gap];
+    const rotating = plan.sheets.map((sheet) =>
+      new Set(sheetBlockKinds(sheet).filter((kind) => kind !== "word")));
+    for (let i = 0; i < rotating.length; i += 1) for (let gap = 1; gap <= 3; gap += 1) {
+      const other = rotating[i + gap];
       if (!other) continue;
-      for (const kind of sets[i])
+      for (const kind of rotating[i])
         expect(other.has(kind), `第 ${i + 1} 份与第 ${i + 1 + gap} 份重复了 ${kind}`).toBe(false);
     }
-    const firstFour = new Set(plan.sheets.slice(0, 4).flatMap(sheetBlockKinds));
-    expect(firstFour.size).toBe(DRILL_SEQUENCE.length);
+    const firstFour = new Set(plan.sheets.slice(0, 4).flatMap((sheet) =>
+      sheetBlockKinds(sheet).filter((kind) => kind !== "word")));
+    expect(firstFour.size).toBe(ROTATING_PER_SHEET * 4);
+    expect(firstFour.size).toBeLessThan(DRILL_SEQUENCE.length);
   });
 
-  it("题型组合按窗口滚动，不总落在固定几块", () => {
-    expect(blockKindsForSheet(0)).toEqual(DRILL_SEQUENCE.slice(0, 4));
-    expect(blockKindsForSheet(1)).toEqual(DRILL_SEQUENCE.slice(4, 7));
-    expect(blockKindsForSheet(2)).toEqual(DRILL_SEQUENCE.slice(7, 11));
-    expect(blockKindsForSheet(3)).toEqual(DRILL_SEQUENCE.slice(11, 14));
-    expect(blockKindsForSheet(4)).toEqual(blockKindsForSheet(0));
+  it("题型组合按窗口滚动，每份末尾都是应用题", () => {
+    for (let index = 0; index < 4; index += 1) {
+      const kinds = blockKindsForSheet(index);
+      expect(kinds).toHaveLength(BLOCKS_PER_SHEET);
+      expect(kinds[kinds.length - 1]).toBe("word");
+      expect(kinds.slice(0, ROTATING_PER_SHEET))
+        .toEqual(DRILL_SEQUENCE.slice(index * ROTATING_PER_SHEET, (index + 1) * ROTATING_PER_SHEET));
+    }
   });
 
   it("题目可验题且同份内不重复", () => {

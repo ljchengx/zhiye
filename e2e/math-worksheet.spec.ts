@@ -399,8 +399,9 @@ test("30 份双面 SVG 的实际字形和场景边界、浏览器打印两页无
       await expect(paper).not.toContainText(/答案|解析/);
     }
   }
-  // 一个月里 14 种题型都会排到，每种都会出现多次。
-  expect(occurrences.size).toBe(DRILL_SEQUENCE.length);
+  // 一个月里 13 种轮换题型都会排到，加上每份固定的一节应用题。
+  expect(occurrences.size).toBe(DRILL_SEQUENCE.length + 1);
+  expect(occurrences.has("word")).toBe(true);
   for (const [kind, days] of occurrences) {
     expect(days.length, kind).toBeGreaterThanOrEqual(2);
   }

@@ -248,7 +248,7 @@ export function layoutDrillSheet(sheet: DrillSheet, fonts: WorksheetFonts): read
     const regions: WorksheetTaskRegion[] = [];
     let y = CONTENT_TOP;
     blocks.forEach((block, index) => {
-      const rowHeight = Math.min(58, Math.max(10, (available * weights[index]) / weightSum / rows[index]));
+      const rowHeight = Math.min(58, Math.max(8, (available * weights[index]) / weightSum / rows[index]));
       const height = BLOCK_HEAD + rows[index] * rowHeight + BLOCK_PAD;
       const canvas = new Canvas(fonts);
       drawBlock(canvas, block, y, rowHeight);

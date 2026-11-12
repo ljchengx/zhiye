@@ -534,7 +534,7 @@ function MathWorksheetContent({
         <span className={styles.eyebrow}>一程一成长 / 计算练习</span>
         <h1 id="tool-title">计算练习册</h1>
         <p>
-          每份 25 题，加减在 100 以内、乘除用九九表。一张 A4 双面，14 种题型轮换。
+          每份 25 题，加减在 100 以内、乘除用九九表。一张 A4 双面，每份都有一节生活应用题。
         </p>
       </header>
       <div className={styles.layout}>
@@ -707,7 +707,7 @@ function MathWorksheetContent({
           >
             <header className={styles.previewBar}>
               <span>
-                A4 双面练习<small>25 题 · 14 种题型轮换</small>
+                A4 双面练习<small>25 题 · 含生活应用题</small>
               </span>
               <div>
                 {progress ? (

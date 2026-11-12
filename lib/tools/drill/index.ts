@@ -1,7 +1,7 @@
 export * from "./types";
 export {
-  allocateCounts, BLOCK_LAYOUT, BLOCK_PATTERN, blockKindsForSheet, blocksPerSheet,
-  DRILL_SEQUENCE, ITEMS_PER_SHEET, itemSignature, validateItem,
+  allocateCounts, BLOCK_LAYOUT, blocksPerSheet, blockKindsForSheet, BLOCKS_PER_SHEET,
+  DRILL_SEQUENCE, ITEMS_PER_SHEET, itemSignature, ROTATING_PER_SHEET, validateItem,
 } from "./blocks";
 export {
   buildDrillSheet, createDrillRandom, drillSheetCount, drillSheetSignature, generateDrillPlan,
