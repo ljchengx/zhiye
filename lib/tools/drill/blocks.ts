@@ -55,7 +55,7 @@ export interface BlockLayout {
 /** 排版设置与标题；批次 1 只有 oral 接通生成，其余暂时沿用占位设置。 */
 export const BLOCK_LAYOUT: Record<DrillKind, BlockLayout> = {
   oral: { ...ORAL_LAYOUT, columns: 3, rowHeight: 11, maxItems: 10, title: ORAL_TITLE, instruction: ORAL_INSTRUCTION },
-  vertical: { columns: 3, rowHeight: 34, maxItems: 8, title: "列式计算", instruction: "一步一步算。" },
+  vertical: { columns: 4, rowHeight: 30, maxItems: 8, title: "列式计算", instruction: "一步一步算。" },
   fill: { columns: 3, rowHeight: 11, maxItems: 10, title: "填空", instruction: "把缺的数填上。" },
   spotError: { ...SPOT_ERROR_LAYOUT, columns: 2, rowHeight: 22, maxItems: 6, title: SPOT_ERROR_TITLE, instruction: SPOT_ERROR_INSTRUCTION },
   chain: { ...CHAIN_LAYOUT, columns: 2, rowHeight: 12, maxItems: 10, title: CHAIN_TITLE, instruction: CHAIN_INSTRUCTION },

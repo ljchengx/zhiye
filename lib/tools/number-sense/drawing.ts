@@ -241,6 +241,18 @@ export class Canvas {
     this.nodes.push({ kind: "rect", x, y, width, height, fill, stroke, weight });
   }
 
+  /** 四角圆的方框，卡片用它。 */
+  roundRect(x: number, y: number, width: number, height: number, radius: number,
+    fill?: string, stroke?: string, weight = 0.3) {
+    const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+    // path 用相对坐标：画的时候会先平移到 (x, y)。
+    const d = `M ${r} 0 H ${width - r} A ${r} ${r} 0 0 1 ${width} ${r}`
+      + ` V ${height - r} A ${r} ${r} 0 0 1 ${width - r} ${height}`
+      + ` H ${r} A ${r} ${r} 0 0 1 0 ${height - r}`
+      + ` V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`;
+    this.nodes.push({ kind: "path", d, x, y, width, height, fill, stroke, weight });
+  }
+
   circle(x: number, y: number, radius: number, fill?: string, stroke?: string, weight = 0.3) {
     this.nodes.push({ kind: "circle", x, y, radius, fill, stroke, weight });
   }

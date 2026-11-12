@@ -391,7 +391,7 @@ test("30 份双面 SVG 的实际字形和场景边界、浏览器打印两页无
             visual.top < top - 1 ||
             visual.right > left + width + 0.5 ||
             visual.bottom > top + height + 0.5
-            ? [element.textContent || element.tagName]
+            ? [`${element.tagName} ${element.textContent || ""} box=${visual.left.toFixed(1)},${visual.top.toFixed(1)},${visual.right.toFixed(1)},${visual.bottom.toFixed(1)} region=${left},${top},${(left + width).toFixed(1)},${(top + height).toFixed(1)}`]
             : [];
         }),
       );
