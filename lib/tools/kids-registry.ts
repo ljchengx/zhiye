@@ -69,12 +69,12 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
     ],
     icon: "calculator",
     accent: "amber",
-    stage: "6 岁以上",
+    stage: "6～8 岁",
     format: "printable",
     domain: "math",
     estimatedMinutes: 15,
     skillAreas: ["加减计算", "竖式计算", "表内乘除", "检查验算", "数量关系", "应用题"],
-    previewImage: "/kids/math-worksheet-preview.webp",
+    previewImage: "/kids/math-worksheet-preview-v2.webp",
     order: 1,
     metadata: {
       title: "月度计算练习 - A4 双面题组与 PDF 打印",
@@ -131,7 +131,7 @@ export const kidsToolDefinitions: readonly KidsToolDefinition[] = [
         },
         {
           question: "需要哪些基础？",
-          answer: "适合认识两位数、开始学加减竖式与九九表的小学低年级孩子（建议 6 岁以上）。练习包含进位与退位，乘除只用九九表内的数，除法必定整除。",
+          answer: "适合 6～8 岁、已经认识两位数并开始学习加减竖式与九九表的孩子。练习包含进位与退位，乘除只用九九表内的数，除法必定整除。",
         },
         {
           question: "幼儿园中大班可以用吗？",
