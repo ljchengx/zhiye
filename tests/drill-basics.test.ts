@@ -7,11 +7,12 @@ import {
   drillSheetSignature, generateDrillPlan, regenerateDrillSheet, sheetBlockKinds, sheetItemCount,
 } from "../lib/tools/drill/generate";
 import { layoutDrillSheet } from "../lib/tools/drill/layout";
+import { getExportDays } from "../lib/tools/drill/index";
 import { assertWorksheetPageBounds, pageNodes } from "../lib/tools/number-sense/layout";
 import { testWorksheetFonts } from "./number-sense-test-fonts";
 
 describe("计算练习册题组", () => {
-  it("每份恰好 25 题，其中一节固定是应用题", () => {
+  it("每份恰好 16 题，其中一道固定是应用题", () => {
     const plan = generateDrillPlan(7, { count: 30 });
     plan.sheets.forEach((sheet) => {
       expect(sheetItemCount(sheet), `第 ${sheet.sheet} 份题量`).toBe(ITEMS_PER_SHEET);
@@ -82,5 +83,15 @@ describe("计算练习册题组", () => {
     const regenerated = regenerateDrillSheet(first, 2, 999);
     expect(drillSheetSignature(regenerated)).not.toBe(drillSheetSignature(first.sheets[1]));
     expect(sheetItemCount(regenerated)).toBe(ITEMS_PER_SHEET);
+  });
+
+  it("正向、反向范围导出相同的完整份数，越界时限制在本册内", () => {
+    const plan = generateDrillPlan(7, { count: 30 });
+    const expected = Array.from({ length: 8 }, (_, index) => ({ day: index + 3 }));
+    expect(getExportDays(plan, { kind: "range", from: 3, to: 10 })).toEqual(expected);
+    expect(getExportDays(plan, { kind: "range", from: 10, to: 3 })).toEqual(expected);
+    expect(getExportDays(plan, { kind: "range", from: 8, to: 8 })).toEqual([{ day: 8 }]);
+    expect(getExportDays(plan, { kind: "range", from: 99, to: -1 }))
+      .toEqual(Array.from({ length: 30 }, (_, index) => ({ day: index + 1 })));
   });
 });

@@ -15,9 +15,17 @@ function Node({
   node: WorksheetNode;
   overrides?: LocalWorksheetCharacterMap;
 }) {
+  const semantics = {
+    "data-node-region": node.region,
+    "data-item-id": node.itemId,
+    "data-item-number": node.purpose === "item-number" ? node.itemNumber : undefined,
+    "data-purpose": node.purpose,
+    "data-writing-height": node.writingHeight,
+  };
   if (node.kind === "text")
     return (
       <text
+        {...semantics}
         x={node.x}
         y={node.baseline}
         fontFamily={WORKSHEET_FONT_FAMILIES[node.font]}
@@ -33,6 +41,7 @@ function Node({
   if (node.kind === "line")
     return (
       <line
+        {...semantics}
         x1={node.x1}
         y1={node.y1}
         x2={node.x2}
@@ -45,6 +54,7 @@ function Node({
   if (node.kind === "rect")
     return (
       <rect
+        {...semantics}
         x={node.x}
         y={node.y}
         width={node.width}
@@ -57,6 +67,7 @@ function Node({
   if (node.kind === "circle")
     return (
       <circle
+        {...semantics}
         cx={node.x}
         cy={node.y}
         r={node.radius}
@@ -68,6 +79,7 @@ function Node({
   if (node.kind === "ellipse")
     return (
       <ellipse
+        {...semantics}
         cx={node.x + node.width / 2}
         cy={node.y + node.height / 2}
         rx={node.width / 2}
@@ -80,6 +92,7 @@ function Node({
   if (node.kind === "path")
     return (
       <path
+        {...semantics}
         d={node.d}
         transform={`translate(${node.x} ${node.y})`}
         fill={node.fill ?? "none"}
@@ -91,6 +104,7 @@ function Node({
   const character = isWorksheetCharacterAsset(asset);
   return (
     <image
+      {...semantics}
       x={node.x}
       y={node.y}
       width={node.width}

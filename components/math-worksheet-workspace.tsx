@@ -178,6 +178,8 @@ function MathWorksheetContent({
   const characterRef = useRef<LocalWorksheetCharacterMap>({}),
     folderInput = useRef<HTMLInputElement>(null),
     printPack = useRef<HTMLDivElement>(null),
+    previewPanel = useRef<HTMLElement>(null),
+    expandButton = useRef<HTMLButtonElement>(null),
     mounted = useRef(false);
   const day = workbook?.plan.sheets[selectedDay - 1];
   const content = day?.pages.find((item) => item.side === selectedSide);
@@ -336,16 +338,46 @@ function MathWorksheetContent({
   }, []);
 
   useEffect(() => {
-    if (!expanded) return;
+    const panel = previewPanel.current;
+    if (!expanded || !panel) return;
     const previous = document.body.style.overflow;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const background = new Map<HTMLElement, boolean>();
+    // 逐层停用弹窗以外的兄弟节点，保留原有 inert 状态供关闭时恢复。
+    for (let ancestor: HTMLElement = panel; ancestor.parentElement; ancestor = ancestor.parentElement) {
+      for (const sibling of ancestor.parentElement.children) {
+        if (sibling !== ancestor && sibling instanceof HTMLElement) {
+          background.set(sibling, sibling.inert);
+          sibling.inert = true;
+        }
+      }
+    }
     document.body.style.overflow = "hidden";
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExpanded(false);
+    expandButton.current?.focus({ preventScroll: true });
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setExpanded(false);
+      } else if (event.key === "Tab") {
+        const controls = Array.from(panel.querySelectorAll<HTMLElement>(
+          'button, summary, select, input, a[href], [tabindex]',
+        )).filter((element) => element.tabIndex >= 0
+          && !element.matches(":disabled") && element.getClientRects().length > 0);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (!panel.contains(document.activeElement)
+          || (event.shiftKey && document.activeElement === first)
+          || (!event.shiftKey && document.activeElement === last)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first)?.focus({ preventScroll: true });
+        }
+      }
     };
-    window.addEventListener("keydown", escape);
+    window.addEventListener("keydown", keyboard);
     return () => {
       document.body.style.overflow = previous;
-      window.removeEventListener("keydown", escape);
+      background.forEach((inert, element) => { element.inert = inert; });
+      window.removeEventListener("keydown", keyboard);
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, [expanded]);
 
@@ -534,7 +566,7 @@ function MathWorksheetContent({
         <span className={styles.eyebrow}>一程一成长 / 计算练习</span>
         <h1 id="tool-title">计算练习册</h1>
         <p>
-          每份 20 题，加减在 100 以内、乘除用九九表。每份都有一道图形题和一节生活应用题。
+          每份 16 题，正反面各两个大题。算一算、玩图形，再把数学用到生活里。
         </p>
       </header>
       <div className={styles.layout}>
@@ -702,12 +734,15 @@ function MathWorksheetContent({
             </div>
           </header>
           <section
+            ref={previewPanel}
             className={`${styles.preview} ${expanded ? styles.expanded : ""}`}
             aria-label="A4 练习纸预览"
+            role={expanded ? "dialog" : undefined}
+            aria-modal={expanded ? true : undefined}
           >
             <header className={styles.previewBar}>
               <span>
-                A4 双面练习<small>20 题 · 含图形题</small>
+                A4 双面练习<small>16 题 · 每面两个大题</small>
               </span>
               <div>
                 {progress ? (
@@ -793,6 +828,7 @@ function MathWorksheetContent({
                   </details>
                 )}
                 <button
+                  ref={expandButton}
                   type="button"
                   aria-label={expanded ? "退出放大预览" : "放大预览"}
                   onClick={() => setExpanded((value) => !value)}
@@ -846,7 +882,7 @@ function MathWorksheetContent({
                 </span>
               )}
             </div>
-            <div className={styles.previewViewport}>
+            <div className={styles.previewViewport} tabIndex={expanded ? 0 : undefined}>
               {page ? (
                 <NumberSensePaper
                   page={page}

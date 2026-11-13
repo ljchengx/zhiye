@@ -49,6 +49,8 @@ export function validateOralItem(item: DrillItem): boolean {
   const [a, b] = data.terms;
   if (data.operators.length !== 1 || data.terms.length !== 2) return false;
   if (![a, b, answer.value].every((n) => Number.isInteger(n) && n >= 0 && n <= 100)) return false;
+  // 数值范围合法也可能算错，验题时独立重算答案。
+  if (evaluateOral(data) !== answer.value) return false;
   const operator = data.operators[0];
   if (operator === "+") return a >= 14 && a <= 86 && b >= 12 && a + b <= 100;
   if (operator === "-") return a >= 32 && b >= 13 && a - b >= 5;

@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--source", required=True, type=Path, help="Google Fonts OFL NotoSansSC[wght].ttf")
 args = parser.parse_args()
-# 纸面文案来源：数感模块全部场景、工作区界面、SVG 纸张组件、PDF 导出模块与 worker。
-paths = list((ROOT / "lib/tools/number-sense").glob("*.ts")) + [
+# 纸面文案来源：计算与绘图模块、工作区、SVG 纸张、PDF 导出与 worker。
+paths = list((ROOT / "lib/tools/number-sense").glob("*.ts")) + list((ROOT / "lib/tools/drill").glob("*.ts")) + [
     ROOT / "components/math-worksheet-workspace.tsx",
     ROOT / "components/number-sense-paper.tsx",
     ROOT / "lib/tools/math-pdf.ts",

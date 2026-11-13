@@ -43,7 +43,7 @@ export function worksheetImageSource(asset: WorksheetImageAsset): string {
   return MATH_PDF_OBJECT_SOURCES[asset as MathPdfObjectAsset];
 }
 
-export type WorksheetNode =
+export type WorksheetNode = (
   | {
       kind: "text";
       x: number;
@@ -116,7 +116,16 @@ export type WorksheetNode =
       width: number;
       height: number;
       asset: WorksheetImageAsset;
-    };
+    }
+) & {
+  /** 只描述版面语义，供预览与碰撞检查使用，不包含答案。 */
+  region?: "title" | "instruction" | "content";
+  itemId?: string;
+  itemNumber?: number;
+  purpose?: "item-number" | "writing" | "diagram";
+  /** 作答线上方实际留给书写的高度（毫米）。 */
+  writingHeight?: number;
+};
 
 export class Canvas {
   nodes: WorksheetNode[] = [];
@@ -228,7 +237,7 @@ export class Canvas {
     if (line) lines.push(line.trim());
     if (lines.length > maxLines || lines.some((part) => this.width(part, "chinese", size) > width))
       throw new Error(`题干超出预留版面：${text}`);
-    const step = size * MM_PER_POINT * 1.36;
+    const step = Math.max(size * MM_PER_POINT * 1.36, this.fonts.height("chinese", size) + 1.5);
     lines.forEach((part, index) => this.text(part, x, y + index * step, size, "chinese", color));
     return lines.length * step;
   }

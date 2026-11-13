@@ -8,7 +8,7 @@ import {
   PDFRawStream,
   decodePDFRawStream,
 } from "pdf-lib";
-import { DRILL_SEQUENCE } from "../lib/tools/drill/blocks";
+import { CALCULATION_KINDS, DRILL_SEQUENCE, GRAPHIC_KINDS, THINKING_KINDS } from "../lib/tools/drill/blocks";
 
 async function openWorksheet(page: Page) {
   await page.goto("/kids/math-worksheet");
@@ -37,6 +37,11 @@ async function sceneSnapshot(paper: Locator) {
     .evaluateAll((groups) => groups.map((group) => group.innerHTML).join("|"));
 }
 
+async function wordSceneSnapshot(paper: Locator) {
+  return paper.locator('[data-type="word"] [data-purpose="diagram"]')
+    .evaluateAll((nodes) => nodes.map((node) => node.outerHTML).join("|"));
+}
+
 async function downloadPdf(page: Page, range: "day" | "range" | "all") {
   await page.getByText("导出 PDF", { exact: true }).click();
   await page.getByLabel("导出范围", { exact: true }).selectOption(range);
@@ -61,22 +66,29 @@ test("正反面实时切换，背面换题同时更新整份，跳选不混页",
     print = page.getByTestId("worksheet-print-pack");
   const front = await sceneSnapshot(paper);
   await expect(paper).toHaveAttribute("data-side", "front");
-  // 题块按高度分到两面，每面 1～2 块，两面合起来 25 题。
+  // 每面固定两块，整份小题连续编号 01～16。
   const blocks = await paper.locator("[data-task-id]").count();
-  expect(blocks).toBeGreaterThanOrEqual(1);
-  expect(blocks).toBeLessThanOrEqual(2);
+  expect(blocks).toBe(2);
   await expect(print.locator("svg")).toHaveCount(2);
+  expect(await print.locator("[data-item-number]").evaluateAll((nodes) => nodes.map((node) => Number(node.textContent))))
+    .toEqual(Array.from({ length: 16 }, (_, index) => index + 1));
   expect(await sceneSnapshot(print.locator('svg[data-side="front"]'))).toBe(
     front,
   );
   await side(page, "back");
   await expect(paper).toHaveAttribute("data-side", "back");
   const back = await sceneSnapshot(paper);
+  const originalScene = await wordSceneSnapshot(paper);
   expect(back).not.toBe(front);
   expect(await sceneSnapshot(print.locator('svg[data-side="back"]'))).toBe(back);
   await page.getByRole("button", { name: "本份换一套", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("第 1 份正反面已更新");
   await expect(paper).toHaveAttribute("data-side", "back");
+  expect(await wordSceneSnapshot(paper), "换题必须换插图，不能只换数字").not.toBe(originalScene);
+  const changedScene = await wordSceneSnapshot(paper);
+  await page.getByRole("button", { name: "本份换一套", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("第 1 份正反面已更新");
+  expect(await wordSceneSnapshot(paper), "连续换题也更换实际画面").not.toBe(changedScene);
   const newBack = await sceneSnapshot(paper);
   expect(newBack).not.toBe(back);
   await side(page, "front");
@@ -205,6 +217,19 @@ test("PDF 本份、范围和整月保持正反页序，使用换题后的两面"
       /"validation"|"answer"|"solution"/,
     );
   }
+
+  // 反向选份数时，界面页数、文件名和实际 PDF 必须一致。
+  await page.getByText("导出 PDF", { exact: true }).click();
+  await page.getByLabel("导出范围", { exact: true }).selectOption("range");
+  await page.getByLabel("起始份数", { exact: true }).selectOption("10");
+  await page.getByLabel("结束份数", { exact: true }).selectOption("3");
+  await expect(page.getByText("共 16 页", { exact: true })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "下载 PDF", exact: true }).click();
+  const download = await downloadPromise;
+  const pdf = await PDFDocument.load(await readFile((await download.path())!));
+  expect(download.suggestedFilename()).toContain("第3至10份");
+  expect(pdf.getPageCount()).toBe(16);
 });
 
 test("实际月份缩短时选择和导出范围自动收回到有效份数", async ({ page }) => {
@@ -274,7 +299,7 @@ test("放大预览中的导出失败提示可见，可直接重试", async ({ pa
     .route("**/fonts/noto-sans-sc-math-subset.ttf*", (route) => route.abort());
   await page.getByText("导出 PDF", { exact: true }).click();
   await page.getByRole("button", { name: "下载 PDF", exact: true }).click();
-  const preview = page.getByRole("region", {
+  const preview = page.getByRole("dialog", {
     name: "A4 练习纸预览",
     exact: true,
   });
@@ -284,6 +309,27 @@ test("放大预览中的导出失败提示可见，可直接重试", async ({ pa
   await preview.getByRole("button", { name: "重试", exact: true }).click();
   expect((await downloaded).suggestedFilename()).toContain("第1份");
   await expect(preview.getByRole("status")).toHaveText("已导出 2 页练习");
+});
+
+test("放大预览内键盘焦点不会落到背景，关闭后回到放大按钮", async ({ page }) => {
+  await openWorksheet(page);
+  const expand = page.getByRole("button", { name: "放大预览", exact: true });
+  await expand.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "A4 练习纸预览", exact: true });
+  await expect(dialog).toBeVisible();
+  for (const key of ["Tab", "Shift+Tab"]) {
+    for (let index = 0; index < 10; index += 1) {
+      await page.keyboard.press(key);
+      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+    }
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(expand).toBeFocused();
+  const print = page.getByRole("button", { name: "打印本份", exact: true });
+  await print.focus();
+  await expect(print).toBeFocused();
 });
 
 
@@ -357,6 +403,8 @@ test("30 份双面 SVG 的实际字形和场景边界、浏览器打印两页无
   });
   expect(punctuation.gap).toBeCloseTo(punctuation.size * 25.4 / 72, 1);
   const occurrences = new Map<string, number[]>();
+  const headerAssets = new Set<string>();
+  const wordScenes = new Set<string>();
   for (let day = 1; day <= 30; day += 1) {
     await page.getByTestId(`worksheet-day-${day}`).click();
     for (const face of ["front", "back"] as const) {
@@ -366,6 +414,43 @@ test("30 份双面 SVG 的实际字形和场景边界、浏览器打印两页无
         .evaluateAll((groups) => groups.map((group) => group.getAttribute("data-type") ?? ""));
       for (const kind of kinds)
         occurrences.set(kind, [...(occurrences.get(kind) ?? []), day]);
+      expect(kinds).toHaveLength(2);
+      const parentHints = await paper.locator('[data-node-region="title"]').evaluateAll((nodes) =>
+        nodes.map((node) => node.textContent ?? "").filter((text) => text.startsWith("家长方法：")),
+      );
+      expect(parentHints, `第 ${day} 份 ${face} 每个题块都有家长方法说明`).toHaveLength(2);
+      if (face === "front") {
+        expect(CALCULATION_KINDS).toContain(kinds[0]);
+        expect(GRAPHIC_KINDS).toContain(kinds[1]);
+      } else {
+        expect(THINKING_KINDS).toContain(kinds[0]);
+        expect(kinds[1]).toBe("word");
+        wordScenes.add((await paper.locator('[data-type="word"] text[data-size="10"][data-node-region="content"]').textContent())!);
+      }
+      if (kinds.includes("matchLine")) {
+        const matchBlock = paper.locator('[data-type="matchLine"]');
+        const groups = await matchBlock.locator('[data-purpose="item-number"]').count();
+        const results = await matchBlock.locator('text[data-size="16"]').evaluateAll((nodes) =>
+          nodes.map((node) => node.textContent ?? "").filter((text) => /^\d+$/.test(text)).map(Number));
+        const expressions = await matchBlock.locator('text[data-size="16"]').evaluateAll((nodes) =>
+          nodes.map((node) => node.textContent ?? "").filter((text) => /^\d+ [+-] \d+$/.test(text)));
+        expect(groups).toBe(4);
+        expect(results).toHaveLength(4);
+        expect(expressions).toHaveLength(4);
+        expect(new Set(results).size, `第 ${day} 份连线活动只有四对且得数不重复`).toBe(4);
+      }
+      if (kinds.includes("circleOut")) {
+        const activity = paper.locator('[data-type="circleOut"]');
+        const expressions = await activity.locator('text[data-size="16"]').evaluateAll((nodes) =>
+          nodes.map((node) => node.textContent ?? "").filter((text) => /^\d+ [+-] \d+$/.test(text)));
+        expect(expressions).toHaveLength(4);
+        expect((await activity.textContent())!.match(/圈出结果比/g)).toHaveLength(1);
+      }
+      if (kinds.includes("numberTower")) {
+        await expect(paper.locator('[data-type="numberTower"] [data-purpose="writing"]')).toHaveCount(4);
+      }
+      await expect(paper.locator('[data-region="header"] image')).toHaveCount(1);
+      headerAssets.add((await paper.locator('[data-region="header"] image').getAttribute("href"))!);
       const overflow = await paper.locator("g text, g rect, g circle, g ellipse, g path, g image, g line").evaluateAll((elements) =>
         elements.flatMap((element) => {
           const graphic = element as SVGGraphicsElement;
@@ -396,11 +481,35 @@ test("30 份双面 SVG 的实际字形和场景边界、浏览器打印两页无
         }),
       );
       expect(overflow, `第 ${day} 份 ${face}`).toEqual([]);
+      const collisions = await paper.locator("[data-task-id]").evaluateAll((groups) => {
+        const results: string[] = [];
+        for (const group of groups) {
+          const texts = [...group.querySelectorAll<SVGGraphicsElement>('text, image')];
+          for (let i = 0; i < texts.length; i += 1) for (let j = i + 1; j < texts.length; j += 1) {
+            const a = texts[i].getBBox(), b = texts[j].getBBox();
+            if (a.x < b.x + b.width - 0.2 && b.x < a.x + a.width - 0.2
+              && a.y < b.y + b.height - 0.2 && b.y < a.y + a.height - 0.2)
+              results.push(`${group.getAttribute("data-type")}：${texts[i].textContent} / ${texts[j].textContent}`);
+          }
+        }
+        return results;
+      });
+      expect(collisions, `第 ${day} 份 ${face} 字形遮挡`).toEqual([]);
+      const cramped = await paper.locator('[data-purpose="writing"]').evaluateAll((nodes) => nodes.flatMap((node) => {
+        const box = (node as SVGGraphicsElement).getBBox();
+        const height = node.tagName === "line" ? Number(node.getAttribute("data-writing-height")) : box.height;
+        const minimum = node.tagName === "circle" ? 6 : node.tagName === "line" ? 13 : 12;
+        return height < minimum - 0.01 || (node.tagName === "line" && box.width < 24 - 0.01)
+          ? [`${node.closest("[data-task-id]")?.getAttribute("data-type")} ${box.width}×${height}`] : [];
+      }));
+      expect(cramped, `第 ${day} 份 ${face} 书写空间不足`).toEqual([]);
       await expect(paper).not.toContainText(/答案|解析/);
     }
   }
-  // 一个月里 13 种轮换题型都会排到，加上每份固定的一节应用题。
+  // 一个月覆盖 17 种轮换题型和固定的生活应用题。
   expect(occurrences.size).toBe(DRILL_SEQUENCE.length + 1);
+  expect(headerAssets.size, "30 份正反面的头部角色不重复").toBe(60);
+  expect(wordScenes.size, "30 份的应用题情景不重复").toBe(30);
   expect(occurrences.has("word")).toBe(true);
   for (const [kind, days] of occurrences) {
     expect(days.length, kind).toBeGreaterThanOrEqual(2);

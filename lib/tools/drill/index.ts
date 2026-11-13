@@ -14,12 +14,12 @@ import { BLOCK_LAYOUT, DRILL_SEQUENCE } from "./blocks";
 import { itemSignature } from "./blocks";
 import type { DrillPlan, DrillSheet, WorksheetExportSelection } from "./types";
 
-/** 14 种题型的名称，按轮换顺序，给页面列出本月内容。 */
+/** 轮换题型的名称，给页面列出本月内容。 */
 export const DRILL_TITLES: readonly string[] = DRILL_SEQUENCE.map((kind) => BLOCK_LAYOUT[kind].title);
 
 export const DRILL_PARENT_USAGE =
-  "每份一张 A4 双面，一共 25 道题，练 100 以内加减与九九表。连续四份题型都不一样："
-  + "先练写出得数、列式、填空，再练比大小、找错、检查与凑整。纸面不给答案，"
+  "每份一张 A4 双面，一共 16 个编号小题，练 100 以内加减与九九表。每面两个大题："
+  + "正面先计算再玩图形，反面尝试方法并完成一道生活应用题。图形活动每个编号只需连一对、圈一道、数一组或填一格。纸面不给答案，"
   + "做完请看看孩子的列式写清了没有、检查那一步有没有做。";
 
 /** 要导出的份，沿用原来的选择方式。 */
@@ -29,8 +29,10 @@ export function getExportDays(
   const total = plan.totalSheets;
   if (selection.kind === "day") return [{ day: Math.max(1, Math.min(total, Math.floor(selection.day))) }];
   if (selection.kind === "range") {
-    const from = Math.max(1, Math.min(total, Math.floor(selection.from)));
-    const to = Math.max(from, Math.min(total, Math.floor(selection.to)));
+    // 与界面页数和文件名一致，反向选择也按从小到大的完整范围导出。
+    const start = Math.max(1, Math.min(total, Math.floor(selection.from)));
+    const end = Math.max(1, Math.min(total, Math.floor(selection.to)));
+    const from = Math.min(start, end), to = Math.max(start, end);
     return Array.from({ length: to - from + 1 }, (_, index) => ({ day: from + index }));
   }
   return Array.from({ length: total }, (_, index) => ({ day: index + 1 }));

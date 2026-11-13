@@ -1,6 +1,6 @@
 export const WORKSHEET_FONT_SOURCES = {
-  chinese: "/fonts/noto-sans-sc-math-subset.ttf?v=16",
-  chineseBold: "/fonts/noto-sans-sc-math-bold-subset.ttf?v=16",
+  chinese: "/fonts/noto-sans-sc-math-subset.ttf?v=23",
+  chineseBold: "/fonts/noto-sans-sc-math-bold-subset.ttf?v=23",
   numeric: "/fonts/andika-regular.ttf",
   numericBold: "/fonts/andika-bold.ttf",
 } as const;

@@ -3,7 +3,7 @@ import type { DrillItem, TowerData } from "./types";
 /** 往上填数的排版设置：2 列、每行 28 毫米。 */
 export const TOWER_LAYOUT = { columns: 2, rowHeight: 28, maxItems: 4 } as const;
 export const TOWER_TITLE = "加一加";
-export const TOWER_INSTRUCTION = "相邻两数相加，往上填。";
+export const TOWER_INSTRUCTION = "相邻两数相加，填好一个空格。";
 
 const integer = (random: () => number, low: number, high: number) =>
   low + Math.floor(random() * (high - low + 1));
@@ -15,7 +15,9 @@ export function createTowerItem(random: () => number, id: string): DrillItem {
     const mid = [base[0] + base[1], base[1] + base[2]];
     const top = mid[0] + mid[1];
     if (top > 100) continue;
-    const data: TowerData = { kind: "numberTower", base };
+    const blank = integer(random, 0, 2);
+    const cells = [...mid, top].map((value, index) => index === blank ? null : value);
+    const data: TowerData = { kind: "numberTower", base, cells };
     const item: DrillItem = { id, data, answer: { kind: "numberTower", values: [mid[0], mid[1], top] } };
     if (validateTowerItem(item)) return item;
   }
@@ -35,6 +37,8 @@ export function validateTowerItem(item: DrillItem): boolean {
   if (!data.base.every((n) => Number.isInteger(n) && n >= 5 && n <= 22)) return false;
   const { mid, top } = towerLayers(data);
   const values = [...mid, top];
+  if (data.cells.length !== 3 || data.cells.filter((value) => value === null).length !== 1) return false;
+  if (!data.cells.every((value, index) => value === null || value === values[index])) return false;
   if (!values.every((n) => Number.isInteger(n) && n >= 0 && n <= 100)) return false;
   return answer.values.length === 3
     && answer.values[0] === mid[0] && answer.values[1] === mid[1] && answer.values[2] === top;

@@ -1,8 +1,21 @@
-/** 计算练习册的题组模型：一份 = 一张 A4 双面，共 25 题。 */
+/** 计算练习册的题组模型：一份 = 一张 A4 双面，共 16 个编号小题。 */
 
 export type DrillOperator = "+" | "-" | "×" | "÷";
 
-/** 14 种题型；{@link DRILL_SEQUENCE} 规定轮换顺序，较短的题型与占地的题型交替。 */
+/** 情景与题面一起生成，插图不再依靠关键词猜测。 */
+export type WordScene =
+  | "garden" | "aquarium" | "balloons" | "library"
+  | "bus" | "calendar" | "toyshop" | "picnic"
+  | "blocks" | "sports" | "stickers" | "forest"
+  | "pond" | "florist" | "lanterns" | "bakery"
+  | "farm" | "crafts" | "market" | "camping"
+  | "artroom" | "postoffice" | "playground" | "kitchen"
+  | "orchard" | "theater" | "cinema" | "beach"
+  | "reading" | "ferriswheel" | "stationeries" | "music"
+  | "planetarium" | "sportsday" | "supermarket" | "recycling"
+  | "zoo" | "museum" | "train" | "party";
+
+/** 17 种轮换题型和固定的生活应用题。 */
 export type DrillKind =
   | "oral" | "vertical" | "fill" | "spotError"
   | "chain" | "checkBack" | "compare" | "manyWays"
@@ -26,8 +39,8 @@ export type DrillData =
   | { kind: "split"; total: number }
   | { kind: "numberLine"; start: number; jumps: readonly number[] }
   | { kind: "inOut"; operator: "+" | "-"; step: number; inputs: readonly number[]; outputs: readonly number[] }
-  | { kind: "word"; operator: DrillOperator; a: number; b: number; text: string; value: number }
-  | { kind: "numberTower"; base: readonly number[] }
+  | { kind: "word"; operator: DrillOperator; a: number; b: number; text: string; value: number; story: number; scene: WordScene; sceneTitle: string }
+  | { kind: "numberTower"; base: readonly number[]; cells: readonly (number | null)[] }
   | { kind: "dotCount"; rows: number; columns: number; assetIndex: number }
   | { kind: "matchLine"; expressions: readonly string[]; right: readonly number[] }
   | { kind: "circleOut"; expressions: readonly string[]; values: readonly number[]; threshold: number; above: boolean };

@@ -57,7 +57,7 @@ workerScope.onmessage = async (
         type: "day-complete",
         requestId: message.requestId,
         day: sheet,
-        pages: layoutDrillSheet(sheet, fonts),
+        pages: layoutDrillSheet(sheet, fonts, message.plan.seed),
       } satisfies MathWorksheetPlanWorkerResponse);
     } else {
       const plan = generateDrillPlan(message.seed, message.config);
@@ -65,7 +65,7 @@ workerScope.onmessage = async (
         type: "complete",
         requestId: message.requestId,
         plan,
-        document: layoutDrillPlan(plan.sheets, fonts),
+        document: layoutDrillPlan(plan.sheets, fonts, plan.seed),
       } satisfies MathWorksheetPlanWorkerResponse);
     }
   } catch (error) {

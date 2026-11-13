@@ -70,4 +70,16 @@ describe("填空与列式计算", () => {
       }
     }
   });
+
+  it("口算与竖式拒绝被改错的答案，即使错答仍在 0～100 以内", () => {
+    for (const kind of ["oral", "vertical"] as const) {
+      for (let seed = 0; seed < 60; seed += 1) {
+        const item = createItem(kind, createDrillRandom(seed + 1), `wrong-${kind}-${seed}`);
+        if (item.answer.kind !== "oral" && item.answer.kind !== "vertical") throw new Error("题型错误");
+        const incorrect = { ...item, answer: { ...item.answer, value: (item.answer.value + 1) % 101 } };
+        expect(validateItem(kind, item), `${kind} 原答案`).toBe(true);
+        expect(validateItem(kind, incorrect), `${kind} seed ${seed} 错答`).toBe(false);
+      }
+    }
+  });
 });

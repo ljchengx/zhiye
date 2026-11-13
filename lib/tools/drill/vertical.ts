@@ -34,6 +34,8 @@ export function validateVerticalItem(item: DrillItem): boolean {
   const { data, answer } = item;
   if (data.kind !== "vertical" || answer.kind !== "vertical") return false;
   if (![data.a, data.b, answer.value].every((n) => Number.isInteger(n) && n >= 0 && n <= 100)) return false;
+  // 同时检查运算结果，不能只验证操作数和答案的范围。
+  if (evaluateVertical(data) !== answer.value) return false;
   if (data.operator === "+") return data.a >= 14 && data.a <= 86 && data.b >= 12 && data.a + data.b <= 100;
   if (data.operator === "-") return data.a >= 32 && data.b >= 13 && data.a - data.b >= 5;
   return data.a >= 2 && data.a <= 9 && data.b >= 2 && data.b <= 9;

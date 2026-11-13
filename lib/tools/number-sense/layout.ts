@@ -58,3 +58,33 @@ export function assertWorksheetPageBounds(page: WorksheetPage): void {
       throw new Error(`第 ${page.day} 份活动超出预留空间：${node.kind === "text" ? node.text : node.kind}`);
   }
 }
+
+/** 文字和图片互不遮挡；作答线也要避开文字，图表单元格允许承载数字。 */
+export function assertWorksheetContentSpacing(page: WorksheetPage): void {
+  const overlaps = (a: ReturnType<typeof nodeBounds>, b: ReturnType<typeof nodeBounds>) =>
+    a.x < b.x + b.width - 0.2 && b.x < a.x + a.width - 0.2
+    && a.y < b.y + b.height - 0.2 && b.y < a.y + a.height - 0.2;
+  for (const nodes of [page.header, ...page.tasks.map((task) => task.nodes), page.footer]) {
+    const content = nodes.filter((node) => node.kind === "text" || node.kind === "image");
+    for (let i = 0; i < content.length; i += 1) for (let j = i + 1; j < content.length; j += 1) {
+      if (overlaps(nodeBounds(content[i]), nodeBounds(content[j])))
+        throw new Error(`第 ${page.day} 份文字或图片互相遮挡`);
+    }
+    for (const node of nodes) if (node.purpose === "writing") {
+      const bounds = nodeBounds(node);
+      const stroke = node.kind === "line" ? node.weight / 2 : 0;
+      const writingHeight = node.kind === "line" ? node.writingHeight ?? 0 : 0;
+      const ink = {
+        x: bounds.x - stroke, y: bounds.y - writingHeight - stroke,
+        width: bounds.width + stroke * 2, height: bounds.height + writingHeight + stroke * 2,
+      };
+      if (content.some((text) => overlaps(ink, nodeBounds(text))))
+        throw new Error(`第 ${page.day} 份作答区遮挡文字或图片`);
+    }
+  }
+  for (let i = 1; i < page.tasks.length; i += 1) {
+    const previous = page.tasks[i - 1], current = page.tasks[i];
+    if (current.y < previous.y + previous.height)
+      throw new Error(`第 ${page.day} 份题块互相重叠`);
+  }
+}

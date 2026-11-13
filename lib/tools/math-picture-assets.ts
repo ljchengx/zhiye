@@ -152,9 +152,9 @@ export const MATH_PDF_HEADER_SOURCES: Record<MathPdfHeaderCharacter, string> = O
   MATH_WORKSHEET_HEADER_ASSETS.map(({ name, src }) => [name, src]),
 ) as Record<MathPdfHeaderCharacter, string>;
 
-/** 按份号取表头角色：一份两个、跨份不重复，同种子可复现。 */
-export function getMathHeaderCharacters(sheet: number): readonly [MathPdfHeaderCharacter, MathPdfHeaderCharacter] {
+/** 每面一个角色，同册不重复；新练习册从素材库的不同位置开始轮换。 */
+export function getMathHeaderCharacters(sheet: number, seed = 0): readonly [MathPdfHeaderCharacter, MathPdfHeaderCharacter] {
   const total = MATH_WORKSHEET_HEADER_ASSETS.length;
-  const index = ((Math.max(1, Math.floor(sheet)) - 1) * 2) % total;
+  const index = ((Math.max(1, Math.floor(sheet)) - 1) * 2 + (seed >>> 0)) % total;
   return [MATH_WORKSHEET_HEADER_ASSETS[index].name, MATH_WORKSHEET_HEADER_ASSETS[(index + 1) % total].name];
 }

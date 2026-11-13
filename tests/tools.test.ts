@@ -184,7 +184,7 @@ describe("启蒙工具注册表", () => {
       "english-catalog",
     ]);
     expect(new Set(kidsToolDefinitions.map((tool) => tool.href)).size).toBe(kidsToolDefinitions.length);
-    expect(kidsToolDefinitions[0]?.summary).toContain("完整场景");
+    expect(kidsToolDefinitions[0]?.summary).toContain("16 题");
     expect(kidsToolDefinitions[0]?.description).toContain("100 以内加减");
     expect(getKidsToolByPath("math-worksheet")?.href).toBe("/kids/math-worksheet");
     expect(getKidsToolByPath("pinyin-worksheet")?.href).toBe("/kids/pinyin-worksheet");
